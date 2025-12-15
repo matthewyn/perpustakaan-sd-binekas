@@ -1,0 +1,25 @@
+# Ignore Git repository
+.git
+.gitignore
+
+# Environment secrets (we inject later at runtime)
+.env
+
+# System/OS files
+.DS_Store
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Composer cache
+vendor/
+
+# Node / Frontend (if present)
+node_modules/
+
+# Writable cache/logs (we keep folder but empty)
+writable/cache/*
+writable/logs/*
