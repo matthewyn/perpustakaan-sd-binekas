@@ -1026,127 +1026,176 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // =============== UNIFIED ANALYZE FUNCTION ===============
   async function analyzeImage(imageData, type) {
-    const analyzeBtn = document.getElementById('analyzeBtn');
-    const analyzeUploadBtn = document.getElementById('analyzeUploadBtn');
-    const originalText = analyzeBtn.innerHTML;
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  const analyzeUploadBtn = document.getElementById('analyzeUploadBtn');
+  const originalText = analyzeBtn.innerHTML;
+  
+  analyzeBtn.disabled = true;
+  analyzeUploadBtn.disabled = true;
+  analyzeBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Analyzing...';
+
+  console.log('🔍 Starting analysis...');
+  console.log('📋 Type:', type);
+  console.log('📊 Data length:', imageData ? imageData.length : 0);
+
+  try {
+    let response;
+    const apiUrl = '<?= base_url("api/analyze-image") ?>';
     
-    analyzeBtn.disabled = true;
-    analyzeUploadBtn.disabled = true;
-    analyzeBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Analyzing...';
-
-    console.log('🔍 Starting analysis...');
-    console.log('📋 Type:', type);
-    console.log('📊 Data length:', imageData ? imageData.length : 0);
-
-    try {
-      let response;
-      const apiUrl = '<?= base_url("api/analyze-image") ?>';
+    if (type === 'url') {
+      const fullUrl = `${apiUrl}?image_url=${encodeURIComponent(imageData)}`;
+      console.log('🌐 Calling API (GET):', fullUrl.substring(0, 100) + '...');
+      response = await fetch(fullUrl, {
+        method: 'GET'
+      });
+    } else {
+      console.log('🌐 Calling API (POST):', apiUrl);
+      console.log('📤 Sending base64 data...');
       
-      if (type === 'url') {
-        const fullUrl = `${apiUrl}?image_url=${encodeURIComponent(imageData)}`;
-        console.log('🌐 Calling API (GET):', fullUrl.substring(0, 100) + '...');
-        response = await fetch(fullUrl, {
-          method: 'GET'
-        });
-      } else {
-        console.log('🌐 Calling API (POST):', apiUrl);
-        console.log('📤 Sending base64 data...');
-        
-        let base64String = imageData;
-        if (imageData.startsWith('data:')) {
-          base64String = imageData.split(',')[1];
+      let base64String = imageData;
+      if (imageData.startsWith('data:')) {
+        base64String = imageData.split(',')[1];
+      }
+      
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          type: 'base64',
+          image_data: base64String
+        })
+      });
+    }
+
+    console.log('📡 Response status:', response.status);
+    console.log('📡 Response ok:', response.ok);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Server error:', errorText);
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('📦 Response data:', data);
+
+    if (data.error) {
+      console.error('❌ API Error:', data.error);
+      alert('Gagal menganalisis gambar: ' + data.error);
+      return data;
+    }
+
+    if (data.title === 'BUKAN BUKU' || !data.title) {
+      alert('⚠️ Gambar bukan sampul buku atau tidak dapat dianalisis');
+      return data;
+    }
+
+    console.log('✅ Filling form fields...');
+
+    // Fill form fields
+    const fields = {
+      'judul': data.title,
+      'pengarang': data.author,
+      'illustrator': data.illustrator,
+      'publisher': data.publisher,
+      'series': data.series,
+      'isbn': data.isbn,
+      'ddcNumber': data.ddcNumber || data.ddc,
+      'quantity': data.quantity || 1,
+      'sinopsis': data.synopsis
+    };
+
+    for (const [fieldId, value] of Object.entries(fields)) {
+      const element = document.getElementById(fieldId);
+      if (element && value && value !== 'NOT FOUND') {
+        element.value = value;
+        console.log(`  ✔ Set ${fieldId}: ${value.substring(0, 50)}...`);
+      }
+    }
+
+    // Auto-fill category dropdown
+    const kategoriSelect = document.getElementById('kategori');
+    if (kategoriSelect && (data.category || data.genre)) {
+      const genreValue = (data.category || data.genre).toLowerCase().trim();
+      console.log(`  🔎 Looking for category: ${genreValue}`);
+      
+      let found = false;
+      
+      // Try exact match first
+      for (const option of kategoriSelect.options) {
+        if (option.value.toLowerCase() === genreValue) {
+          option.selected = true;
+          found = true;
+          console.log(`  ✅ Category exact match: ${option.value}`);
+          break;
         }
-        
-        response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            type: 'base64',
-            image_data: base64String
-          })
-        });
       }
-
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response ok:', response.ok);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Server error:', errorText);
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('📦 Response data:', data);
-
-      if (data.error) {
-        console.error('❌ API Error:', data.error);
-        alert('Gagal menganalisis gambar: ' + data.error);
-        return;
-      }
-
-      if (data.title === 'BUKAN BUKU' || !data.title) {
-        alert('⚠️ Gambar bukan sampul buku atau tidak dapat dianalisis');
-        return;
-      }
-
-      console.log('✅ Filling form fields...');
-
-      const fields = {
-        'judul': data.title,
-        'pengarang': data.author,
-        'illustrator': data.illustrator,
-        'publisher': data.publisher,
-        'series': data.series,
-        'isbn': data.isbn,
-        'ddcNumber': data.ddcNumber || data.ddc,
-        'quantity': data.quantity || 1,
-        'sinopsis': data.synopsis
-      };
-
-      for (const [fieldId, value] of Object.entries(fields)) {
-        const element = document.getElementById(fieldId);
-        if (element && value && value !== 'NOT FOUND') {
-          element.value = value;
-          console.log(`  ✓ Set ${fieldId}: ${value.substring(0, 50)}...`);
-        }
-      }
-
-      const kategoriSelect = document.getElementById('kategori');
-      if (kategoriSelect && (data.category || data.genre)) {
-        const genreValue = (data.category || data.genre).toLowerCase();
-        console.log(`  🔎 Looking for category: ${genreValue}`);
-        
-        let found = false;
+      
+      // Try partial match if exact match not found
+      if (!found) {
         for (const option of kategoriSelect.options) {
-          if (option.value.toLowerCase() === genreValue) {
+          const optionLower = option.value.toLowerCase();
+          
+          // Check if category contains the genre or vice versa
+          if (optionLower.includes(genreValue) || genreValue.includes(optionLower)) {
             option.selected = true;
             found = true;
-            console.log(`  ✓ Category matched: ${option.value}`);
+            console.log(`  ✅ Category partial match: ${option.value}`);
             break;
           }
         }
-        if (!found) {
-          console.log(`  ⚠️ Category "${genreValue}" not found in options`);
+      }
+      
+      // Try keyword matching as last resort
+      if (!found) {
+        const keywords = genreValue.split(' ');
+        for (const option of kategoriSelect.options) {
+          const optionLower = option.value.toLowerCase();
+          for (const keyword of keywords) {
+            if (keyword.length > 3 && optionLower.includes(keyword)) {
+              option.selected = true;
+              found = true;
+              console.log(`  ✅ Category keyword match: ${option.value} (keyword: ${keyword})`);
+              break;
+            }
+          }
+          if (found) break;
         }
       }
-
-      alert('✅ Analisis berhasil! Field telah diisi otomatis.\n\n💡 Gambar akan diupload ke Cloudinary setelah RFID dikonfirmasi.');
-      console.log('✅ Analysis complete!');
-
-    } catch (err) {
-      console.error('❌ Error details:', err);
-      console.error('❌ Error stack:', err.stack);
-      alert('Terjadi kesalahan saat menganalisis gambar: ' + err.message);
-    } finally {
-      analyzeBtn.disabled = false;
-      analyzeUploadBtn.disabled = false;
-      analyzeBtn.innerHTML = originalText;
-      console.log('🏁 Analysis function finished');
+      
+      if (!found) {
+        console.log(`  ⚠️ Category "${genreValue}" not found in options`);
+      }
     }
+
+    // Broadcast to other connected clients
+    if (window.formSync && window.formSync.channel) {
+      console.log('📤 Broadcasting AI analysis results...');
+      window.formSync.broadcastAIAnalysis(data);
+    }
+
+    alert('✅ Analisis berhasil! Field telah diisi otomatis.\n\n💡 Gambar akan diupload ke Cloudinary setelah RFID dikonfirmasi.');
+    console.log('✅ Analysis complete!');
+    
+    return data;
+
+  } catch (err) {
+    console.error('❌ Error details:', err);
+    console.error('❌ Error stack:', err.stack);
+    alert('Terjadi kesalahan saat menganalisis gambar: ' + err.message);
+    throw err;
+  } finally {
+    analyzeBtn.disabled = false;
+    analyzeUploadBtn.disabled = false;
+    analyzeBtn.innerHTML = originalText;
+    console.log('🏁 Analysis function finished');
   }
+}
+
+// Make it globally accessible
+window.analyzeImage = analyzeImage;
 
   
   // =============== KODE SEKOLAH AUTO-GENERATE ===============
@@ -1394,4 +1443,616 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script src="<?= base_url('js/supabase-config.js') ?>"></script>
+
+<!-- =========================================
+     LIVE FORM SYNC - Add to welcome_message.php
+     Place AFTER the existing real-time code
+     ========================================= -->
+
+<script>
+// ============================================
+// ENHANCED FORM SYNC MANAGER WITH AI ANALYSIS BROADCASTING
+// ============================================
+class FormSyncManager {
+  constructor() {
+    this.channel = null;
+    this.sessionId = this.generateSessionId();
+    this.isTyping = false;
+    this.typingTimeout = null;
+    this.isSyncing = false; // Prevent infinite loops
+    this.lastBroadcastData = null; // Track last broadcast to avoid duplicates
+  }
+
+  generateSessionId() {
+    return 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+  }
+
+  init() {
+    console.log('🔌 Initializing Enhanced Form Sync...');
+    console.log('🆔 Session ID:', this.sessionId);
+
+    this.channel = supabase.channel('form-sync', {
+      config: {
+        broadcast: { self: false }
+      }
+    });
+
+    this.channel
+      .on('broadcast', { event: 'form-update' }, (payload) => {
+        this.handleFormUpdate(payload);
+      })
+      .on('broadcast', { event: 'ai-analysis-complete' }, (payload) => {
+        this.handleAIAnalysisUpdate(payload);
+      })
+      .on('broadcast', { event: 'kode-generated' }, (payload) => {
+        this.handleKodeUpdate(payload);
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Form sync connected!');
+          this.showSyncStatus('ready');
+          this.attachFormListeners();
+          this.interceptAIAnalysis();
+          this.interceptKodeGeneration();
+        }
+      });
+  }
+
+  attachFormListeners() {
+    const formFields = {
+      kode_sekolah: document.getElementById('kode_sekolah'),
+      judul: document.getElementById('judul'),
+      pengarang: document.getElementById('pengarang'),
+      illustrator: document.getElementById('illustrator'),
+      publisher: document.getElementById('publisher'),
+      series: document.getElementById('series'),
+      kategori: document.getElementById('kategori'),
+      isbn: document.getElementById('isbn'),
+      ddcNumber: document.getElementById('ddcNumber'),
+      gambarLink: document.getElementById('gambarLink'),
+      quantity: document.getElementById('quantity'),
+      sinopsis: document.getElementById('sinopsis')
+    };
+
+    Object.keys(formFields).forEach(fieldName => {
+      const field = formFields[fieldName];
+      if (!field) return;
+
+      field.addEventListener('input', (e) => {
+        if (this.isSyncing) return;
+        clearTimeout(this.typingTimeout);
+        this.typingTimeout = setTimeout(() => {
+          this.broadcastFormData();
+        }, 300);
+      });
+
+      field.addEventListener('change', (e) => {
+        if (this.isSyncing) return;
+        this.broadcastFormData();
+      });
+    });
+
+    console.log('👂 Form listeners attached');
+  }
+
+  // ============================================
+  // INTERCEPT AI ANALYSIS RESULTS
+  // ============================================
+  interceptAIAnalysis() {
+    console.log('🤖 Intercepting AI Analysis function...');
+    
+    // Store original analyzeImage function
+    const originalAnalyzeImage = window.analyzeImage;
+    
+    // Override the analyzeImage function
+    window.analyzeImage = async (imageData, type) => {
+      console.log('🔍 AI Analysis started...');
+      
+      try {
+        // Call original function
+        const result = await originalAnalyzeImage.call(window, imageData, type);
+        
+        // After successful analysis, broadcast the results
+        if (result && !result.error) {
+          console.log('✅ AI Analysis complete, broadcasting results...');
+          this.broadcastAIAnalysis(result);
+        }
+        
+        return result;
+      } catch (error) {
+        console.error('❌ AI Analysis error:', error);
+        throw error;
+      }
+    };
+    
+    // Also intercept the analyze button clicks
+    this.attachAnalyzeButtonListeners();
+  }
+
+  attachAnalyzeButtonListeners() {
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const analyzeUploadBtn = document.getElementById('analyzeUploadBtn');
+    
+    if (analyzeBtn) {
+      const originalClick = analyzeBtn.onclick;
+      analyzeBtn.onclick = async (e) => {
+        if (originalClick) await originalClick.call(analyzeBtn, e);
+        
+        // Broadcast after analysis completes
+        setTimeout(() => {
+          this.broadcastFormData('ai-analysis');
+        }, 1000);
+      };
+    }
+    
+    if (analyzeUploadBtn) {
+      const originalClick = analyzeUploadBtn.onclick;
+      analyzeUploadBtn.onclick = async (e) => {
+        if (originalClick) await originalClick.call(analyzeUploadBtn, e);
+        
+        setTimeout(() => {
+          this.broadcastFormData('ai-analysis');
+        }, 1000);
+      };
+    }
+  }
+
+  // ============================================
+  // INTERCEPT KODE SEKOLAH GENERATION
+  // ============================================
+  interceptKodeGeneration() {
+    console.log('🔢 Intercepting Kode Generation...');
+    
+    const generateBtn = document.getElementById('generateKodeBtn');
+    if (!generateBtn) return;
+    
+    generateBtn.addEventListener('click', () => {
+      // Wait for the kode to be generated
+      setTimeout(() => {
+        const kodeValue = document.getElementById('kode_sekolah')?.value;
+        if (kodeValue && kodeValue !== 'Loading...' && kodeValue !== 'Error') {
+          console.log('📤 Broadcasting generated kode:', kodeValue);
+          this.broadcastKodeGeneration(kodeValue);
+        }
+      }, 1500); // Wait for AJAX to complete
+    });
+  }
+
+  // ============================================
+  // BROADCAST AI ANALYSIS RESULTS
+  // ============================================
+  broadcastAIAnalysis(analysisData) {
+    const payload = {
+      type: 'ai-analysis',
+      sessionId: this.sessionId,
+      timestamp: Date.now(),
+      data: analysisData
+    };
+
+    this.channel.send({
+      type: 'broadcast',
+      event: 'ai-analysis-complete',
+      payload: payload
+    });
+
+    console.log('📤 AI Analysis broadcasted:', payload);
+    this.showSyncStatus('syncing');
+  }
+
+  // ============================================
+  // HANDLE AI ANALYSIS UPDATE FROM OTHER CLIENTS
+  // ============================================
+  handleAIAnalysisUpdate(payload) {
+    console.log('📥 Received AI Analysis update:', payload);
+    
+    if (payload.payload.sessionId === this.sessionId) {
+      return; // Ignore own broadcasts
+    }
+
+    this.isSyncing = true;
+    
+    const data = payload.payload.data;
+    
+    // Fill all form fields with AI analysis results
+    this.setFieldValue('judul', data.title || '');
+    this.setFieldValue('pengarang', data.author || '');
+    this.setFieldValue('illustrator', data.illustrator || '');
+    this.setFieldValue('publisher', data.publisher || '');
+    this.setFieldValue('series', data.series || '');
+    this.setFieldValue('isbn', data.isbn || '');
+    this.setFieldValue('ddcNumber', data.ddcNumber || data.ddc || '');
+    this.setFieldValue('quantity', data.quantity || '1');
+    this.setFieldValue('sinopsis', data.synopsis || '');
+    
+    // Handle category/genre
+    if (data.category || data.genre) {
+      this.setSelectValue('kategori', data.category || data.genre);
+    }
+    
+    // Handle image
+    if (data.image || data.gambar) {
+      const imageUrl = data.image || data.gambar;
+      this.setFieldValue('gambarLink', imageUrl);
+      
+      const previewImg = document.getElementById('previewImage');
+      if (previewImg) {
+        previewImg.src = imageUrl;
+        previewImg.style.display = 'block';
+      }
+    }
+    
+    this.flashFormFields('ai-analysis');
+    this.showNotification('🤖 AI Analysis results synced from another device', 'success');
+    
+    setTimeout(() => {
+      this.isSyncing = false;
+    }, 100);
+  }
+
+  // ============================================
+  // BROADCAST KODE SEKOLAH GENERATION
+  // ============================================
+  broadcastKodeGeneration(kode) {
+    const payload = {
+      type: 'kode-generation',
+      sessionId: this.sessionId,
+      timestamp: Date.now(),
+      kode: kode
+    };
+
+    this.channel.send({
+      type: 'broadcast',
+      event: 'kode-generated',
+      payload: payload
+    });
+
+    console.log('📤 Kode generation broadcasted:', payload);
+    this.showSyncStatus('syncing');
+  }
+
+  // ============================================
+  // HANDLE KODE UPDATE FROM OTHER CLIENTS
+  // ============================================
+  handleKodeUpdate(payload) {
+    console.log('📥 Received Kode update:', payload);
+    
+    if (payload.payload.sessionId === this.sessionId) {
+      return;
+    }
+
+    this.isSyncing = true;
+    
+    const kode = payload.payload.kode;
+    this.setFieldValue('kode_sekolah', kode);
+    
+    this.flashField('kode_sekolah');
+    this.showNotification(`🔢 Kode Sekolah synced: ${kode}`, 'info');
+    
+    setTimeout(() => {
+      this.isSyncing = false;
+    }, 100);
+  }
+
+  // ============================================
+  // BROADCAST REGULAR FORM DATA
+  // ============================================
+  broadcastFormData(source = 'manual') {
+    const formData = {
+      kode_sekolah: document.getElementById('kode_sekolah')?.value || '',
+      judul: document.getElementById('judul')?.value || '',
+      pengarang: document.getElementById('pengarang')?.value || '',
+      illustrator: document.getElementById('illustrator')?.value || '',
+      publisher: document.getElementById('publisher')?.value || '',
+      series: document.getElementById('series')?.value || '',
+      kategori: document.getElementById('kategori')?.value || '',
+      isbn: document.getElementById('isbn')?.value || '',
+      ddcNumber: document.getElementById('ddcNumber')?.value || '',
+      gambarLink: document.getElementById('gambarLink')?.value || '',
+      quantity: document.getElementById('quantity')?.value || '1',
+      sinopsis: document.getElementById('sinopsis')?.value || '',
+      sessionId: this.sessionId,
+      timestamp: Date.now(),
+      source: source
+    };
+
+    // Avoid broadcasting identical data
+    if (JSON.stringify(formData) === JSON.stringify(this.lastBroadcastData)) {
+      return;
+    }
+    
+    this.lastBroadcastData = formData;
+
+    this.channel.send({
+      type: 'broadcast',
+      event: 'form-update',
+      payload: formData
+    });
+
+    console.log('📤 Broadcasting form data:', formData);
+    this.showSyncStatus('syncing');
+  }
+
+  handleFormUpdate(payload) {
+    console.log('📥 Received form update:', payload);
+
+    if (payload.payload.sessionId === this.sessionId) {
+      return;
+    }
+
+    this.isSyncing = true;
+
+    const data = payload.payload;
+    
+    this.setFieldValue('kode_sekolah', data.kode_sekolah);
+    this.setFieldValue('judul', data.judul);
+    this.setFieldValue('pengarang', data.pengarang);
+    this.setFieldValue('illustrator', data.illustrator);
+    this.setFieldValue('publisher', data.publisher);
+    this.setFieldValue('series', data.series);
+    this.setSelectValue('kategori', data.kategori);
+    this.setFieldValue('isbn', data.isbn);
+    this.setFieldValue('ddcNumber', data.ddcNumber);
+    this.setFieldValue('gambarLink', data.gambarLink);
+    this.setFieldValue('quantity', data.quantity);
+    this.setFieldValue('sinopsis', data.sinopsis);
+
+    if (data.gambarLink) {
+      const previewImg = document.getElementById('previewImage');
+      if (previewImg) {
+        previewImg.src = data.gambarLink;
+        previewImg.style.display = 'block';
+      }
+    }
+
+    this.flashFormFields(data.source);
+    this.showSyncStatus('synced');
+
+    setTimeout(() => {
+      this.isSyncing = false;
+    }, 100);
+  }
+
+  setFieldValue(fieldId, value) {
+    const field = document.getElementById(fieldId);
+    if (!field || field.value === value) return;
+
+    field.value = value;
+
+    const event = new Event('change', { bubbles: true });
+    field.dispatchEvent(event);
+  }
+
+  setSelectValue(fieldId, value) {
+    const select = document.getElementById(fieldId);
+    if (!select || !value) return;
+    
+    const normalizedValue = value.toLowerCase().trim();
+    
+    // Try exact match first
+    for (const option of select.options) {
+      if (option.value.toLowerCase() === normalizedValue) {
+        option.selected = true;
+        const event = new Event('change', { bubbles: true });
+        select.dispatchEvent(event);
+        console.log(`✅ Category matched: ${option.value}`);
+        return;
+      }
+    }
+    
+    // Try partial match
+    for (const option of select.options) {
+      if (option.value.toLowerCase().includes(normalizedValue) || 
+          normalizedValue.includes(option.value.toLowerCase())) {
+        option.selected = true;
+        const event = new Event('change', { bubbles: true });
+        select.dispatchEvent(event);
+        console.log(`✅ Category partial match: ${option.value}`);
+        return;
+      }
+    }
+    
+    console.log(`⚠️ Category "${value}" not found in dropdown`);
+  }
+
+  flashFormFields(source = 'manual') {
+    const modal = document.querySelector('#exampleModal .modal-body');
+    if (!modal) return;
+    
+    const colors = {
+      'ai-analysis': '#e7f1ff',
+      'manual': '#fff3cd',
+      'kode-generation': '#d1e7dd'
+    };
+    
+    const color = colors[source] || '#f8f9fa';
+    
+    modal.style.transition = 'background-color 0.5s ease';
+    modal.style.backgroundColor = color;
+    
+    setTimeout(() => {
+      modal.style.backgroundColor = '';
+    }, 1000);
+  }
+
+  flashField(fieldId) {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+    
+    field.style.transition = 'all 0.3s ease';
+    field.style.backgroundColor = '#ffd700';
+    field.style.transform = 'scale(1.02)';
+    
+    setTimeout(() => {
+      field.style.backgroundColor = '';
+      field.style.transform = '';
+    }, 500);
+  }
+
+  showSyncStatus(status) {
+    let indicator = document.getElementById('formSyncStatus');
+    
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.id = 'formSyncStatus';
+      indicator.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 10px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+        z-index: 9999;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        transition: all 0.3s ease;
+      `;
+      document.body.appendChild(indicator);
+    }
+
+    if (status === 'ready') {
+      indicator.style.background = '#d1e7dd';
+      indicator.style.color = '#0f5132';
+      indicator.innerHTML = '🟢 Form sync ready';
+      
+      setTimeout(() => {
+        indicator.style.opacity = '0.5';
+      }, 2000);
+    } else if (status === 'syncing') {
+      indicator.style.background = '#cfe2ff';
+      indicator.style.color = '#084298';
+      indicator.style.opacity = '1';
+      indicator.innerHTML = '🔄 Syncing...';
+    } else if (status === 'synced') {
+      indicator.style.background = '#d1e7dd';
+      indicator.style.color = '#0f5132';
+      indicator.style.opacity = '1';
+      indicator.innerHTML = '✅ Synced!';
+      
+      setTimeout(() => {
+        indicator.style.opacity = '0.5';
+      }, 1000);
+    }
+  }
+
+  showNotification(message, type = 'info') {
+    let toastContainer = document.getElementById('toastContainer');
+    
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'toastContainer';
+      toastContainer.style.cssText = `
+        position: fixed;
+        top: 70px;
+        right: 20px;
+        z-index: 9999;
+      `;
+      document.body.appendChild(toastContainer);
+    }
+    
+    const toastId = 'toast-' + Date.now();
+    const bgColor = {
+      'success': 'success',
+      'info': 'info',
+      'warning': 'warning',
+      'error': 'danger'
+    }[type] || 'primary';
+    
+    const toastHTML = `
+      <div id="${toastId}" class="toast" role="alert" style="min-width: 250px;">
+        <div class="toast-header bg-${bgColor} text-white">
+          <strong class="me-auto">📡 Real-time Sync</strong>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body">
+          ${message}
+        </div>
+      </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+    
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, { autohide: true, delay: 4000 });
+    toast.show();
+    
+    toastElement.addEventListener('hidden.bs.toast', () => {
+      toastElement.remove();
+    });
+  }
+
+  disconnect() {
+    if (this.channel) {
+      supabase.removeChannel(this.channel);
+      console.log('👋 Form sync disconnected');
+    }
+  }
+}
+
+// Initialize on page load
+let formSync = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    formSync = new FormSyncManager();
+    formSync.init();
+    window.formSync = formSync;
+  }, 1000);
+});
+
+document.getElementById('exampleModal')?.addEventListener('shown.bs.modal', () => {
+  if (formSync && !formSync.channel) {
+    formSync.init();
+  }
+});
+
+window.addEventListener('beforeunload', () => {
+  if (formSync) {
+    formSync.disconnect();
+  }
+});
+</script>
+
+<!-- Additional CSS for Form Sync -->
+<style>
+  /* Form sync status indicator */
+  #formSyncStatus {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 10px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    z-index: 9999;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transition: all 0.3s ease;
+  }
+
+  /* Mobile adjustments */
+  @media (max-width: 768px) {
+    #formSyncStatus {
+      bottom: 10px;
+      right: 10px;
+      font-size: 10px;
+      padding: 8px 12px;
+    }
+  }
+
+  /* Form flash animation */
+  @keyframes formFlash {
+    0%, 100% {
+      background-color: transparent;
+    }
+    50% {
+      background-color: #e7f1ff;
+    }
+  }
+
+  .form-syncing {
+    animation: formFlash 0.5s ease-in-out;
+  }
+</style>
 <?= $this->endSection() ?>
