@@ -30,10 +30,6 @@
     .selection-item input[type="checkbox"] {
         cursor: pointer;
     }
-    .selection-item input[type="number"] {
-        width: 70px;
-        margin-left: auto;
-    }
     .required::after {
         content: "*";
         color: red;
@@ -157,22 +153,6 @@
                 </div>
             </div>
         </div>
-
-        <div class="mb-3">
-            <h6 class="mb-3">Atur Buku</h6>
-            <div class="row">
-                <div class="col-md-6">
-                    <label class="form-label">Buku Tersedia</label>
-                    <input type="text" id="searchAvailableBooks" class="form-control form-control-sm mb-2" placeholder="Cari buku...">
-                    <div class="selection-box" id="availableBooks"></div>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Buku di Kelas Ini</label>
-                    <input type="text" id="searchAssignedBooks" class="form-control form-control-sm mb-2" placeholder="Cari buku...">
-                    <div class="selection-box" id="assignedBooks"></div>
-                </div>
-            </div>
-        </div>
       </div>
       <div class="modal-footer">
         <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
@@ -254,7 +234,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         document.getElementById('editNamaKelas').value = data.class.nama_kelas;
                         
                         loadStudentsForEdit(data.students);
-                        loadBooksForEdit(data.books);
                         
                         editModal.show();
                     }
@@ -268,15 +247,6 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 const available = data.students || [];
                 renderStudentBoxes(available, assignedStudents);
-            });
-    }
-
-    function loadBooksForEdit(assignedBooks) {
-        fetch("<?= base_url('management-class/getUnassignedBooks') ?>")
-            .then(r => r.json())
-            .then(data => {
-                const available = data.books || [];
-                renderBookBoxes(available, assignedBooks);
             });
     }
 
@@ -301,28 +271,6 @@ document.addEventListener('DOMContentLoaded', function() {
         attachStudentListeners();
     }
 
-    function renderBookBoxes(available, assigned) {
-        const availableBox = document.getElementById('availableBooks');
-        const assignedBox = document.getElementById('assignedBooks');
-        
-        availableBox.innerHTML = available.map(b => `
-            <div class="selection-item">
-                <input type="checkbox" value="${b.id}" class="book-checkbox-available" data-max="${b.available_quantity || b.quantity}">
-                <span>${b.title} (tersedia: ${b.available_quantity || b.quantity})</span>
-            </div>
-        `).join('') || '<div class="text-muted">Tidak ada buku tersedia</div>';
-        
-        assignedBox.innerHTML = assigned.map(b => `
-            <div class="selection-item">
-                <input type="checkbox" value="${b.id}" class="book-checkbox-assigned" checked>
-                <span>${b.title}</span>
-                <input type="number" min="1" max="${b.available_quantity}" value="${b.class_quantity}" class="form-control form-control-sm book-quantity" data-book-id="${b.id}">
-            </div>
-        `).join('') || '<div class="text-muted">Belum ada buku</div>';
-        
-        attachBookListeners();
-    }
-
     function attachStudentListeners() {
         document.querySelectorAll('.student-checkbox-available').forEach(cb => {
             cb.onchange = function() {
@@ -337,41 +285,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function attachBookListeners() {
-        document.querySelectorAll('.book-checkbox-available').forEach(cb => {
-            cb.onchange = function() {
-                if (this.checked) moveToAssigned(this, 'book');
-            };
-        });
-
-        document.querySelectorAll('.book-checkbox-assigned').forEach(cb => {
-            cb.onchange = function() {
-                if (!this.checked) moveToAvailable(this, 'book');
-            };
-        });
-    }
-
     function moveToAssigned(checkbox, type) {
         const item = checkbox.closest('.selection-item');
-        const target = type === 'student' ? document.getElementById('assignedStudents') : document.getElementById('assignedBooks');
+        const target = document.getElementById('assignedStudents');
 
         const clone = item.cloneNode(true);
         const input = clone.querySelector('input[type="checkbox"]');
         if (input) {
-            if (type === 'student') {
-                input.className = 'student-checkbox-assigned';
-            } else {
-                input.className = 'book-checkbox-assigned';
-                const maxQty = input.dataset.max || 1;
-                const qtyInput = document.createElement('input');
-                qtyInput.type = 'number';
-                qtyInput.min = 1;
-                qtyInput.max = maxQty;
-                qtyInput.value = 1;
-                qtyInput.className = 'form-control form-control-sm book-quantity';
-                qtyInput.dataset.bookId = input.value;
-                clone.appendChild(qtyInput);
-            }
+            input.className = 'student-checkbox-assigned';
             input.checked = true;
         }
 
@@ -380,23 +301,17 @@ document.addEventListener('DOMContentLoaded', function() {
         item.remove();
         target.appendChild(clone);
 
-        if (type === 'student') attachStudentListeners(); else attachBookListeners();
+        attachStudentListeners();
     }
 
     function moveToAvailable(checkbox, type) {
         const item = checkbox.closest('.selection-item');
-        const target = type === 'student' ? document.getElementById('availableStudents') : document.getElementById('availableBooks');
+        const target = document.getElementById('availableStudents');
 
         const clone = item.cloneNode(true);
         const input = clone.querySelector('input[type="checkbox"]');
         if (input) {
-            if (type === 'student') {
-                input.className = 'student-checkbox-available';
-            } else {
-                input.className = 'book-checkbox-available';
-                const qtyInput = clone.querySelector('.book-quantity');
-                if (qtyInput) qtyInput.remove();
-            }
+            input.className = 'student-checkbox-available';
             input.checked = false;
         }
 
@@ -405,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function() {
         item.remove();
         target.appendChild(clone);
 
-        if (type === 'student') attachStudentListeners(); else attachBookListeners();
+        attachStudentListeners();
     }
 
     document.getElementById('editKelasForm').addEventListener('submit', function(e) {
@@ -413,17 +328,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const studentIds = Array.from(document.querySelectorAll('.student-checkbox-assigned:checked')).map(cb => cb.value);
         
-        const bookData = {};
-        document.querySelectorAll('.book-checkbox-assigned:checked').forEach(cb => {
-            const bookId = cb.value;
-            const qtyInput = document.querySelector(`.book-quantity[data-book-id="${bookId}"]`);
-            bookData[bookId] = qtyInput ? parseInt(qtyInput.value) : 1;
-        });
-        
         const formData = new FormData();
         formData.append('nama_kelas', document.getElementById('editNamaKelas').value);
         formData.append('student_ids', JSON.stringify(studentIds));
-        formData.append('book_data', JSON.stringify(bookData));
         
         fetch(`<?= base_url('management-class/update') ?>/${currentClassId}`, {
             method: 'POST',
@@ -489,7 +396,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Search functionality
-    ['Students', 'Books'].forEach(type => {
+    ['Students'].forEach(type => {
         ['Available', 'Assigned'].forEach(status => {
             const searchId = `search${status}${type}`;
             const boxId = `${status.toLowerCase()}${type}`;

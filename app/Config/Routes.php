@@ -72,6 +72,7 @@ $routes->post('reset-password-binekas', 'AuthController::resetPassword');
 // PEMINJAMAN KELAS ROUTES
 $routes->get('peminjaman-kelas', 'ClassTransactionController::index');
 $routes->get('peminjaman-kelas/class-data', 'ClassTransactionController::getClassData');
+$routes->get('peminjaman-kelas/all-books', 'ClassTransactionController::getAllBooks');
 $routes->get('peminjaman-kelas/transactions', 'ClassTransactionController::getClassTransactions');
 $routes->post('peminjaman-kelas/add', 'ClassTransactionController::addBorrowing');
 $routes->post('peminjaman-kelas/return', 'ClassTransactionController::addReturn');

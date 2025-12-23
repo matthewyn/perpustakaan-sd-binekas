@@ -157,10 +157,11 @@
                 <table class="table table-hover table-striped">
                     <thead>
                         <tr>
-                        <th scope="col">#</th>
-                        <th scope="col">Nama</th>
-                        <th scope="col">Buku</th>
-                        <th scope="col">Tanggal</th>
+                            <th scope="col">#</th>
+                            <th scope="col">Nama</th>
+                            <th scope="col">Buku</th>
+                            <th scope="col">Kelas</th>
+                            <th scope="col">Tanggal</th>
                         </tr>
                     </thead>
                     <tbody id="tbodyBorrowings">
@@ -171,12 +172,13 @@
                                     <th scope="row"><?= $no++ ?></th>
                                     <td><?= esc($row['nama']) ?></td>
                                     <td><?= esc($row['judul']) ?></td>
+                                    <td><?= esc($row['class']) ?></td>
                                     <td><?= esc($row['tanggal']) ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="4" class="text-center">Belum ada data peminjaman.</td>
+                                <td colspan="5" class="text-center">Belum ada data peminjaman.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -215,10 +217,11 @@
                 <table class="table table-hover table-striped">
                     <thead>
                         <tr>
-                        <th scope="col">#</th>
-                        <th scope="col">Nama</th>
-                        <th scope="col">Buku</th>
-                        <th scope="col">Tanggal</th>
+                            <th scope="col">#</th>
+                            <th scope="col">Nama</th>
+                            <th scope="col">Buku</th>
+                            <th scope="col">Kelas</th>
+                            <th scope="col">Tanggal</th>
                         </tr>
                     </thead>
                     <tbody id="tbodyReturns">
@@ -228,12 +231,13 @@
                                     <th scope="row"><?= $no++ ?></th>
                                     <td><?= esc($row['nama']) ?></td>
                                     <td><?= esc($row['judul']) ?></td>
+                                    <td><?= esc($row['class']) ?></td>
                                     <td><?= esc($row['tanggal']) ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="4" class="text-center">Belum ada data pengembalian.</td>
+                                <td colspan="5" class="text-center">Belum ada data pengembalian.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -1005,19 +1009,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     const book = (window._allBooks || []).find(book => 
                         book.id == b.book_id || book.key == b.book_id || book.firebase_key == b.book_id
                     ) || {};
+                    
+                    const classId = user.class_id || null;
+                    const className = classId ? (window._classesById && window._classesById[classId] ? window._classesById[classId].nama_kelas : '-') : '-';
+                    
                     const statusClass = b.status === 'active' ? 'table-danger' : '';
                     
                     rows += `<tr class="${statusClass}">
                         <th scope="row">${no++}</th>
                         <td>${escapeHtml(user.nama || '-')}</td>
                         <td>${escapeHtml(book.title || '-')}</td>
+                        <td>${escapeHtml(className)}</td>
                         <td>${escapeHtml(b.tanggal || '-')}</td>
                     </tr>`;
                 });
-                if (!rows) rows = `<tr><td colspan="4" class="text-center">Belum ada data peminjaman.</td></tr>`;
+                if (!rows) rows = `<tr><td colspan="5" class="text-center">Belum ada data peminjaman.</td></tr>`;
                 $('#tbodyBorrowings').html(rows);
                 
-                // Update pagination info
                 totalBorrowingsPages = Math.ceil(response.totalCount / ITEMS_PER_PAGE);
                 renderBorrowingsPagination();
             }
@@ -1040,22 +1048,49 @@ document.addEventListener('DOMContentLoaded', function() {
                         book.id == r.book_id || book.key == r.book_id || book.firebase_key == r.book_id
                     ) || {};
                     
+                    const classId = user.class_id || null;
+                    const className = classId ? (window._classesById && window._classesById[classId] ? window._classesById[classId].nama_kelas : '-') : '-';
+                    
                     rows += `<tr>
                         <th scope="row">${no++}</th>
                         <td>${escapeHtml(user.nama || '-')}</td>
                         <td>${escapeHtml(book.title || '-')}</td>
+                        <td>${escapeHtml(className)}</td>
                         <td>${escapeHtml(r.tanggal || '-')}</td>
                     </tr>`;
                 });
-                if (!rows) rows = `<tr><td colspan="4" class="text-center">Belum ada data pengembalian.</td></tr>`;
+                if (!rows) rows = `<tr><td colspan="5" class="text-center">Belum ada data pengembalian.</td></tr>`;
                 $('#tbodyReturns').html(rows);
                 
-                // Update pagination info
                 totalReturnsPages = Math.ceil(response.totalCount / ITEMS_PER_PAGE);
                 renderReturnsPagination();
             }
         });
     }
+
+    function fetchClassesData() {
+        $.get("<?= base_url('management-class/list') ?>", function(response) {
+            if (response.success && Array.isArray(response.classes)) {
+                window._classesById = {};
+                response.classes.forEach(c => {
+                    window._classesById[c.id] = c;
+                });
+                console.log('Classes loaded successfully:', response.classes.length, 'classes');
+            }
+        }).fail(() => {
+            console.error('Failed to fetch classes data');
+            window._classesById = {};
+        });
+    }
+
+    startDataLoadTimeout();
+    fetchReturnsData(function() {
+        fetchSiswaData();
+        fetchBorrowingsData();
+        fetchBookData();
+        fetchGuruData();
+        fetchClassesData();
+    });
 
     // ===== PAGINATION RENDERING FUNCTIONS =====
     function renderBorrowingsPagination() {

@@ -83,14 +83,26 @@ class TransactionController extends Controller
         ]);
         $users = isset($users['error']) ? [] : $users;
 
+        // Get classes
+        $classes = $this->supabaseRequest('GET', 'classes', null, [
+            'select' => '*'
+        ]);
+        $classes = isset($classes['error']) ? [] : $classes;
+
         // Get books
         $books = $this->supabaseRequest('GET', 'books', null, [
             'select' => '*'
         ]);
         $books = isset($books['error']) ? [] : $books;
+        
         $usersById = [];
         foreach ($users as $user) {
             $usersById[$user['id']] = $user;
+        }
+
+        $classesById = [];
+        foreach ($classes as $class) {
+            $classesById[$class['id']] = $class;
         }
 
         $booksById = [];
@@ -110,12 +122,19 @@ class TransactionController extends Controller
             $userId = $t['user_id'] ?? null;
             $bookId = $t['book_id'] ?? null;
 
-            $nama = $userId && isset($usersById[$userId]) ? ($usersById[$userId]['nama'] ?? '-') : '-';
+            $user = $userId && isset($usersById[$userId]) ? $usersById[$userId] : null;
+            $nama = $user ? ($user['nama'] ?? '-') : '-';
+            
+            // Get class name from user's class_id
+            $classId = $user ? ($user['class_id'] ?? null) : null;
+            $className = ($classId && isset($classesById[$classId])) ? ($classesById[$classId]['nama_kelas'] ?? '-') : '-';
+            
             $judul = $bookId && isset($booksById[$bookId]) ? ($booksById[$bookId]['title'] ?? '-') : '-';
 
             $row = [
                 'nama' => $nama,
                 'judul' => $judul,
+                'class' => $className,
                 'tanggal' => $t['tanggal'] ?? '-',
                 'status' => $t['status'] ?? 'active',
                 'user_id' => $userId,
@@ -202,7 +221,6 @@ class TransactionController extends Controller
             'chartData' => $chartData
         ]);
     }
-
 
     // Tambah bintang dan num_borrows hanya saat pengembalian sukses
     private function updateBintangDanNumBorrows($userId)

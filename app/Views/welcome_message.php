@@ -458,7 +458,7 @@
               <input type="text" class="form-control form-control-mobile" id="isbn" placeholder="">
             </div>
             <div class="col">
-              <label for="ddcNumber" class="form-label required text-mobile-sm">DDC Number</label>
+              <label for="ddcNumber" class="form-label text-mobile-sm">DDC Number</label>
               <input type="text" class="form-control form-control-mobile" id="ddcNumber" placeholder="">
             </div>
           </div>
@@ -1474,7 +1474,7 @@ class FormSyncManager {
     console.log('🔌 Initializing Enhanced Form Sync...');
     console.log('🆔 Session ID:', this.sessionId);
 
-    this.channel = supabase.channel('form-sync', {
+    this.channel = supabaseClient.channel('form-sync', {
       config: {
         broadcast: { self: false }
       }

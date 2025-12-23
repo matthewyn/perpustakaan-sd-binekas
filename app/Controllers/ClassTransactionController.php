@@ -188,6 +188,24 @@ class ClassTransactionController extends Controller
         return $this->response->setJSON($responseData);
     }
 
+    public function getAllBooks()
+    {
+        // Fetch all books from the database without any class restrictions
+        $books = $this->supabaseRequest('GET', 'books', null, [
+            'select' => '*',
+            'order' => 'title.asc'
+        ]);
+
+        if (isset($books['error'])) {
+            $books = [];
+        }
+
+        return $this->response->setJSON([
+            'success' => true,
+            'books' => $books
+        ]);
+    }
+
     public function getClassTransactions()
     {
         $classId = $this->request->getGet('class_id');
@@ -343,30 +361,16 @@ class ClassTransactionController extends Controller
         $book = $books[0];
         $bookId = $book['id'];
 
-        // Check if book is assigned to this class
-        $classBook = $this->supabaseRequest('GET', 'class_books', null, [
-            'class_id' => 'eq.' . $classId,
-            'book_id' => 'eq.' . $bookId,
-            'limit' => 1
-        ]);
-
-        if (isset($classBook['error']) || empty($classBook)) {
+        // Check book availability - book must exist and have quantity > 0
+        $totalQuantity = $book['quantity'] ?? 0;
+        if ($totalQuantity < 1) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Buku tidak tersedia di kelas ' . $className
+                'message' => 'Stok buku "' . $judul . '" habis di perpustakaan'
             ]);
         }
 
-        // Check class book quantity
-        $classBookQuantity = $classBook[0]['quantity'] ?? 0;
-        if ($classBookQuantity < 1) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Stok buku di kelas habis'
-            ]);
-        }
-
-        // UID is OPTIONAL for class books - only validate if provided
+        // UID is OPTIONAL - only validate if provided
         if (!empty($uidCari)) {
             $bookUids = $book['uid'] ?? [];
             if (is_array($bookUids) && !empty($bookUids)) {
@@ -420,13 +424,8 @@ class ClassTransactionController extends Controller
             ]);
         }
 
-        // Update class_books quantity
-        $newClassQty = $classBookQuantity - 1;
-        $this->supabaseRequest('PATCH', 'class_books?class_id=eq.' . $classId . '&book_id=eq.' . $bookId, [
-            'quantity' => $newClassQty
-        ]);
-
-        // Update books quantity (main books table)
+        // Update books quantity (main books table only)
+        // Note: We no longer update class_books since books can now be borrowed from outside the class
         $bookQuantity = $book['quantity'] ?? 0;
         $newBookQty = $bookQuantity - 1;
         $this->supabaseRequest('PATCH', 'books?id=eq.' . $bookId, [

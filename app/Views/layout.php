@@ -112,12 +112,10 @@
                                         <a href="<?= base_url('peminjaman-kelas') ?>"
                                         style="text-decoration: none; color: inherit;">&nbsp;&nbsp;&nbsp;&nbsp;Kelas</a>
                                     </li>
-                                    <?php if (session('role') !== 'guru'): ?>
                                     <li class="list-group-item text-bg-dark border-0 text-mobile-md">
                                         <a href="<?= base_url('peminjaman') ?>"
                                         style="text-decoration: none; color: inherit;">&nbsp;&nbsp;&nbsp;&nbsp;Perpustakaan</a>
                                     </li>
-                                    <?php endif; ?>
                                 </ul>
                             </div>
                             <?php if (session('role') !== 'guru'): ?>

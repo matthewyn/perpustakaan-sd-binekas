@@ -41,7 +41,7 @@
                     <div id="classInfo" class="d-none">
                         <div class="alert alert-info mb-0">
                             <strong>Kelas: <span id="selectedClassName"></span></strong><br>
-                            <small>Siswa: <span id="studentCount">0</span> | Buku: <span id="bookCount">0</span></small>
+                            <small>Siswa: <span id="studentCount">0</span></small>
                         </div>
                     </div>
                 </div>
@@ -52,7 +52,7 @@
     <!-- GURU CLASS INFO -->
     <div class="alert alert-info mt-4" id="guruClassInfo" style="<?= session('role') === 'guru' ? '' : 'display: none;' ?>">
         <strong>Kelas Anda: <span id="guruClassName">-</span></strong><br>
-        <small>Siswa: <span id="guruStudentCount">0</span> | Buku: <span id="guruBookCount">0</span></small>
+        <small>Siswa: <span id="guruStudentCount">0</span></small>
     </div>
 
     <div class="d-flex justify-content-end mt-4">
@@ -193,7 +193,7 @@
                             <label for="judulCari" class="form-label required">Cari Judul Buku</label>
                             <input type="text" class="form-control" id="judulCari" name="judulCari" 
                                    placeholder="Ketik judul">
-                            <small class="text-muted">Buku yang tersedia di kelas ini</small>
+                            <small class="text-muted">Pilih buku yang ingin dipinjam</small>
                         </div>
                     </div>
                 </div>
@@ -398,15 +398,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function setupBookAutocomplete() {
         $('#judulCari').autocomplete({
             source: function(request, response) {
-                const results = classBooks
-                    .filter(b => b.class_quantity > 0) // Only show books with available quantity
-                    .map(b => ({
-                        label: `${b.title} (${b.class_quantity} tersedia)`,
-                        value: b.title,
-                        book: b
-                    }))
-                    .filter(item => item.label.toLowerCase().includes(request.term.toLowerCase()));
-                response(results);
+                // Fetch all books from the server, not limited to class books
+                $.get("<?= base_url('peminjaman-kelas/all-books') ?>", function(data) {
+                    const results = (data.books || [])
+                        .map(b => ({
+                            label: `${b.title}`,
+                            value: b.title,
+                            book: b
+                        }))
+                        .filter(item => item.label.toLowerCase().includes(request.term.toLowerCase()));
+                    response(results);
+                });
             },
             minLength: 1,
             select: function(event, ui) {
@@ -615,6 +617,7 @@ document.addEventListener('DOMContentLoaded', function() {
             data: formData,
             processData: false,
             contentType: false,
+            dataType: 'json',
             success: function(response) {
                 isFormSubmitting = false;
                 
