@@ -241,12 +241,6 @@
     box-shadow: 0 6px 16px rgba(0,0,0,0.15) !important;
   }
 
-  /* ==================== FORM REQUIRED LABELS ==================== */
-  .form-label.required::after {
-    content: " *";
-    color: #dc3545;
-  }
-
   /* ==================== PREVIEW IMAGE ==================== */
   #previewImage {
     border: 2px solid #dee2e6;

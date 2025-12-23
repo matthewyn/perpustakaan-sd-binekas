@@ -71,7 +71,6 @@
                                 <th>#</th>
                                 <th>Nama Kelas</th>
                                 <th>Jumlah Siswa</th>
-                                <th>Jumlah Buku</th>
                                 <th>Tanggal Dibuat</th>
                                 <th>Aksi</th>
                             </tr>
@@ -82,7 +81,6 @@
                                     <td><?= $i++ ?></td>
                                     <td><?= esc($class['nama_kelas'] ?? '-') ?></td>
                                     <td><?= $class['student_count'] ?? 0 ?> siswa</td>
-                                    <td><?= $class['book_count'] ?? 0 ?> buku</td>
                                     <td><?= isset($class['created_at']) ? date('d/m/Y', strtotime($class['created_at'])) : '-' ?></td>
                                     <td>
                                         <button class="btn btn-sm btn-info btn-view-class">Detail</button>

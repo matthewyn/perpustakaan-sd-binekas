@@ -246,13 +246,13 @@
                     <input type="hidden" id="guruMode" value="add">
                     <input type="hidden" id="guruId" value="">
 
-                    <!-- Search NIP (hanya untuk edit) -->
+                    <!-- Search Nama (hanya untuk edit) -->
                     <div id="guruSearchSection" style="display:none;">
                         <div class="mb-3">
-                            <label class="form-label required">Cari NIP</label>
+                            <label class="form-label required">Cari Nama Guru</label>
                             <input type="text" class="form-control" id="guruSearch" 
-                                   placeholder="Ketik NIP untuk mencari...">
-                            <small class="text-muted">Ketik NIP guru yang ingin diubah</small>
+                                   placeholder="Ketik nama guru untuk mencari...">
+                            <small class="text-muted">Ketik nama guru yang ingin diubah</small>
                         </div>
                         <hr>
                     </div>
@@ -770,14 +770,14 @@ function setupAutocomplete() {
             }
         });
 
-        // Autocomplete NIP
+        // Autocomplete Nama Guru
         $('#guruSearch').autocomplete({
             source: function(request, response) {
                 const results = guruList
-                    .filter(g => g.nip && g.nip.toLowerCase().includes(request.term.toLowerCase()))
+                    .filter(g => g.nama && g.nama.toLowerCase().includes(request.term.toLowerCase()))
                     .map(g => ({
-                        label: `${g.nip} - ${g.nama}`,
-                        value: g.nip,
+                        label: `${g.nama} (${g.nip})`,
+                        value: g.nama,
                         data: g
                     }));
                 response(results);

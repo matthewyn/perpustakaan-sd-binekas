@@ -168,7 +168,7 @@
         
         <!-- Kode ONLY (NO UID HERE) -->
         <div class="row mb-3">
-            <div class="col-md-6">
+            <div class="col">
                 <label for="code" class="form-label required">Kode</label>
                 <div class="input-group">
                     <input type="text" name="code" class="form-control" id="code" required>

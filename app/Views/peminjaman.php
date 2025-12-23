@@ -9,6 +9,11 @@
     .ui-autocomplete {
         z-index: 2000 !important;
     }
+    .stat-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
 </style>
 <div class="container mt-4">
     <!-- Main -->
@@ -99,24 +104,30 @@
                             <ul class="stat-list">
                                 <li>
                                     <h2 class="fs-4 m-0" id="stat-borrowed"><?= esc($chartData['harian']['borrowings'][date('Y-m-d')] ?? 0) ?></h2>
-                                    <small>Buku yang dipinjam</small>
-                                    <div class="stat-percent text-success" id="stat-borrowed-percent">0% <i class="bi bi-caret-up-fill"></i></div>
+                                    <div class="d-flex justify-content-between">
+                                        <small>Buku yang dipinjam</small>
+                                        <div class="stat-percent text-success" id="stat-borrowed-percent">0% <i class="bi bi-caret-up-fill"></i></div>
+                                    </div>
                                     <div class="progress progress-mini">
                                         <div id="stat-borrowed-bar" style="width: 0%;" class="progress-bar bg-success"></div>
                                     </div>
                                 </li>
                                 <li>
                                     <h2 class="fs-4 m-0" id="stat-returned"><?= esc($chartData['harian']['returns'][date('Y-m-d')] ?? 0) ?></h2>
-                                    <small>Buku yang dikembalikan</small>
-                                    <div class="stat-percent text-success" id="stat-returned-percent">0% <i class="bi bi-caret-up-fill"></i></div>
+                                    <div class="d-flex justify-content-between">
+                                        <small>Buku yang dikembalikan</small>
+                                        <div class="stat-percent text-success" id="stat-returned-percent">0% <i class="bi bi-caret-up-fill"></i></div>
+                                    </div>
                                     <div class="progress progress-mini">
                                         <div id="stat-returned-bar" style="width: 0%;" class="progress-bar bg-success"></div>
                                     </div>
                                 </li>
                                 <li>
                                     <h2 class="fs-4 m-0" id="stat-total"><?= esc($totalAvailable) ?></h2>
-                                    <small>Total buku</small>
-                                    <div class="stat-percent text-success" id="stat-total-percent">0% <i class="bi bi-caret-up-fill"></i></div>
+                                    <div class="d-flex justify-content-between">
+                                        <small>Total buku</small>
+                                        <div class="stat-percent text-success" id="stat-total-percent">0% <i class="bi bi-caret-up-fill"></i></div>
+                                    </div>
                                     <div class="progress progress-mini">
                                         <div id="stat-total-bar" style="width: 0%;" class="progress-bar bg-success"></div>
                                     </div>

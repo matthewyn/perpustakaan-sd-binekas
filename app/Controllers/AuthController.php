@@ -98,18 +98,8 @@ class AuthController extends Controller
             return redirect()->back()->with('error', 'Username dan password harus diisi');
         }
 
-        if ($username === 'admin' && $password === 'admin123') {
-            session()->set([
-                'role' => 'admin',
-                'name' => 'Administrator',
-                'user_id' => 0
-            ]);
-            log_message('info', 'Login success - Static Admin');
-            return redirect()->to('/');
-        }
-
-        // CEK USER 
-        $roles = ['murid', 'guru', 'pustakawan', 'kepala sekolah', 'umum'];
+        // CEK USER - include admin role
+        $roles = ['admin', 'murid', 'guru', 'pustakawan', 'kepala sekolah', 'umum'];
         $allUsers = [];
 
         foreach ($roles as $role) {
