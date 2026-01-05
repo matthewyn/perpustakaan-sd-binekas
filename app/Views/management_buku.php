@@ -342,6 +342,22 @@
             <textarea name="synopsis" class="form-control" id="synopsis" rows="3"></textarea>
         </div>
 
+        <!-- UID Fields (Hidden for Add, Visible for Edit) -->
+        <div class="mb-3" id="uidSection" style="display: none;">
+            <label class="form-label">UID RFID</label>
+            <div class="uid-container" id="uidContainer">
+                <div class="input-group mb-2">
+                    <input type="text" name="uid[]" class="form-control" placeholder="Masukkan UID">
+                    <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <button class="btn btn-sm btn-primary" type="button" id="btnAddUid">
+                <i class="bi bi-plus"></i> Tambah UID
+            </button>
+        </div>
+
         <!-- Available -->
         <div class="mb-3">
             <div class="d-flex gap-4">
@@ -601,7 +617,7 @@ document.addEventListener("DOMContentLoaded", function() {
             previewImageMgmt.style.display = 'none';
         } catch (err) {
             console.error('Camera access error:', err);
-            alert('Unable to access camera. Please check permissions.');
+            showToast('Unable to access camera. Please check permissions.', 'error');
         }
     });
 
@@ -645,7 +661,7 @@ document.addEventListener("DOMContentLoaded", function() {
         const imageUrl = document.getElementById('imageLink').value.trim();
         
         if (!imageUrl) {
-            alert('Masukkan link gambar terlebih dahulu.');
+            showToast('Masukkan link gambar terlebih dahulu.', 'error');
             return;
         }
 
@@ -661,7 +677,7 @@ document.addEventListener("DOMContentLoaded", function() {
         const file = fileInput.files[0];
         
         if (!file) {
-            alert('Pilih file gambar terlebih dahulu.');
+            showToast('Pilih file gambar terlebih dahulu.', 'error');
             return;
         }
 
@@ -753,12 +769,12 @@ document.addEventListener("DOMContentLoaded", function() {
 
             if (data.error) {
                 console.error('❌ API Error:', data.error);
-                alert('Gagal menganalisis gambar: ' + data.error);
+                showToast('Gagal menganalisis gambar: ' + data.error, 'error');
                 return data;
             }
 
             if (data.title === 'BUKAN BUKU' || !data.title) {
-                alert('⚠️ Gambar bukan sampul buku atau tidak dapat dianalisis');
+                showToast('Gambar bukan sampul buku atau tidak dapat dianalisis', 'error');
                 return data;
             }
 
@@ -817,7 +833,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             }
 
-            alert('✅ Analisis berhasil! Field telah diisi otomatis.\n\n💡 Gambar akan diupload ke Cloudinary setelah RFID dikonfirmasi.');
+            showToast('Analisis berhasil! Field telah diisi otomatis.', 'success');
             console.log('✅ Analysis complete!');
             
             return data;
@@ -825,7 +841,7 @@ document.addEventListener("DOMContentLoaded", function() {
         } catch (err) {
             console.error('❌ Error details:', err);
             console.error('❌ Error stack:', err.stack);
-            alert('Terjadi kesalahan saat menganalisis gambar: ' + err.message);
+            showToast('Terjadi kesalahan saat menganalisis gambar: ' + err.message, 'error');
             throw err;
         } finally {
             analyzeBtn.disabled = false;
@@ -949,13 +965,13 @@ document.addEventListener("DOMContentLoaded", function() {
 
     confirmRfidBtn.addEventListener('click', async function() {
         if (!pendingBookData) {
-            alert('❌ Data buku tidak ditemukan');
+            showToast('Data buku tidak ditemukan', 'error');
             return;
         }
 
         const rfidValue = rfidInput.value.trim();
         if (!rfidValue) {
-            alert('⚠️ RFID UID harus diisi!');
+            showToast('RFID UID harus diisi!', 'error');
             rfidInput.focus();
             return;
         }
@@ -990,7 +1006,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     updateStep('step2', 'completed');
                 } catch (error) {
                     updateStep('step2', 'failed');
-                    alert('❌ Upload ke Cloudinary gagal: ' + error.message);
+                    showToast('Upload ke Cloudinary gagal: ' + error.message, 'error');
                     throw error;
                 }
             } else {
@@ -1022,11 +1038,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 rfidModal.hide();
                 addModal.hide();
                 
-                alert('✅ Buku berhasil ditambahkan!');
-                location.reload();
+                showToast('Buku berhasil ditambahkan!', 'success');
+                setTimeout(() => location.reload(), 1500);
             } else {
                 updateStep('step3', 'failed');
-                alert('❌ Gagal menyimpan ke database: ' + data.message);
+                showToast('Gagal menyimpan ke database: ' + data.message, 'error');
             }
 
         } catch (error) {
@@ -1039,17 +1055,71 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    // =============== MODAL HANDLERS ===============
-    document.querySelectorAll('.btn-add-uid').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const container = btn.closest('.row').querySelector('.uid-container');
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.name = 'uid[]';
-            input.className = 'form-control mb-1';
-            input.placeholder = 'Masukkan UID';
-            container.appendChild(input);
-        });
+    // =============== SUBMIT BOOK FOR EDIT ===============
+    async function submitBookEdit(bookData) {
+        try {
+            const editId = document.getElementById('editId').value;
+            
+            if (!editId) {
+                showToast('ID buku tidak ditemukan', 'error');
+                return;
+            }
+
+            let cloudinaryImageUrl = null;
+            
+            // Upload image to Cloudinary if there's a new captured image
+            if (capturedImageDataMgmt) {
+                try {
+                    cloudinaryImageUrl = await uploadToCloudinary(capturedImageDataMgmt);
+                    bookData.image = cloudinaryImageUrl;
+                } catch (error) {
+                    showToast('Upload ke Cloudinary gagal: ' + error.message, 'error');
+                    throw error;
+                }
+            }
+
+            // Submit the edit
+            const response = await fetch("<?= base_url('management-buku/edit/') ?>" + editId, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(bookData)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server error: ${response.status} - ${errorText}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                addModal.hide();
+                showToast('Buku berhasil diupdate!', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Gagal mengupdate buku: ' + data.message, 'error');
+            }
+
+        } catch (error) {
+            console.error('❌ Edit error:', error);
+            showToast('Terjadi kesalahan saat mengupdate buku: ' + error.message, 'error');
+        }
+    }
+
+    // =============== UID MANAGEMENT ===============
+    document.getElementById('btnAddUid').addEventListener('click', () => {
+        const container = document.getElementById('uidContainer');
+        const inputGroup = document.createElement('div');
+        inputGroup.className = 'input-group mb-2';
+        inputGroup.innerHTML = `
+            <input type="text" name="uid[]" class="form-control" placeholder="Masukkan UID">
+            <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()">
+                <i class="bi bi-trash"></i>
+            </button>
+        `;
+        container.appendChild(inputGroup);
     });
 
     // Generate Kode Button
@@ -1080,6 +1150,9 @@ document.addEventListener("DOMContentLoaded", function() {
         bukuForm.action = "<?= base_url('management-buku/add') ?>";
         document.getElementById('code').value = '';
         
+        // Hide UID section for Add mode
+        document.getElementById('uidSection').style.display = 'none';
+        
         setTimeout(() => {
             document.getElementById('generateKodeBtn').click();
         }, 300);
@@ -1096,6 +1169,17 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById('available').checked = false;
         previewImageMgmt.style.display = 'none';
         capturedImageDataMgmt = null;
+        
+        // Reset UID container with one empty input
+        const uidContainer = document.getElementById('uidContainer');
+        uidContainer.innerHTML = `
+            <div class="input-group mb-2">
+                <input type="text" name="uid[]" class="form-control" placeholder="Masukkan UID">
+                <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        `;
     }
 
     document.querySelectorAll('.btn-edit-buku').forEach(function(btn) {
@@ -1107,6 +1191,9 @@ document.addEventListener("DOMContentLoaded", function() {
             resetForm();
             document.getElementById('modalBukuTitle').textContent = 'Edit Buku';
             bukuForm.action = "<?= base_url('management-buku/edit/') ?>" + book.id;
+            
+            // Show UID section for Edit mode
+            document.getElementById('uidSection').style.display = 'block';
             
             // Fill all form fields
             bukuForm.querySelector('[name="code"]').value = book.code || '';
@@ -1135,6 +1222,37 @@ document.addEventListener("DOMContentLoaded", function() {
                 document.getElementById('currentImageText').textContent = 'Gambar saat ini: ' + book.image;
             }
             
+            // Clear and populate UIDs
+            const uidContainer = document.getElementById('uidContainer');
+            uidContainer.innerHTML = '';
+            
+            if (book.uid && Array.isArray(book.uid) && book.uid.length > 0) {
+                book.uid.forEach(uid => {
+                    if (uid) {
+                        const inputGroup = document.createElement('div');
+                        inputGroup.className = 'input-group mb-2';
+                        inputGroup.innerHTML = `
+                            <input type="text" name="uid[]" class="form-control" placeholder="Masukkan UID" value="${uid}">
+                            <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        `;
+                        uidContainer.appendChild(inputGroup);
+                    }
+                });
+            } else {
+                // Add one empty UID field if no UIDs exist
+                const inputGroup = document.createElement('div');
+                inputGroup.className = 'input-group mb-2';
+                inputGroup.innerHTML = `
+                    <input type="text" name="uid[]" class="form-control" placeholder="Masukkan UID">
+                    <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                `;
+                uidContainer.appendChild(inputGroup);
+            }
+            
             document.getElementById('editId').value = book.id;
             
             addModal.show();
@@ -1143,6 +1261,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     document.getElementById('submitBukuBtn').addEventListener('click', function(e) {
         e.preventDefault();
+        
+        const isEditMode = document.getElementById('editId').value !== '';
         
         const bookData = {
             code: bukuForm.querySelector('[name="code"]').value,
@@ -1163,33 +1283,37 @@ document.addEventListener("DOMContentLoaded", function() {
         };
 
         if (!bookData.code) {
-            alert('⚠️ Kode harus diisi!');
+            showToast('Kode harus diisi!', 'error');
             return;
         }
 
         if (!bookData.title) {
-            alert('⚠️ Judul harus diisi!');
+            showToast('Judul harus diisi!', 'error');
             return;
         }
 
         if (!bookData.author) {
-            alert('⚠️ Pengarang harus diisi!');
+            showToast('Pengarang harus diisi!', 'error');
             return;
         }
 
         if (!bookData.genre) {
-            alert('⚠️ Genre harus dipilih!');
+            showToast('Genre harus dipilih!', 'error');
             return;
         }
 
-        pendingBookData = bookData;
-
-        document.getElementById('bookSummaryTitle').textContent = bookData.title;
-        document.getElementById('bookSummaryAuthor').textContent = bookData.author;
-        document.getElementById('bookSummaryKode').textContent = bookData.code;
-
-        addModal.hide();
-        rfidModal.show();
+        if (isEditMode) {
+            // For edit mode, submit directly without RFID modal
+            submitBookEdit(bookData);
+        } else {
+            // For add mode, show RFID modal
+            pendingBookData = bookData;
+            document.getElementById('bookSummaryTitle').textContent = bookData.title;
+            document.getElementById('bookSummaryAuthor').textContent = bookData.author;
+            document.getElementById('bookSummaryKode').textContent = bookData.code;
+            addModal.hide();
+            rfidModal.show();
+        }
     });
 
     // =============== PAGINATION & TABLE FUNCTIONS ===============
