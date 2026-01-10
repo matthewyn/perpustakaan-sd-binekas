@@ -2,12 +2,12 @@
 <?= $this->section('content') ?>
 <!-- Main -->
 <div class="d-flex justify-content-center align-items-center my-5 my-lg-4">
-  <img src="<?= base_url('/pattern.png') ?>" alt="Logo" class="d-inline-block align-text-top me-2 img-mobile-lg" id="logoImage"/>
+  <img src="<?= base_url('/pattern.png') ?>" alt="Logo" class="d-inline-block align-text-top me-2 img-mobile-lg" id="logoImage" fetchpriority="high"/>
   <h1 class="h-mobile-xl" id="logoTitle">Katalog</h1>
 </div>
 
 <div class="card relative" style="border-style: dashed;">
-  <img src="<?= base_url('/children.png') ?>" alt="Children" class="position-absolute end-0 z-n1 img-mobile-xl top-mobile-xl" id="childrenImage"/>
+  <img src="<?= base_url('/children.png') ?>" alt="Children" class="position-absolute end-0 z-n1 img-mobile-xl top-mobile-xl" id="childrenImage" fetchpriority="high"/>
   <div class="card-body">
     <div class="row">
       <div class="col-lg-9">
@@ -51,13 +51,14 @@
       <div class="col-lg-3">
         <h2 class="h-mobile-lg mb-lg-2 mb-4" id="newBookTitle">Koleksi Buku Terbaru</h2>
         <div class="row">
-          <?php foreach ($latestBooks as $book): ?>
+          <?php foreach ($latestBooks as $latestIndex => $book): ?>
           <div class="col-6 col-lg-12">
             <div class="card border-light mb-3 shadow-sm" class="latest-book-card">
               <img src="<?= !empty($book['image']) ? esc($book['image']) : 'https://placehold.co/600x400?text=No+Image' ?>" 
                   class="card-img-top latest-book-img height-mobile-xl" 
                   alt="<?= esc($book['title'] ?? 'Gambar Buku') ?>"
-                  onerror="this.src='https://placehold.co/600x400?text=Image+Error'">
+                  onerror="this.src='https://placehold.co/600x400?text=Image+Error'"
+                  <?php if ($latestIndex === 0): ?>fetchpriority="high"<?php else: ?>loading="lazy"<?php endif; ?>>
               <div class="card-body">
                 <h5 class="card-title card-title-mobile"><?= esc($book['title'] ?? 'Tanpa Judul') ?></h5>
                 <p class="card-text card-text-mobile truncate"><?= esc($book['synopsis'] ?? 'Tidak ada sinopsis.') ?></p>

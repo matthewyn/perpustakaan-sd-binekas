@@ -10,19 +10,78 @@
     <link rel="preconnect" href="https://code.jquery.com" crossorigin>
     <link rel="dns-prefetch" href="https://placehold.co">
     
-    <!-- ========== CRITICAL CSS - RENDER BLOCKING ========== -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
-    <link href="<?= base_url('css/style.css') ?>" rel="stylesheet">
+    <!-- ========== FONT PRELOAD HINTS ========== -->
+    <!-- Preload WOFF2 font (modern browsers) for faster font loading -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
+    <!-- Fallback WOFF font for older browsers -->
+    <link rel="prefetch" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff" as="font" type="font/woff" crossorigin>
+    
+    <!-- ========== LCP IMAGE PRELOAD HINTS ========== -->
+    <!-- Preload hero images to ensure LCP is discoverable from HTML -->
+    <link rel="preload" href="<?= base_url('/pattern.png') ?>" as="image" type="image/png">
+    <link rel="preload" href="<?= base_url('/children.png') ?>" as="image" type="image/png">
+    
+    <!-- ========== CRITICAL CSS - PRELOAD WITH ONLOAD ========== -->
+    <!-- Bootstrap preloaded to avoid render-blocking, loads in parallel -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" as="style" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"></noscript>
+    
+    <!-- Bootstrap Icons preloaded to avoid render-blocking -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"></noscript>
+    
+    <!-- Local styles preloaded -->
+    <link rel="preload" href="<?= base_url('css/style.css') ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="<?= base_url('css/style.css') ?>" rel="stylesheet"></noscript>
     
     <!-- ========== NON-CRITICAL CSS - DEFERRED ========== -->
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/css/bootstrap-select.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/css/bootstrap-select.min.css" rel="stylesheet"></noscript>
+    
     <link rel="preload" href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css" rel="stylesheet"></noscript>
+    
     <link rel="preload" href="<?= base_url('css/animate.css') ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="<?= base_url('css/animate.css') ?>" rel="stylesheet"></noscript>
+    
     <link rel="preload" href="<?= base_url('css/responsive-mobile.css') ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="<?= base_url('css/responsive-mobile.css') ?>" rel="stylesheet"></noscript>
+    
     <link rel="preload" href="<?= base_url('css/welcome-page.css') ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="<?= base_url('css/welcome-page.css') ?>" rel="stylesheet"></noscript>
     
     <style>
+        /* ========== FONT DISPLAY OPTIMIZATION ========== */
+        /* Bootstrap Icons - font-display: swap for FOUT (Flash of Unstyled Text) */
+        /* This ensures text is visible while icons load, preventing layout shift */
+        @font-face {
+            font-family: 'bootstrap-icons';
+            src: url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff2') format('woff2'),
+                 url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+            /* Font metric overrides to prevent layout shift (CLS) */
+            ascent-override: 110%;
+            descent-override: 30%;
+            line-gap-override: 0%;
+        }
+
+        /* System fonts with font-display fallback */
+        @font-face {
+            font-family: -apple-system;
+            font-display: swap;
+        }
+
+        /* Ensure Bootstrap icons are applied with swap behavior */
+        .bi::before,
+        [class^="bi-"]::before,
+        [class*=" bi-"]::before {
+            font-family: 'bootstrap-icons' !important;
+            font-display: swap;
+        }
+
+        /* ========== FORM STYLES ========== */
         .form-label.required:after {
             content:"*";
             color:red;

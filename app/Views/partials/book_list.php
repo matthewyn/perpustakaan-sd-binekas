@@ -5,7 +5,7 @@
         <div class="alert alert-warning">Buku tidak ditemukan.</div>
       </div>
     <?php else: ?>
-      <?php foreach ($booksOnPage as $book): ?>
+      <?php foreach ($booksOnPage as $index => $book): ?>
       <div class="col-lg-6 mb-4">
         <div class="row g-3">
           <div class="col-4">
@@ -25,7 +25,7 @@
                   class="img-fluid book-thumbnail-img height-mobile-xl" 
                   alt="<?= esc($book['title'] ?? 'Gambar Buku') ?>"
                   onerror="this.onerror=null; this.src='https://placehold.co/400x600/e9ecef/6c757d?text=Image+Error'; this.classList.add('img-error');"
-                  loading="lazy">
+                  <?php if ($index === 0): ?>fetchpriority="high"<?php else: ?>loading="lazy"<?php endif; ?>>
               </div>
             </div>
           </div>
