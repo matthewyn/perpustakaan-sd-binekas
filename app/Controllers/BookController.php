@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use CodeIgniter\Controller;
+use App\Libraries\GenreCache;
 
 ini_set('max_execution_time', 1000);
 ini_set('memory_limit', '512M');
@@ -12,17 +13,30 @@ class BookController extends Controller
     private $supabaseUrl;
     private $supabaseKey;
     private $perPage = 10;
+    private $cache;
+    private $genreCache;
 
     public function __construct()
     {
         $this->supabaseUrl = getenv('SUPABASE_URL');
         $this->supabaseKey = getenv('SUPABASE_API_KEY');
+        $this->cache = \Config\Services::cache();
+        $this->genreCache = new GenreCache();
         
         log_message('info', '=== BookController Initialized ===');
     }
 
-    private function supabaseRequest($method, $endpoint, $data = null, $queryParams = [])
+    private function supabaseRequest($method, $endpoint, $data = null, $queryParams = [], $cacheKey = null, $cacheTTL = 300)
     {
+        // Check cache if enabled and applicable
+        if ($cacheKey && $method === 'GET') {
+            $cached = $this->cache->get($cacheKey);
+            if ($cached !== null) {
+                log_message('info', 'Cache HIT for: ' . $cacheKey);
+                return $cached;
+            }
+        }
+
         if (empty($this->supabaseUrl) || empty($this->supabaseKey)) {
             log_message('error', 'Supabase credentials not configured');
             return ['error' => 'Supabase credentials not configured'];
@@ -54,6 +68,7 @@ class BookController extends Controller
             CURLOPT_TIMEOUT => 30,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_CONNECTTIMEOUT => 10,  // Connection timeout for faster failure detection
         ]);
 
         if ($data !== null) {
@@ -82,23 +97,44 @@ class BookController extends Controller
             ];
         }
 
-        return json_decode($response, true);
-    }
+        $decoded = json_decode($response, true);
 
-    public function getGenres(): array
-    {
-        $result = $this->supabaseRequest('GET', 'books', null, [
-            'select' => 'genre'
-        ]);
-
-        if (isset($result['error'])) {
-            return [];
+        // Cache successful GET responses
+        if ($cacheKey && $method === 'GET' && !isset($decoded['error'])) {
+            $this->cache->save($cacheKey, $decoded, $cacheTTL);
+            log_message('info', 'Cache SET for: ' . $cacheKey);
         }
 
-        $genres = array_unique(array_column($result, 'genre'));
-        $genres = array_filter($genres); // Remove empty values
-        sort($genres);
-        return $genres;
+        return $decoded;
+    }
+
+    private function getGenres(array $books = []): array
+    {
+        // If books are provided, extract genres from them instead of making separate request
+        if (!empty($books)) {
+            $genres = array_unique(array_column($books, 'genre'));
+            $genres = array_filter($genres);
+            sort($genres);
+            return $genres;
+        }
+
+        // Use genre cache for full genre list - 1 hour TTL
+        return $this->genreCache->getGenres(function() {
+            $result = $this->supabaseRequest('GET', 'books', null, 
+                ['select' => 'genre'], 
+                'genres_full_list', 
+                3600  // Cache for 1 hour
+            );
+
+            if (isset($result['error'])) {
+                return [];
+            }
+
+            $genres = array_unique(array_column($result, 'genre'));
+            $genres = array_filter($genres); // Remove empty values
+            sort($genres);
+            return $genres;
+        });
     }
 
     private function generateKodeSekolah(): string
@@ -168,7 +204,7 @@ class BookController extends Controller
         $selectedGenres = $this->request->getGet('genres') ?? [];
         $page = max(1, (int)($this->request->getGet('page') ?? 1));
 
-        // Build query for fetching books
+        // Build query for fetching books with pagination
         $queryParams = [
             'select' => '*',
             'order' => 'created_at.desc',
@@ -192,14 +228,15 @@ class BookController extends Controller
             }
         }
 
+        // Fetch paginated books
         $books = $this->supabaseRequest('GET', 'books', null, $queryParams);
         
         if (isset($books['error'])) {
             $books = [];
         }
 
-        // Get total count for pagination - fetch only IDs to count accurately
-        $countParams = ['select' => 'id'];
+        // Get total count for pagination - only need count, not data
+        $countParams = ['select' => 'count'];
         if ($search) {
             $countParams['or'] = "(title.ilike.*{$search}*,author.ilike.*{$search}*,genre.ilike.*{$search}*)";
         }
@@ -217,19 +254,26 @@ class BookController extends Controller
         $totalBooks = is_array($countResult) && !isset($countResult['error']) ? count($countResult) : 0;
         $totalPages = max(1, ceil($totalBooks / $this->perPage));
 
-        // Get latest 3 books
-        $latestBooks = $this->supabaseRequest('GET', 'books', null, [
-            'select' => '*',
-            'order' => 'created_at.desc',
-            'limit' => 3
-        ]);
+        // Get latest 3 books - cached for 1 hour (only fetched when no search/filter)
+        $latestBooks = [];
+        if (empty($search) && empty($selectedGenres)) {
+            $latestBooks = $this->supabaseRequest('GET', 'books', null, [
+                'select' => '*',
+                'order' => 'created_at.desc',
+                'limit' => 3
+            ], 'latest_books', 3600);  // Cache for 1 hour
+        }
+        
+        $latestBooks = isset($latestBooks['error']) || !is_array($latestBooks) ? [] : $latestBooks;
 
-        $latestBooks = isset($latestBooks['error']) ? [] : $latestBooks;
+        // Extract genres from current books + get additional genres from full list cache if available
+        $genres = $this->getGenres($books);
+
         $bookTitles = array_column($books, 'title');
 
         return view('welcome_message', [
             'booksOnPage' => $books,
-            'genres' => $this->getGenres(),
+            'genres' => $genres,
             'selectedGenres' => $selectedGenres,
             'search' => $search,
             'page' => $page,

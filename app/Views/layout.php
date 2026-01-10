@@ -3,14 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <title><?= $title ?? 'Perpustakaan SD Binekas' ?></title>
+    
+    <!-- ========== PRECONNECT TO CRITICAL ORIGINS ========== -->
+    <!-- Preconnect to CDN for faster resource loading -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://code.jquery.com" crossorigin>
+    <link rel="dns-prefetch" href="https://placehold.co">
+    
+    <!-- ========== CRITICAL CSS - RENDER BLOCKING ========== -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/css/bootstrap-select.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css">
-    <!-- <link href="font-awesome/css/font-awesome.css" rel="stylesheet"> -->
-    <link href="<?= base_url('css/animate.css') ?>" rel="stylesheet">
     <link href="<?= base_url('css/style.css') ?>" rel="stylesheet">
-    <link href="<?= base_url('css/responsive-mobile.css') ?>" rel="stylesheet">
+    
+    <!-- ========== NON-CRITICAL CSS - DEFERRED ========== -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/css/bootstrap-select.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="<?= base_url('css/animate.css') ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="<?= base_url('css/responsive-mobile.css') ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="<?= base_url('css/welcome-page.css') ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    
     <style>
         .form-label.required:after {
             content:"*";
@@ -45,7 +56,22 @@
                 height: 40px;
             }
         }
+        
+        /* Preload critical images to improve LCP */
+        @media (min-width: 992px) {
+            body::before {
+                content: '';
+                background-image: url('<?= base_url('/pattern.png') ?>');
+                display: none;
+            }
+        }
     </style>
+    
+    <!-- ========== RESOURCE HINTS FOR FASTER LOADING ========== -->
+    <!-- Prefetch commonly needed resources -->
+    <link rel="prefetch" href="<?= base_url('/logo.png') ?>" as="image">
+    <link rel="prefetch" href="<?= base_url('/pattern.png') ?>" as="image">
+    <link rel="prefetch" href="<?= base_url('/profile.jpg') ?>" as="image">
 </head>
 <body class="<?= esc($bodyClass ?? '') ?>">
     <nav class="navbar navbar-expand border-bottom bg-white">
@@ -173,25 +199,35 @@
         </div>
     </div>
 
+    <!-- ========== CRITICAL JS - BOOTSTRAP FUNCTIONALITY ========== -->
+    <!-- Load critical scripts synchronously (blocking, but necessary for functionality) -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
-    <script src="https://code.jquery.com/ui/1.14.1/jquery-ui.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/js/bootstrap-select.min.js"></script>
 
-    <!-- Flot -->
-    <script src="<?= base_url('js/plugins/flot/jquery.flot.js') ?>"></script>
-    <script src="<?= base_url('js/plugins/flot/jquery.flot.tooltip.min.js') ?>"></script>
-    <script src="<?= base_url('js/plugins/flot/jquery.flot.spline.js') ?>"></script>
-    <script src="<?= base_url('js/plugins/flot/jquery.flot.resize.js') ?>"></script>
-    <script src="<?= base_url('js/plugins/flot/jquery.flot.pie.js') ?>"></script>
-    <script src="<?= base_url('js/plugins/flot/jquery.flot.symbol.js') ?>"></script>
-    <script src="<?= base_url('js/plugins/flot/jquery.flot.time.js') ?>"></script>
-    <script src="<?= base_url('js/toast.js') ?>"></script>
+    <!-- ========== NON-CRITICAL JS - DEFERRED LOADING ========== -->
+    <!-- These scripts load after DOM is parsed, improving FCP/LCP -->
+    <script defer src="https://code.jquery.com/ui/1.14.1/jquery-ui.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/js/bootstrap-select.min.js"></script>
+    
+    <!-- Flot Charts - Deferred (non-critical charting library) -->
+    <script defer src="<?= base_url('js/plugins/flot/jquery.flot.js') ?>"></script>
+    <script defer src="<?= base_url('js/plugins/flot/jquery.flot.tooltip.min.js') ?>"></script>
+    <script defer src="<?= base_url('js/plugins/flot/jquery.flot.spline.js') ?>"></script>
+    <script defer src="<?= base_url('js/plugins/flot/jquery.flot.resize.js') ?>"></script>
+    <script defer src="<?= base_url('js/plugins/flot/jquery.flot.pie.js') ?>"></script>
+    <script defer src="<?= base_url('js/plugins/flot/jquery.flot.symbol.js') ?>"></script>
+    <script defer src="<?= base_url('js/plugins/flot/jquery.flot.time.js') ?>"></script>
+    <script defer src="<?= base_url('js/toast.js') ?>"></script>
 
+    <!-- Inline script for critical DOM interactions (runs after DOM ready) -->
     <script>
+    // Defer execution until critical resources are loaded
     document.addEventListener('DOMContentLoaded', function() {
         var collapse = document.getElementById('formExample');
         var listItem = document.getElementById('formListItem');
+        
+        if (!collapse || !listItem) return;
+        
         var chevronIcon = listItem.querySelector('.bi-chevron-left');
 
         collapse.addEventListener('show.bs.collapse', function () {
