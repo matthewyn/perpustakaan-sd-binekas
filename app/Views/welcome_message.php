@@ -1110,11 +1110,67 @@ window.analyzeImage = analyzeImage;
       url: "<?= base_url('books/filter') ?>",
       type: "GET",
       data: formData,
+      dataType: "json",
       success: function(response) {
-        $('#booksContainer').html(response);
+        // Update the books container with the HTML
+        $('#booksContainer').html(response.html);
+        
+        // Update pagination variables with the correct totals from server
+        totalPages = response.totalPages;
+        currentPage = response.page;
+        
+        // Update genre select picker ONLY if genres data is provided and different from current
+        if (response.genres && response.genres.length > 0) {
+          const currentGenres = $('#genreSelectpicker option').map(function() {
+            return $(this).val();
+          }).get();
+          
+          // Only update if the genre list has changed (different length or different items)
+          if (currentGenres.length !== response.genres.length || 
+              !currentGenres.every((v, i) => v === response.genres[i])) {
+            updateGenreSelectPicker(response.genres);
+          }
+        }
+        
+        // Render the pagination controls
         renderBookPagination();
+      },
+      error: function(xhr, status, error) {
+        console.error('Error loading books:', error);
+        $('#booksContainer').html('<div class="alert alert-danger">Error loading books. Please try again.</div>');
       }
     });
+  }
+
+  function updateGenreSelectPicker(genres) {
+    const genreSelect = $('#genreSelectpicker');
+    const currentSelected = genreSelect.val() || [];
+    
+    // Destroy the selectpicker if it's initialized
+    if (genreSelect.data('selectpicker')) {
+      genreSelect.selectpicker('destroy');
+    }
+    
+    // Clear all options
+    genreSelect.empty();
+    
+    // Add all genre options
+    genres.forEach(function(genre) {
+      const isSelected = currentSelected.includes(genre);
+      genreSelect.append(
+        $('<option></option>')
+          .attr('value', genre)
+          .prop('selected', isSelected)
+          .text(genre)
+      );
+    });
+    
+    // Reinitialize and refresh the selectpicker UI
+    genreSelect.selectpicker({
+      liveSearch: true,
+      actionsBox: true
+    });
+    genreSelect.selectpicker('refresh');
   }
 
   $('#selectpickerForm, #searchForm').on('submit', function(e) {

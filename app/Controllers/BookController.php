@@ -137,6 +137,27 @@ class BookController extends Controller
         });
     }
 
+    private function getAllGenres(): array
+    {
+        // Always fetch complete genre list from database cache - 1 hour TTL
+        return $this->genreCache->getGenres(function() {
+            $result = $this->supabaseRequest('GET', 'books', null, 
+                ['select' => 'genre', 'limit' => 99999], 
+                'genres_full_list', 
+                3600  // Cache for 1 hour
+            );
+
+            if (isset($result['error'])) {
+                return [];
+            }
+
+            $genres = array_unique(array_column($result, 'genre'));
+            $genres = array_filter($genres); // Remove empty values
+            sort($genres);
+            return $genres;
+        });
+    }
+
     private function generateKodeSekolah(): string
     {
         $currentYear = date('Y');
@@ -235,8 +256,8 @@ class BookController extends Controller
             $books = [];
         }
 
-        // Get total count for pagination - only need count, not data
-        $countParams = ['select' => 'count'];
+        // Get total count for pagination - fetch ID only with very high limit to get all matching records
+        $countParams = ['select' => 'id', 'limit' => 99999];
         if ($search) {
             $countParams['or'] = "(title.ilike.*{$search}*,author.ilike.*{$search}*,genre.ilike.*{$search}*)";
         }
@@ -266,8 +287,8 @@ class BookController extends Controller
         
         $latestBooks = isset($latestBooks['error']) || !is_array($latestBooks) ? [] : $latestBooks;
 
-        // Extract genres from current books + get additional genres from full list cache if available
-        $genres = $this->getGenres($books);
+        // Always fetch ALL genres for the select picker (not just from current page books)
+        $genres = $this->getAllGenres();
 
         $bookTitles = array_column($books, 'title');
 
@@ -304,7 +325,13 @@ class BookController extends Controller
         }
 
         if (!empty($selectedGenres)) {
-            $queryParams['genre'] = 'in.(' . implode(',', $selectedGenres) . ')';
+            $genreFilter = 'genre.in.(' . implode(',', $selectedGenres) . ')';
+            if (isset($queryParams['or'])) {
+                $queryParams['and'] = "({$queryParams['or']}),{$genreFilter}";
+                unset($queryParams['or']);
+            } else {
+                $queryParams['genre'] = 'in.(' . implode(',', $selectedGenres) . ')';
+            }
         }
 
         $books = $this->supabaseRequest('GET', 'books', null, $queryParams);
@@ -313,24 +340,40 @@ class BookController extends Controller
             $books = [];
         }
 
-        // Get total count for pagination
-        $countParams = ['select' => 'id'];
+        // Get total count for pagination - fetch ID only with very high limit to get all matching records
+        $countParams = ['select' => 'id', 'limit' => 99999];
         if ($search) {
             $countParams['or'] = "(title.ilike.*{$search}*,author.ilike.*{$search}*,genre.ilike.*{$search}*)";
         }
         if (!empty($selectedGenres)) {
-            $countParams['genre'] = 'in.(' . implode(',', $selectedGenres) . ')';
+            $genreFilter = 'genre.in.(' . implode(',', $selectedGenres) . ')';
+            if (isset($countParams['or'])) {
+                $countParams['and'] = "({$countParams['or']}),{$genreFilter}";
+                unset($countParams['or']);
+            } else {
+                $countParams['genre'] = 'in.(' . implode(',', $selectedGenres) . ')';
+            }
         }
 
         $countResult = $this->supabaseRequest('GET', 'books', null, $countParams);
         $totalBooks = is_array($countResult) && !isset($countResult['error']) ? count($countResult) : 0;
         $totalPages = max(1, ceil($totalBooks / $this->perPage));
 
-        return view('partials/book_list', [
-            'booksOnPage' => $books,
+        // Fetch all genres for the select picker
+        $allGenres = $this->getAllGenres();
+
+        // Return JSON response for AJAX
+        return $this->response->setJSON([
+            'html' => view('partials/book_list', [
+                'booksOnPage' => $books,
+                'page' => $page,
+                'totalPages' => $totalPages,
+                'totalBooks' => $totalBooks
+            ], ['debug' => false]),
             'page' => $page,
             'totalPages' => $totalPages,
-            'totalBooks' => $totalBooks
+            'totalBooks' => $totalBooks,
+            'genres' => $allGenres
         ]);
     }
 
