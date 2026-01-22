@@ -185,7 +185,7 @@ class BookManagementController extends Controller
 
         $filename = 'books_export_' . date('Ymd_His') . '.csv';
         $fields = [
-            'id', 'code', 'title', 'author', 'publisher', 'year', 'genre', 'illustrator', 'series', 'isbn', 'quantity', 'notes', 'image', 'synopsis', 'uid', 'available', 'is_one_day_book', 'shelf_position'
+            'id', 'code', 'title', 'author', 'publisher', 'year', 'genre', 'illustrator', 'series', 'isbn', 'ddc_number', 'quantity', 'notes', 'image', 'synopsis', 'uid', 'available', 'is_one_day_book', 'shelf_position'
         ];
 
         header('Content-Type: text/csv');
@@ -239,6 +239,8 @@ class BookManagementController extends Controller
                     'illustrator' => $jsonData['illustrator'] ?? '',
                     'publisher' => $jsonData['publisher'] ?? '',
                     'series' => $jsonData['series'] ?? '',
+                    'isbn' => $jsonData['isbn'] ?? '',
+                    'ddc_number' => $jsonData['ddcNumber'] ?? '',
                     'image' => $imageName,
                     'notes' => $jsonData['notes'] ?? '',
                     'shelf_position' => $jsonData['shelf_position'] ?? '',
@@ -380,6 +382,7 @@ class BookManagementController extends Controller
                     'available' => $jsonData['available'] ?? $book['available'] ?? true,
                     'image' => $imageName,
                     'isbn' => $jsonData['isbn'] ?? ($book['isbn'] ?? ''),
+                    'ddc_number' => $jsonData['ddcNumber'] ?? ($book['ddc_number'] ?? ''),
                 ];
 
                 $result = $this->supabaseRequest('PATCH', 'books?id=eq.' . $id, $updateData);
@@ -542,6 +545,8 @@ class BookManagementController extends Controller
                             'illustrator' => $book['illustrator'] ?? '',
                             'publisher' => $book['publisher'] ?? '',
                             'series' => $book['series'] ?? '',
+                            'isbn' => $book['isbn'] ?? '',
+                            'ddc_number' => $book['ddc_number'] ?? $book['ddcNumber'] ?? '',
                             'image' => $book['image'] ?? '',
                             'notes' => $book['notes'] ?? '',
                             'shelf_position' => $book['shelfPosition'] ?? $book['shelf_position'] ?? '',

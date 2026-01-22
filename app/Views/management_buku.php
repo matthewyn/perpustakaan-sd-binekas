@@ -1188,6 +1188,9 @@ document.addEventListener("DOMContentLoaded", function() {
             const tr = btn.closest('tr');
             const book = JSON.parse(tr.getAttribute('data-book'));
             
+            console.log('Book data:', book);
+            console.log('DDC value:', book.ddc);
+            
             resetForm();
             document.getElementById('modalBukuTitle').textContent = 'Edit Buku';
             bukuForm.action = "<?= base_url('management-buku/edit/') ?>" + book.id;
@@ -1202,18 +1205,19 @@ document.addEventListener("DOMContentLoaded", function() {
             bukuForm.querySelector('[name="publisher"]').value = book.publisher || '';
             bukuForm.querySelector('[name="genre"]').value = book.genre || '';
             bukuForm.querySelector('[name="isbn"]').value = book.isbn || '';
-            bukuForm.querySelector('[name="ddcNumber"]').value = book.ddcNumber || book.ddc || '';
+            
+            // Set DDC Number with debugging
+            const ddcInput = bukuForm.querySelector('[name="ddcNumber"]');
+            console.log('DDC Input element:', ddcInput);
+            console.log('Setting DDC value to:', book.ddc_number || '');
+            ddcInput.value = book.ddc_number || '';
+            console.log('DDC Input value after setting:', ddcInput.value);
+            
             bukuForm.querySelector('[name="year"]').value = book.year || '';
             bukuForm.querySelector('[name="illustrator"]').value = book.illustrator || '';
             bukuForm.querySelector('[name="series"]').value = book.series || '';
             bukuForm.querySelector('[name="synopsis"]').value = book.synopsis || '';
             bukuForm.querySelector('[name="quantity"]').value = book.quantity || 1;
-            
-            // Add DDC field (if exists in book data)
-            const ddcField = bukuForm.querySelector('[name="ddcNumber"]');
-            if (ddcField) {
-                ddcField.value = book.ddcNumber || book.ddc || '';
-            }
             
             document.getElementById('isOneDayBook').checked = book.is_one_day_book || false;
             document.getElementById('available').checked = book.available !== false;
@@ -1274,6 +1278,7 @@ document.addEventListener("DOMContentLoaded", function() {
             series: bukuForm.querySelector('[name="series"]').value,
             genre: bukuForm.querySelector('[name="genre"]').value,
             isbn: bukuForm.querySelector('[name="isbn"]').value,
+            ddcNumber: bukuForm.querySelector('[name="ddcNumber"]').value,
             year: bukuForm.querySelector('[name="year"]').value,
             quantity: bukuForm.querySelector('[name="quantity"]').value,
             synopsis: bukuForm.querySelector('[name="synopsis"]').value,
