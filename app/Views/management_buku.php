@@ -789,7 +789,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 'series': data.series,
                 'isbn': data.isbn,
                 'year': data.year,
-                'synopsis': data.synopsis
+                'synopsis': data.synopsis,
+                'ddcNumber': data.ddcNumber
             };
 
             for (const [fieldName, value] of Object.entries(fields)) {
