@@ -73,6 +73,47 @@ class BookManagementController extends Controller
         return json_decode($response, true);
     }
 
+    private function fetchAllBooks($queryParams = [])
+    {
+        $allBooks = [];
+        $limit = 1000;
+        $offset = 0;
+        $hasMore = true;
+
+        log_message('info', 'Starting fetchAllBooks with pagination');
+
+        while ($hasMore) {
+            $params = array_merge($queryParams, [
+                'limit' => $limit,
+                'offset' => $offset
+            ]);
+
+            $books = $this->supabaseRequest('GET', 'books', null, $params);
+
+            if (isset($books['error']) || !is_array($books)) {
+                log_message('error', 'Error fetching books at offset ' . $offset);
+                break;
+            }
+
+            $count = count($books);
+            log_message('info', "Fetched {$count} books at offset {$offset}");
+
+            if ($count > 0) {
+                $allBooks = array_merge($allBooks, $books);
+                $offset += $limit;
+                
+                if ($count < $limit) {
+                    $hasMore = false;
+                }
+            } else {
+                $hasMore = false;
+            }
+        }
+
+        log_message('info', 'Total books fetched: ' . count($allBooks));
+        return $allBooks;
+    }
+
     private function uploadToCloudinary($fileSource)
     {
         try {
@@ -142,30 +183,23 @@ class BookManagementController extends Controller
 
     private function getGenres(): array
     {
-        $result = $this->supabaseRequest('GET', 'books', null, [
-            'select' => 'genre'
-        ]);
+        $allBooks = $this->fetchAllBooks(['select' => 'genre']);
 
-        if (isset($result['error'])) {
+        if (empty($allBooks)) {
             return [];
         }
 
-        $genres = array_unique(array_column($result, 'genre'));
-        $genres = array_filter($genres); // Remove empty values
+        $genres = array_unique(array_column($allBooks, 'genre'));
+        $genres = array_filter($genres);
         sort($genres);
         return $genres;
     }
 
     public function index()
     {
-        $books = $this->supabaseRequest('GET', 'books', null, [
+        $books = $this->fetchAllBooks([
             'order' => 'created_at.desc'
         ]);
-
-        if (isset($books['error'])) {
-            log_message('error', 'Failed to fetch books: ' . print_r($books, true));
-            $books = [];
-        }
 
         return view('management_buku', [
             'books' => $books,
@@ -176,10 +210,12 @@ class BookManagementController extends Controller
     // --- EXPORT TO CSV ---
     public function exportCsv()
     {
-        $books = $this->supabaseRequest('GET', 'books', null, [
+        // Fetch ALL books using pagination loop
+        $books = $this->fetchAllBooks([
             'order' => 'created_at.desc'
         ]);
-        if (isset($books['error'])) {
+
+        if (empty($books)) {
             return $this->response->setStatusCode(500)->setBody('Gagal mengambil data buku');
         }
 
@@ -188,20 +224,42 @@ class BookManagementController extends Controller
             'id', 'code', 'title', 'author', 'publisher', 'year', 'genre', 'illustrator', 'series', 'isbn', 'ddc_number', 'quantity', 'notes', 'image', 'synopsis', 'uid', 'available', 'is_one_day_book', 'shelf_position'
         ];
 
-        header('Content-Type: text/csv');
+        // Set headers for download
+        header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
-        $output = fopen('php://output', 'w');
-        fputcsv($output, $fields);
+        header('Pragma: no-cache');
+        header('Expires: 0');
 
+        // Open output stream
+        $output = fopen('php://output', 'w');
+        
+        // Add BOM for UTF-8
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+        
+        // Write header
+        fputcsv($output, $fields);
+        
+        // Write data
         foreach ($books as $book) {
             $row = [];
             foreach ($fields as $field) {
-                $val = isset($book[$field]) ? $book[$field] : '';
-                if (is_array($val)) $val = implode('|', $val);
-                $row[] = $val;
+                $value = $book[$field] ?? '';
+                
+                // Handle array fields (uid)
+                if (is_array($value)) {
+                    $value = json_encode($value);
+                }
+                
+                // Handle boolean fields
+                if (is_bool($value)) {
+                    $value = $value ? 'true' : 'false';
+                }
+                
+                $row[] = $value;
             }
             fputcsv($output, $row);
         }
+        
         fclose($output);
         exit;
     }
@@ -209,72 +267,100 @@ class BookManagementController extends Controller
     public function add()
     {
         try {
-            // Check if this is a JSON request or form request
             $isJsonRequest = $this->request->getHeaderLine('Content-Type') === 'application/json';
             
             if ($isJsonRequest) {
-                // Handle JSON request from AJAX
-                $jsonData = json_decode($this->request->getBody(), true);
-                
-                $imageName = '';
-                if (!empty($jsonData['image'])) {
-                    // Image is already uploaded to Cloudinary by JavaScript
-                    $imageName = $jsonData['image'];
+                $json = $this->request->getJSON(true);
+                if (!$json) {
+                    return $this->response->setStatusCode(400)->setJSON([
+                        'success' => false,
+                        'message' => 'No data received'
+                    ]);
                 }
 
-                $uidArray = $jsonData['uid'] ?? [];
-                if (!is_array($uidArray)) {
-                    $uidArray = empty($uidArray) ? [] : [$uidArray];
+                $uidArray = [];
+                if (!empty($json['uid'])) {
+                    if (is_string($json['uid']) && strpos($json['uid'], ',') !== false) {
+                        $uidArray = array_map('trim', explode(',', $json['uid']));
+                    } else if (is_string($json['uid'])) {
+                        $uidArray = [trim($json['uid'])];
+                    } else if (is_array($json['uid'])) {
+                        $uidArray = $json['uid'];
+                    }
                 }
                 $uidArray = array_filter($uidArray, fn($u) => !empty(trim($u)));
                 $uidArray = array_values($uidArray);
 
-                $data = [
+                $imageName = $json['image'] ?? '';
+                
+                if (!empty($json['imageBase64'])) {
+                    try {
+                        $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $json['imageBase64']));
+                        $tempPath = FCPATH . 'writable/uploads/temp_' . uniqid() . '.jpg';
+                        
+                        if (!is_dir(dirname($tempPath))) {
+                            mkdir(dirname($tempPath), 0755, true);
+                        }
+                        
+                        file_put_contents($tempPath, $imageData);
+                        
+                        $imageName = $this->uploadToCloudinary($tempPath);
+                        
+                        if (file_exists($tempPath)) {
+                            unlink($tempPath);
+                        }
+                    } catch (\Exception $e) {
+                        log_message('error', 'Image upload failed: ' . $e->getMessage());
+                    }
+                }
+
+                $bookData = [
                     'uid' => $uidArray,
-                    'quantity' => max(1, (int)($jsonData['quantity'] ?? 1)),
-                    'code' => $jsonData['code'] ?? '',
-                    'genre' => $jsonData['genre'] ?? '',
-                    'title' => $jsonData['title'] ?? '',
-                    'author' => $jsonData['author'] ?? '',
-                    'illustrator' => $jsonData['illustrator'] ?? '',
-                    'publisher' => $jsonData['publisher'] ?? '',
-                    'series' => $jsonData['series'] ?? '',
-                    'isbn' => $jsonData['isbn'] ?? '',
-                    'ddc_number' => $jsonData['ddcNumber'] ?? '',
+                    'quantity' => max(1, (int)($json['quantity'] ?? 1)),
+                    'code' => $json['code'] ?? '',
+                    'title' => $json['title'] ?? '',
+                    'author' => $json['author'] ?? '',
+                    'publisher' => $json['publisher'] ?? '',
+                    'year' => (int)($json['year'] ?? date('Y')),
+                    'genre' => $json['genre'] ?? '',
+                    'illustrator' => $json['illustrator'] ?? '',
+                    'series' => $json['series'] ?? '',
+                    'notes' => $json['notes'] ?? '',
+                    'synopsis' => $json['synopsis'] ?? '',
+                    'is_one_day_book' => isset($json['is_one_day_book']) ? (bool)$json['is_one_day_book'] : false,
+                    'available' => isset($json['available']) ? (bool)$json['available'] : true,
                     'image' => $imageName,
-                    'notes' => $jsonData['notes'] ?? '',
-                    'shelf_position' => $jsonData['shelf_position'] ?? '',
-                    'synopsis' => $jsonData['synopsis'] ?? '',
-                    'is_in_class' => $jsonData['is_in_class'] ?? false,
-                    'year' => (int)($jsonData['year'] ?? date('Y')),
-                    'is_one_day_book' => $jsonData['is_one_day_book'] ?? false,
-                    'available' => $jsonData['available'] ?? true,
+                    'isbn' => $json['isbn'] ?? '',
                 ];
 
-                $result = $this->supabaseRequest('POST', 'books', $data);
+                $result = $this->supabaseRequest('POST', 'books', $bookData);
 
                 if (isset($result['error'])) {
                     log_message('error', 'Failed to add book: ' . print_r($result, true));
-                    return $this->response->setStatusCode(400)->setJSON([
+                    return $this->response->setStatusCode(500)->setJSON([
                         'success' => false,
-                        'message' => 'Gagal menambah buku: ' . ($result['response'] ?? 'Unknown error')
+                        'message' => 'Gagal menambahkan buku: ' . ($result['response'] ?? 'Unknown error')
                     ]);
                 }
 
                 return $this->response->setJSON([
                     'success' => true,
-                    'message' => 'Buku berhasil ditambahkan'
+                    'message' => 'Buku berhasil ditambahkan',
+                    'data' => $result
                 ]);
+
             } else {
-                // Handle form request (multipart/form-data) - for file uploads
-                $file = $this->request->getFile('image');
+                // Handle form data
+                $imageFile = $this->request->getFile('gambar');
                 $imageName = '';
-                if ($file && $file->isValid() && !$file->hasMoved()) {
+                
+                if ($imageFile && $imageFile->isValid() && !$imageFile->hasMoved()) {
                     try {
-                        $imageName = $this->uploadToCloudinary($file->getRealPath());
+                        $tempPath = $imageFile->getTempName();
+                        $imageName = $this->uploadToCloudinary($tempPath);
                     } catch (\Exception $e) {
-                        log_message('error', 'Failed to upload image to Cloudinary: ' . $e->getMessage());
-                        return redirect()->to('/management-buku')->with('error', 'Gagal upload gambar ke Cloudinary: ' . $e->getMessage());
+                        log_message('error', 'Image upload failed: ' . $e->getMessage());
+                        return redirect()->to('/management-buku')->with('error', 'Gagal mengupload gambar: ' . $e->getMessage());
                     }
                 }
 
@@ -282,31 +368,30 @@ class BookManagementController extends Controller
                 $uidArray = array_filter($uidArray, fn($u) => !empty(trim($u)));
                 $uidArray = array_values($uidArray);
 
-                $data = [
+                $bookData = [
                     'uid' => $uidArray,
                     'quantity' => max(1, (int)($this->request->getPost('quantity') ?? 1)),
                     'code' => $this->request->getPost('code'),
-                    'genre' => $this->request->getPost('genre'),
                     'title' => $this->request->getPost('title'),
                     'author' => $this->request->getPost('author'),
-                    'illustrator' => $this->request->getPost('illustrator'),
                     'publisher' => $this->request->getPost('publisher'),
-                    'series' => $this->request->getPost('series'),
-                    'image' => $imageName,
-                    'notes' => $this->request->getPost('notes'),
-                    'shelf_position' => $this->request->getPost('shelfPosition') ?? '',
-                    'synopsis' => $this->request->getPost('synopsis'),
-                    'is_in_class' => $this->request->getPost('isInClass') ? true : false,
                     'year' => (int)($this->request->getPost('year') ?? date('Y')),
+                    'genre' => $this->request->getPost('genre'),
+                    'illustrator' => $this->request->getPost('illustrator'),
+                    'series' => $this->request->getPost('series'),
+                    'notes' => $this->request->getPost('notes'),
+                    'synopsis' => $this->request->getPost('synopsis'),
                     'is_one_day_book' => $this->request->getPost('isOneDayBook') ? true : false,
-                    'available' => true,
+                    'available' => $this->request->getPost('available') ? true : false,
+                    'image' => $imageName,
+                    'isbn' => $this->request->getPost('isbn'),
                 ];
 
-                $result = $this->supabaseRequest('POST', 'books', $data);
+                $result = $this->supabaseRequest('POST', 'books', $bookData);
 
                 if (isset($result['error'])) {
                     log_message('error', 'Failed to add book: ' . print_r($result, true));
-                    return redirect()->to('/management-buku')->with('error', 'Gagal menambah buku: ' . ($result['response'] ?? 'Unknown error'));
+                    return redirect()->to('/management-buku')->with('error', 'Gagal menambahkan buku: ' . ($result['response'] ?? 'Unknown error'));
                 }
 
                 return redirect()->to('/management-buku')->with('message', 'Buku berhasil ditambahkan');
@@ -326,70 +411,86 @@ class BookManagementController extends Controller
     public function edit($id)
     {
         try {
-            // Check if this is a JSON request or form request
             $isJsonRequest = $this->request->getHeaderLine('Content-Type') === 'application/json';
             
-            // Get existing book
-            $books = $this->supabaseRequest('GET', 'books', null, [
-                'id' => 'eq.' . $id,
-                'limit' => 1
-            ]);
+            if ($isJsonRequest) {
+                $json = $this->request->getJSON(true);
+                if (!$json) {
+                    return $this->response->setStatusCode(400)->setJSON([
+                        'success' => false,
+                        'message' => 'No data received'
+                    ]);
+                }
 
-            if (isset($books['error']) || empty($books)) {
-                log_message('error', 'Book not found for edit: ' . $id);
-                if ($isJsonRequest) {
+                $books = $this->supabaseRequest('GET', 'books', null, [
+                    'id' => 'eq.' . $id,
+                    'limit' => 1
+                ]);
+
+                if (isset($books['error']) || empty($books)) {
                     return $this->response->setStatusCode(404)->setJSON([
                         'success' => false,
                         'message' => 'Buku tidak ditemukan'
                     ]);
                 }
-                return redirect()->to('/management-buku')->with('error', 'Buku tidak ditemukan');
-            }
 
-            $book = $books[0];
-
-            if ($isJsonRequest) {
-                // Handle JSON request from AJAX
-                $jsonData = json_decode($this->request->getBody(), true);
-                
+                $book = $books[0];
                 $imageName = $book['image'] ?? '';
-                if (!empty($jsonData['image']) && strpos($jsonData['image'], 'http') === 0) {
-                    // Image is already uploaded to Cloudinary by JavaScript
-                    $imageName = $jsonData['image'];
+                
+                if (!empty($json['imageBase64'])) {
+                    try {
+                        $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $json['imageBase64']));
+                        $tempPath = FCPATH . 'writable/uploads/temp_' . uniqid() . '.jpg';
+                        
+                        if (!is_dir(dirname($tempPath))) {
+                            mkdir(dirname($tempPath), 0755, true);
+                        }
+                        
+                        file_put_contents($tempPath, $imageData);
+                        
+                        $imageName = $this->uploadToCloudinary($tempPath);
+                        
+                        if (file_exists($tempPath)) {
+                            unlink($tempPath);
+                        }
+                    } catch (\Exception $e) {
+                        log_message('error', 'Image upload failed: ' . $e->getMessage());
+                    }
                 }
 
-                $uidArray = $jsonData['uid'] ?? $book['uid'] ?? [];
-                if (!is_array($uidArray)) {
-                    $uidArray = empty($uidArray) ? [] : [$uidArray];
+                $uidArray = $json['uid'] ?? $book['uid'] ?? [];
+                if (is_string($uidArray) && strpos($uidArray, ',') !== false) {
+                    $uidArray = array_map('trim', explode(',', $uidArray));
+                } else if (is_string($uidArray)) {
+                    $uidArray = [trim($uidArray)];
                 }
                 $uidArray = array_filter($uidArray, fn($u) => !empty(trim($u)));
                 $uidArray = array_values($uidArray);
 
                 $updateData = [
                     'uid' => $uidArray,
-                    'quantity' => max(1, (int)($jsonData['quantity'] ?? 1)),
-                    'code' => $jsonData['code'] ?? $book['code'],
-                    'title' => $jsonData['title'] ?? $book['title'],
-                    'author' => $jsonData['author'] ?? $book['author'],
-                    'publisher' => $jsonData['publisher'] ?? $book['publisher'],
-                    'year' => (int)($jsonData['year'] ?? date('Y')),
-                    'genre' => $jsonData['genre'] ?? $book['genre'],
-                    'illustrator' => $jsonData['illustrator'] ?? $book['illustrator'],
-                    'series' => $jsonData['series'] ?? $book['series'],
-                    'notes' => $jsonData['notes'] ?? ($book['notes'] ?? ''),
-                    'synopsis' => $jsonData['synopsis'] ?? $book['synopsis'],
-                    'is_one_day_book' => $jsonData['is_one_day_book'] ?? $book['is_one_day_book'] ?? false,
-                    'available' => $jsonData['available'] ?? $book['available'] ?? true,
+                    'quantity' => max(1, (int)($json['quantity'] ?? 1)),
+                    'code' => $json['code'],
+                    'title' => $json['title'],
+                    'author' => $json['author'],
+                    'publisher' => $json['publisher'],
+                    'year' => (int)($json['year'] ?? date('Y')),
+                    'genre' => $json['genre'],
+                    'illustrator' => $json['illustrator'],
+                    'series' => $json['series'],
+                    'notes' => $json['notes'] ?? '',
+                    'synopsis' => $json['synopsis'],
+                    'is_one_day_book' => isset($json['is_one_day_book']) ? (bool)$json['is_one_day_book'] : false,
+                    'available' => isset($json['available']) ? (bool)$json['available'] : true,
                     'image' => $imageName,
-                    'isbn' => $jsonData['isbn'] ?? ($book['isbn'] ?? ''),
-                    'ddc_number' => $jsonData['ddcNumber'] ?? ($book['ddc_number'] ?? ''),
+                    'isbn' => $json['isbn'],
                 ];
 
                 $result = $this->supabaseRequest('PATCH', 'books?id=eq.' . $id, $updateData);
 
                 if (isset($result['error'])) {
                     log_message('error', 'Failed to update book: ' . print_r($result, true));
-                    return $this->response->setStatusCode(400)->setJSON([
+                    return $this->response->setStatusCode(500)->setJSON([
                         'success' => false,
                         'message' => 'Gagal mengupdate buku: ' . ($result['response'] ?? 'Unknown error')
                     ]);
@@ -397,18 +498,31 @@ class BookManagementController extends Controller
 
                 return $this->response->setJSON([
                     'success' => true,
-                    'message' => 'Buku berhasil diupdate'
+                    'message' => 'Buku berhasil diupdate',
+                    'data' => $result
                 ]);
+
             } else {
-                // Handle form request (multipart/form-data) - for file uploads
-                $file = $this->request->getFile('image');
+                $books = $this->supabaseRequest('GET', 'books', null, [
+                    'id' => 'eq.' . $id,
+                    'limit' => 1
+                ]);
+
+                if (isset($books['error']) || empty($books)) {
+                    return redirect()->to('/management-buku')->with('error', 'Buku tidak ditemukan');
+                }
+
+                $book = $books[0];
+                
+                $imageFile = $this->request->getFile('gambar');
                 $imageName = $book['image'] ?? '';
-                if ($file && $file->isValid() && !$file->hasMoved()) {
+                
+                if ($imageFile && $imageFile->isValid() && !$imageFile->hasMoved()) {
                     try {
-                        $imageName = $this->uploadToCloudinary($file->getRealPath());
+                        $tempPath = $imageFile->getTempName();
+                        $imageName = $this->uploadToCloudinary($tempPath);
                     } catch (\Exception $e) {
-                        log_message('error', 'Failed to upload image to Cloudinary: ' . $e->getMessage());
-                        return redirect()->to('/management-buku')->with('error', 'Gagal upload gambar ke Cloudinary: ' . $e->getMessage());
+                        log_message('error', 'Image upload failed: ' . $e->getMessage());
                     }
                 }
 
@@ -516,7 +630,6 @@ class BookManagementController extends Controller
             $errorCount = 0;
             $errors = [];
 
-            // Process in smaller batches
             $batchSize = 10;
             $batches = array_chunk($booksData, $batchSize);
 

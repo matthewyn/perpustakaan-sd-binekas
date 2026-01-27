@@ -28,7 +28,6 @@ class BookController extends Controller
 
     private function supabaseRequest($method, $endpoint, $data = null, $queryParams = [], $cacheKey = null, $cacheTTL = 300)
     {
-        // Check cache if enabled and applicable
         if ($cacheKey && $method === 'GET') {
             $cached = $this->cache->get($cacheKey);
             if ($cached !== null) {
@@ -44,7 +43,6 @@ class BookController extends Controller
 
         $url = rtrim($this->supabaseUrl, '/') . '/rest/v1/' . $endpoint;
         
-        // Add query parameters
         if (!empty($queryParams)) {
             $url .= '?' . http_build_query($queryParams);
         }
@@ -68,7 +66,7 @@ class BookController extends Controller
             CURLOPT_TIMEOUT => 30,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_CONNECTTIMEOUT => 10,  // Connection timeout for faster failure detection
+            CURLOPT_CONNECTTIMEOUT => 10,
         ]);
 
         if ($data !== null) {
@@ -108,6 +106,48 @@ class BookController extends Controller
         return $decoded;
     }
 
+    private function fetchAllBooks($queryParams = [])
+    {
+        $allBooks = [];
+        $limit = 1000;
+        $offset = 0;
+        $hasMore = true;
+
+        log_message('info', 'Starting fetchAllBooks with pagination');
+
+        while ($hasMore) {
+            $params = array_merge($queryParams, [
+                'limit' => $limit,
+                'offset' => $offset
+            ]);
+
+            $books = $this->supabaseRequest('GET', 'books', null, $params);
+
+            if (isset($books['error']) || !is_array($books)) {
+                log_message('error', 'Error fetching books at offset ' . $offset);
+                break;
+            }
+
+            $count = count($books);
+            log_message('info', "Fetched {$count} books at offset {$offset}");
+
+            if ($count > 0) {
+                $allBooks = array_merge($allBooks, $books);
+                $offset += $limit;
+                
+                // If we got less than limit, we've reached the end
+                if ($count < $limit) {
+                    $hasMore = false;
+                }
+            } else {
+                $hasMore = false;
+            }
+        }
+
+        log_message('info', 'Total books fetched: ' . count($allBooks));
+        return $allBooks;
+    }
+
     private function getGenres(array $books = []): array
     {
         // If books are provided, extract genres from them instead of making separate request
@@ -120,17 +160,14 @@ class BookController extends Controller
 
         // Use genre cache for full genre list - 1 hour TTL
         return $this->genreCache->getGenres(function() {
-            $result = $this->supabaseRequest('GET', 'books', null, 
-                ['select' => 'genre'], 
-                'genres_full_list', 
-                3600  // Cache for 1 hour
-            );
+            // Fetch ALL books to get complete genre list
+            $allBooks = $this->fetchAllBooks(['select' => 'genre']);
 
-            if (isset($result['error'])) {
+            if (empty($allBooks)) {
                 return [];
             }
 
-            $genres = array_unique(array_column($result, 'genre'));
+            $genres = array_unique(array_column($allBooks, 'genre'));
             $genres = array_filter($genres); // Remove empty values
             sort($genres);
             return $genres;
@@ -141,17 +178,14 @@ class BookController extends Controller
     {
         // Always fetch complete genre list from database cache - 1 hour TTL
         return $this->genreCache->getGenres(function() {
-            $result = $this->supabaseRequest('GET', 'books', null, 
-                ['select' => 'genre', 'limit' => 99999], 
-                'genres_full_list', 
-                3600  // Cache for 1 hour
-            );
+            // Fetch ALL books to get complete genre list
+            $allBooks = $this->fetchAllBooks(['select' => 'genre']);
 
-            if (isset($result['error'])) {
+            if (empty($allBooks)) {
                 return [];
             }
 
-            $genres = array_unique(array_column($result, 'genre'));
+            $genres = array_unique(array_column($allBooks, 'genre'));
             $genres = array_filter($genres); // Remove empty values
             sort($genres);
             return $genres;
@@ -169,17 +203,14 @@ class BookController extends Controller
         ];
         $monthRoman = $romanMonths[$currentMonth];
         
-        // Query all books to find codes for the current year
-        $result = $this->supabaseRequest('GET', 'books', null, [
-            'select' => 'code'
-        ]);
+        $allBooks = $this->fetchAllBooks(['select' => 'code']);
         
         $maxNumber = 0;
         $codesThisYear = [];
         
-        if (!isset($result['error']) && is_array($result)) {
+        if (is_array($allBooks)) {
             // Extract numbers from codes for current year
-            foreach ($result as $book) {
+            foreach ($allBooks as $book) {
                 if (!empty($book['code'])) {
                     // Parse code format: {nomor}/YCB-CB/{bulan}/{tahun}
                     $parts = explode('/', $book['code']);
@@ -233,15 +264,16 @@ class BookController extends Controller
             'offset' => ($page - 1) * $this->perPage
         ];
 
-        // Add search filter
-        if ($search) {
-            $queryParams['or'] = "(title.ilike.*{$search}*,author.ilike.*{$search}*,genre.ilike.*{$search}*)";
+        // Search filter
+        if (!empty($search)) {
+            $searchFilter = "(title.ilike.*{$search}*,author.ilike.*{$search}*,code.ilike.*{$search}*,isbn.ilike.*{$search}*,series.ilike.*{$search}*)";
+            $queryParams['or'] = $searchFilter;
         }
 
-        // Add genre filter
-        if (!empty($selectedGenres)) {
-            $genreFilter = 'genre.in.(' . implode(',', $selectedGenres) . ')';
+        // Genre filter
+        if (!empty($selectedGenres) && is_array($selectedGenres)) {
             if (isset($queryParams['or'])) {
+                $genreFilter = 'genre.in.(' . implode(',', $selectedGenres) . ')';
                 $queryParams['and'] = "({$queryParams['or']}),{$genreFilter}";
                 unset($queryParams['or']);
             } else {
@@ -249,19 +281,21 @@ class BookController extends Controller
             }
         }
 
-        // Fetch paginated books
         $books = $this->supabaseRequest('GET', 'books', null, $queryParams);
-        
+
         if (isset($books['error'])) {
+            log_message('error', 'Failed to fetch books: ' . print_r($books, true));
             $books = [];
         }
 
-        // Get total count for pagination - fetch ID only with very high limit to get all matching records
-        $countParams = ['select' => 'id', 'limit' => 99999];
-        if ($search) {
-            $countParams['or'] = "(title.ilike.*{$search}*,author.ilike.*{$search}*,genre.ilike.*{$search}*)";
+        $countParams = ['select' => 'id'];
+        
+        if (!empty($search)) {
+            $searchFilter = "(title.ilike.*{$search}*,author.ilike.*{$search}*,code.ilike.*{$search}*,isbn.ilike.*{$search}*,series.ilike.*{$search}*)";
+            $countParams['or'] = $searchFilter;
         }
-        if (!empty($selectedGenres)) {
+
+        if (!empty($selectedGenres) && is_array($selectedGenres)) {
             $genreFilter = 'genre.in.(' . implode(',', $selectedGenres) . ')';
             if (isset($countParams['or'])) {
                 $countParams['and'] = "({$countParams['or']}),{$genreFilter}";
@@ -271,39 +305,32 @@ class BookController extends Controller
             }
         }
 
-        $countResult = $this->supabaseRequest('GET', 'books', null, $countParams);
-        $totalBooks = is_array($countResult) && !isset($countResult['error']) ? count($countResult) : 0;
+        $allMatchingBooks = $this->fetchAllBooks($countParams);
+        $totalBooks = count($allMatchingBooks);
         $totalPages = max(1, ceil($totalBooks / $this->perPage));
 
-        // Get latest 3 books - cached for 1 hour (only fetched when no search/filter)
-        $latestBooks = [];
-        if (empty($search) && empty($selectedGenres)) {
-            $latestBooks = $this->supabaseRequest('GET', 'books', null, [
-                'select' => '*',
-                'order' => 'created_at.desc',
-                'limit' => 3
-            ], 'latest_books', 3600);  // Cache for 1 hour
+        $latestBooks = $this->supabaseRequest('GET', 'books', null, [
+            'select' => '*',
+            'order' => 'created_at.desc',
+            'limit' => 5
+        ], 'latest_books_5', 300);
+
+        if (isset($latestBooks['error'])) {
+            $latestBooks = [];
         }
-        
-        $latestBooks = isset($latestBooks['error']) || !is_array($latestBooks) ? [] : $latestBooks;
 
-        // Always fetch ALL genres for the select picker (not just from current page books)
-        $genres = $this->getAllGenres();
+        $allGenres = $this->getAllGenres();
 
-        $bookTitles = array_column($books, 'title');
-
+        // Return view for normal page load
         return view('welcome_message', [
             'booksOnPage' => $books,
-            'genres' => $genres,
-            'selectedGenres' => $selectedGenres,
+            'latestBooks' => $latestBooks,
+            'genres' => $allGenres,
             'search' => $search,
+            'selectedGenres' => $selectedGenres,
             'page' => $page,
             'totalPages' => $totalPages,
-            'totalBooks' => $totalBooks,
-            'books' => $books,
-            'allBooks' => $books,
-            'latestBooks' => $latestBooks,
-            'bookTitles' => $bookTitles,
+            'totalBooks' => $totalBooks
         ]);
     }
 
@@ -312,7 +339,6 @@ class BookController extends Controller
         $search = $this->request->getGet('search') ?? '';
         $selectedGenres = $this->request->getGet('genres') ?? [];
         $page = max(1, (int)($this->request->getGet('page') ?? 1));
-
         $queryParams = [
             'select' => '*',
             'order' => 'created_at.desc',
@@ -320,13 +346,16 @@ class BookController extends Controller
             'offset' => ($page - 1) * $this->perPage
         ];
 
-        if ($search) {
-            $queryParams['or'] = "(title.ilike.*{$search}*,author.ilike.*{$search}*,genre.ilike.*{$search}*)";
+        // Search filter
+        if (!empty($search)) {
+            $searchFilter = "(title.ilike.*{$search}*,author.ilike.*{$search}*,code.ilike.*{$search}*,isbn.ilike.*{$search}*,series.ilike.*{$search}*)";
+            $queryParams['or'] = $searchFilter;
         }
 
-        if (!empty($selectedGenres)) {
-            $genreFilter = 'genre.in.(' . implode(',', $selectedGenres) . ')';
+        // Genre filter
+        if (!empty($selectedGenres) && is_array($selectedGenres)) {
             if (isset($queryParams['or'])) {
+                $genreFilter = 'genre.in.(' . implode(',', $selectedGenres) . ')';
                 $queryParams['and'] = "({$queryParams['or']}),{$genreFilter}";
                 unset($queryParams['or']);
             } else {
@@ -335,17 +364,20 @@ class BookController extends Controller
         }
 
         $books = $this->supabaseRequest('GET', 'books', null, $queryParams);
-        
+
         if (isset($books['error'])) {
+            log_message('error', 'Failed to fetch books: ' . print_r($books, true));
             $books = [];
         }
 
-        // Get total count for pagination - fetch ID only with very high limit to get all matching records
-        $countParams = ['select' => 'id', 'limit' => 99999];
-        if ($search) {
-            $countParams['or'] = "(title.ilike.*{$search}*,author.ilike.*{$search}*,genre.ilike.*{$search}*)";
+        $countParams = ['select' => 'id'];
+        
+        if (!empty($search)) {
+            $searchFilter = "(title.ilike.*{$search}*,author.ilike.*{$search}*,code.ilike.*{$search}*,isbn.ilike.*{$search}*,series.ilike.*{$search}*)";
+            $countParams['or'] = $searchFilter;
         }
-        if (!empty($selectedGenres)) {
+
+        if (!empty($selectedGenres) && is_array($selectedGenres)) {
             $genreFilter = 'genre.in.(' . implode(',', $selectedGenres) . ')';
             if (isset($countParams['or'])) {
                 $countParams['and'] = "({$countParams['or']}),{$genreFilter}";
@@ -355,14 +387,12 @@ class BookController extends Controller
             }
         }
 
-        $countResult = $this->supabaseRequest('GET', 'books', null, $countParams);
-        $totalBooks = is_array($countResult) && !isset($countResult['error']) ? count($countResult) : 0;
+        $allMatchingBooks = $this->fetchAllBooks($countParams);
+        $totalBooks = count($allMatchingBooks);
         $totalPages = max(1, ceil($totalBooks / $this->perPage));
 
-        // Fetch all genres for the select picker
         $allGenres = $this->getAllGenres();
 
-        // Return JSON response for AJAX
         return $this->response->setJSON([
             'html' => view('partials/book_list', [
                 'booksOnPage' => $books,
@@ -532,30 +562,21 @@ class BookController extends Controller
 
     public function all()
     {
-        $books = $this->supabaseRequest('GET', 'books', null, [
+        $books = $this->fetchAllBooks([
             'select' => '*',
             'order' => 'created_at.desc'
         ]);
-
-        if (isset($books['error'])) {
-            $books = [];
-        }
 
         return $this->response->setJSON(['books' => $books]);
     }
 
     public function all_key()
     {
-        $books = $this->supabaseRequest('GET', 'books', null, [
+        $books = $this->fetchAllBooks([
             'select' => '*',
             'order' => 'created_at.desc'
         ]);
 
-        if (isset($books['error'])) {
-            $books = [];
-        }
-
-        // Add 'key' as alias for 'id' for backward compatibility
         foreach ($books as &$book) {
             $book['key'] = $book['id'];
         }
