@@ -274,7 +274,28 @@ class ClassTransactionController extends Controller
             $bookId = $t['book_id'] ?? null;
 
             $nama = $userId && isset($usersById[$userId]) ? ($usersById[$userId]['nama'] ?? '-') : '-';
-            $judul = $bookId && isset($booksById[$bookId]) ? ($booksById[$bookId]['title'] ?? '-') : '-';
+            
+            // Try to get judul from books table
+            $judul = '-';
+            if ($bookId) {
+                if (isset($booksById[$bookId])) {
+                    // Book found in our cache
+                    $judul = $booksById[$bookId]['title'] ?? '-';
+                } else {
+                    // Book not in cache, try to fetch it individually
+                    // This handles cases where the book exists but wasn't in the initial fetch
+                    $singleBook = $this->supabaseRequest('GET', 'books', null, [
+                        'id' => 'eq.' . $bookId,
+                        'limit' => 1
+                    ]);
+                    
+                    if (!isset($singleBook['error']) && !empty($singleBook)) {
+                        $judul = $singleBook[0]['title'] ?? '-';
+                        // Cache it for future use in this loop
+                        $booksById[$bookId] = $singleBook[0];
+                    }
+                }
+            }
 
             $processedTransactions[] = [
                 'id' => $t['id'] ?? null,
