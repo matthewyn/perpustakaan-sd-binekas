@@ -584,6 +584,35 @@ class BookController extends Controller
         return $this->response->setJSON(['books' => $books]);
     }
 
+    public function searchBooks()
+    {
+        $search = $this->request->getGet('search');
+        $limit = (int)$this->request->getGet('limit') ?? 20;
+        
+        if (!$search || strlen(trim($search)) < 1) {
+            return $this->response->setJSON(['success' => false, 'books' => []]);
+        }
+
+        $search = trim($search);
+        
+        // Use only title and id fields to minimize egress
+        $queryParams = [
+            'select' => 'id,title',
+            'title' => "ilike.*" . $search . "*",
+            'order' => 'title.asc',
+            'limit' => $limit
+        ];
+
+        $cacheKey = 'book_search_' . md5($search) . '_' . $limit;
+        $books = $this->supabaseRequest('GET', 'books', null, $queryParams, $cacheKey, 300);
+
+        if (is_array($books) && !isset($books['error'])) {
+            return $this->response->setJSON(['success' => true, 'books' => $books]);
+        }
+
+        return $this->response->setJSON(['success' => false, 'books' => [], 'error' => 'Search failed']);
+    }
+
     public function uploadImage()
     {
         $file = $this->request->getFile('gambar');

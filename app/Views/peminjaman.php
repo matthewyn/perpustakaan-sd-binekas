@@ -528,49 +528,63 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function fetchBookData() {
-        $.get("<?= base_url('books/all-key') ?>", function(response) {
-            console.log('Book data response:', response);
-            
-            if (response && typeof response.books === 'object') {
-                let arr = [];
+    // Fetch books by search term (server-side search for performance)
+    // Cache for book searches (local only)
+    const bookSearchCache = {};
+    const BOOK_SEARCH_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
+    function fetchBooksBySearch(searchTerm, callback) {
+        // Only search if term has minimum characters
+        if (!searchTerm || searchTerm.trim().length < 1) {
+            callback([]);
+            return;
+        }
+
+        const now = Date.now();
+        const cacheKey = 'search_' + searchTerm.toLowerCase();
+        
+        // Check cache
+        if (bookSearchCache[cacheKey] && (now - bookSearchCache[cacheKey].timestamp) < BOOK_SEARCH_CACHE_DURATION) {
+            console.log('Using cached book search:', cacheKey);
+            callback(bookSearchCache[cacheKey].data);
+            return;
+        }
+
+        $.get("<?= base_url('books/search-autocomplete') ?>", { 
+            search: searchTerm.trim(),
+            limit: 50
+        }, function(response) {
+            if (response.success && Array.isArray(response.books)) {
+                // Return formatted autocomplete items with label and value
+                const items = response.books.map(b => ({
+                    label: b.title,
+                    value: b.title,
+                    id: b.id,
+                    title: b.title
+                }));
                 
-                // Handle object format
-                if (!Array.isArray(response.books)) {
-                    arr = Object.entries(response.books).map(([key, book]) => ({ 
-                        ...book, 
-                        key: book.key || book.id || key 
-                    }));
-                } else {
-                    // Handle array format
-                    arr = response.books.map(b => ({
-                        ...b,
-                        key: b.key || b.id
-                    }));
-                }
+                // Cache the results
+                bookSearchCache[cacheKey] = {
+                    data: items,
+                    timestamp: now
+                };
                 
-                bookTitles = arr.map(b => b.title).filter(Boolean);
-                window._allBooks = arr;
-                
-                console.log('Books loaded successfully:', arr.length, 'books');
-                console.log('First book structure:', arr[0]);
-                
-                dataReady.books = true;
-                checkAllDataReady();
+                console.log('Books fetched from server:', items.length);
+                callback(items);
             } else {
-                console.error('Invalid books response format');
-                bookTitles = [];
-                window._allBooks = [];
-                dataReady.books = true;
-                checkAllDataReady();
+                console.error('Invalid search response');
+                callback([]);
             }
         }).fail(function(err) {
-            console.error('Failed to fetch books data:', err);
-            bookTitles = [];
-            window._allBooks = [];
-            dataReady.books = true;
-            checkAllDataReady();
+            console.error('Failed to search books:', err);
+            callback([]);
         });
+    }
+
+    // Mark books as ready since we're no longer fetching all upfront
+    function markBooksReady() {
+        dataReady.books = true;
+        checkAllDataReady();
     }
 
     function fetchReturnsData(callback) {
@@ -590,10 +604,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ===== INITIAL DATA FETCHING =====
     startDataLoadTimeout();
+    markBooksReady();  // Books now use server-side search instead of upfront loading
     fetchReturnsData(function() {
         fetchSiswaData();
         fetchBorrowingsData();
-        fetchBookData();
         fetchGuruData();
     });
 
@@ -697,31 +711,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
     $('#judulCari').autocomplete({
         source: function(request, response) {
-            const results = bookTitles.filter(title => title && title.toLowerCase().includes(request.term.toLowerCase()));
-            response(results);
+            // Use server-side search instead of client-side filtering
+            fetchBooksBySearch(request.term, response);
         },
-        minLength: 1,
+        minLength: 2,  // Require at least 2 characters to reduce requests
         select: function(event, ui) {
             $(this).val(ui.item.value);
-
-            const selectedBook = (window._allBooks || []).find(b => b.title === ui.item.value);
-
-            if (selectedBook && selectedBook.uid && (
-                (Array.isArray(selectedBook.uid) && selectedBook.uid.length > 0) ||
-                (!Array.isArray(selectedBook.uid) && String(selectedBook.uid).trim() !== '')
-            )) {
-                $('#uidInputSection').show();
-            } else {
+            // Note: UID field is no longer available from server-side search
+            // Remove UID input section if it exists
+            if ($('#uidInputSection').length) {
                 $('#uidInputSection').hide();
             }
-
             return false;
         }
     });
 
     $('#judulCari').on('input', function() {
         if (!$(this).val().trim()) {
-            $('#uidInputSection').hide();
+            if ($('#uidInputSection').length) {
+                $('#uidInputSection').hide();
+            }
         }
     });
 
@@ -1017,9 +1026,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 let no = (page - 1) * ITEMS_PER_PAGE + 1;
                 response.borrowings.forEach(b => {
                     const user = usersByKey[b.user_id] || {};
-                    const book = (window._allBooks || []).find(book => 
-                        book.id == b.book_id || book.key == b.book_id || book.firebase_key == b.book_id
-                    ) || {};
+                    const bookTitle = b.book_title || '-';
                     
                     const classId = user.class_id || null;
                     const className = classId ? (window._classesById && window._classesById[classId] ? window._classesById[classId].nama_kelas : '-') : '-';
@@ -1029,7 +1036,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     rows += `<tr class="${statusClass}">
                         <th scope="row">${no++}</th>
                         <td>${escapeHtml(user.nama || '-')}</td>
-                        <td>${escapeHtml(book.title || '-')}</td>
+                        <td>${escapeHtml(bookTitle)}</td>
                         <td>${escapeHtml(className)}</td>
                         <td>${escapeHtml(b.tanggal || '-')}</td>
                     </tr>`;
@@ -1055,9 +1062,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 let no = (page - 1) * ITEMS_PER_PAGE + 1;
                 response.returns.forEach(r => {
                     const user = usersByKey[r.user_id] || {};
-                    const book = (window._allBooks || []).find(book => 
-                        book.id == r.book_id || book.key == r.book_id || book.firebase_key == r.book_id
-                    ) || {};
+                    const bookTitle = r.book_title || '-';
                     
                     const classId = user.class_id || null;
                     const className = classId ? (window._classesById && window._classesById[classId] ? window._classesById[classId].nama_kelas : '-') : '-';
@@ -1065,7 +1070,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     rows += `<tr>
                         <th scope="row">${no++}</th>
                         <td>${escapeHtml(user.nama || '-')}</td>
-                        <td>${escapeHtml(book.title || '-')}</td>
+                        <td>${escapeHtml(bookTitle)}</td>
                         <td>${escapeHtml(className)}</td>
                         <td>${escapeHtml(r.tanggal || '-')}</td>
                     </tr>`;
@@ -1095,10 +1100,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     startDataLoadTimeout();
+    markBooksReady();  // Books now use server-side search instead of upfront loading
     fetchReturnsData(function() {
         fetchSiswaData();
         fetchBorrowingsData();
-        fetchBookData();
         fetchGuruData();
         fetchClassesData();
     });

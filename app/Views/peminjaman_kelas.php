@@ -242,7 +242,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let classBooks = [];
     let activeBorrowings = [];
     let allClasses = <?= json_encode($classes) ?>;
-    let bookTitles = [];
     
     // Get current user info
     const userRole = "<?= session('role') ?>";
@@ -254,6 +253,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cache for class data
     const classDataCache = {};
     const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+    
+    // Cache for book searches (local only)
+    const bookSearchCache = {};
+    const BOOK_SEARCH_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
 
     // Collapse icon toggle
     const collapsePeminjaman = document.getElementById('collapsePeminjamanExample');
@@ -395,57 +398,69 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Fetch all books data
-    function fetchBookData() {
-        $.get("<?= base_url('books/all-key') ?>", function(response) {
-            console.log('Book data response:', response);
-            
-            if (response && typeof response.books === 'object') {
-                let arr = [];
+    // Server-side book search function with client-side caching
+    function searchBooksServer(searchTerm, callback) {
+        const now = Date.now();
+        const cacheKey = 'search_' + searchTerm.toLowerCase();
+        
+        // Check cache
+        if (bookSearchCache[cacheKey] && (now - bookSearchCache[cacheKey].timestamp) < BOOK_SEARCH_CACHE_DURATION) {
+            console.log('Using cached book search:', cacheKey);
+            callback(bookSearchCache[cacheKey].data);
+            return;
+        }
+        
+        // Fetch from server
+        $.get("<?= base_url('books/search-autocomplete') ?>", {
+            search: searchTerm,
+            limit: 50
+        }, function(response) {
+            if (response.success && Array.isArray(response.books)) {
+                const books = response.books;
                 
-                // Handle object format
-                if (!Array.isArray(response.books)) {
-                    arr = Object.entries(response.books).map(([key, book]) => ({ 
-                        ...book, 
-                        key: book.key || book.id || key 
-                    }));
-                } else {
-                    // Handle array format
-                    arr = response.books.map(b => ({
-                        ...b,
-                        key: b.key || b.id
-                    }));
-                }
+                // Cache the results
+                bookSearchCache[cacheKey] = {
+                    data: books,
+                    timestamp: now
+                };
                 
-                bookTitles = arr.map(b => b.title).filter(Boolean);
-                window._allBooks = arr;
-                
-                console.log('Books loaded successfully:', arr.length, 'books');
-                console.log('First book structure:', arr[0]);
+                console.log('Books fetched from server:', books.length);
+                callback(books);
             } else {
-                console.error('Invalid books response format');
-                bookTitles = [];
-                window._allBooks = [];
+                console.error('Invalid search response');
+                callback([]);
             }
         }).fail(function(err) {
-            console.error('Failed to fetch books data:', err);
-            bookTitles = [];
-            window._allBooks = [];
+            console.error('Failed to search books:', err);
+            callback([]);
         });
     }
 
-    // Setup autocomplete for books
+    // Setup autocomplete for books (SERVER-SIDE)
     function setupBookAutocomplete() {
         $('#judulCari').autocomplete({
             source: function(request, response) {
-                const results = bookTitles.filter(title => title && title.toLowerCase().includes(request.term.toLowerCase()));
-                response(results);
+                if (request.term.length < 1) {
+                    response([]);
+                    return;
+                }
+                
+                searchBooksServer(request.term, function(books) {
+                    const titles = books.map(b => b.title).filter(Boolean);
+                    response(titles);
+                });
             },
             minLength: 1,
             select: function(event, ui) {
                 $(this).val(ui.item.value);
 
-                const selectedBook = (window._allBooks || []).find(b => b.title === ui.item.value);
+                // Find the selected book from cache
+                let selectedBook = null;
+                for (const cacheKey in bookSearchCache) {
+                    const books = bookSearchCache[cacheKey].data;
+                    selectedBook = books.find(b => b.title === ui.item.value);
+                    if (selectedBook) break;
+                }
 
                 if (selectedBook && selectedBook.uid && (
                     (Array.isArray(selectedBook.uid) && selectedBook.uid.length > 0) ||
@@ -728,9 +743,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Load all books data first
-    fetchBookData();
-
     // Auto-load class for guru
     if (userRole === 'guru' && userClassId) {
         const guruClass = allClasses.find(c => c.id == userClassId);

@@ -9,6 +9,8 @@ $routes->get('/', 'BookController::index');
 $routes->get('books/filter', 'BookController::filter');
 $routes->get('books/all', 'BookController::all');
 $routes->get('books/all-key', 'BookController::all_key');
+$routes->get('books/search-autocomplete', 'BookController::searchBooks');
+$routes->get('books/search', 'BookController::search');
 $routes->get('books/detail', 'BookController::detail');
 $routes->post('books/add', 'BookController::add');
 $routes->post('books/edit', 'BookController::edit');

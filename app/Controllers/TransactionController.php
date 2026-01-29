@@ -705,10 +705,10 @@ class TransactionController extends Controller
         $limit = (int)($this->request->getVar('limit') ?? 10);
         $offset = ($page - 1) * $limit;
 
-        // Get paginated data
+        // Get paginated data with book title joined
         $params = [
             'type' => 'eq.borrow',
-            'select' => '*',
+            'select' => '*,books(id,title)',
             'order' => 'created_at.desc',
             'limit' => $limit,
             'offset' => $offset
@@ -722,6 +722,15 @@ class TransactionController extends Controller
 
         if (isset($transactions['error'])) {
             $transactions = [];
+        } else if (is_array($transactions)) {
+            // Flatten the book data from the relationship
+            foreach ($transactions as &$t) {
+                if (isset($t['books']) && is_array($t['books']) && count($t['books']) > 0) {
+                    $t['book_title'] = $t['books'][0]['title'];
+                } else {
+                    $t['book_title'] = '-';
+                }
+            }
         }
 
         // Get total count for pagination
@@ -772,10 +781,10 @@ class TransactionController extends Controller
         $limit = (int)($this->request->getVar('limit') ?? 10);
         $offset = ($page - 1) * $limit;
 
-        // Get paginated data
+        // Get paginated data with book title joined
         $params = [
             'type' => 'eq.return',
-            'select' => '*',
+            'select' => '*,books(id,title)',
             'order' => 'created_at.desc',
             'limit' => $limit,
             'offset' => $offset
@@ -789,6 +798,15 @@ class TransactionController extends Controller
 
         if (isset($transactions['error'])) {
             $transactions = [];
+        } else if (is_array($transactions)) {
+            // Flatten the book data from the relationship
+            foreach ($transactions as &$t) {
+                if (isset($t['books']) && is_array($t['books']) && count($t['books']) > 0) {
+                    $t['book_title'] = $t['books'][0]['title'];
+                } else {
+                    $t['book_title'] = '-';
+                }
+            }
         }
 
         // Get total count for pagination
