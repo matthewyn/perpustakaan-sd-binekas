@@ -94,8 +94,8 @@ class AutomateTransactionController extends Controller
             $status = 'late';
         }
 
-        // Keep score between 0 and 100
-        $newScore = max(0, min(100, $newScore));
+        // Keep score with no upper limit, only ensure non-negative
+        $newScore = max(0, $newScore);
 
         // Update user
         $updateResult = $this->supabaseRequest('PATCH', 'users?id=eq.' . $userId, [

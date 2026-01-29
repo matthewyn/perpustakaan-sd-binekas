@@ -242,6 +242,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let classBooks = [];
     let activeBorrowings = [];
     let allClasses = <?= json_encode($classes) ?>;
+    let bookTitles = [];
     
     // Get current user info
     const userRole = "<?= session('role') ?>";
@@ -394,27 +395,58 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Fetch all books data
+    function fetchBookData() {
+        $.get("<?= base_url('books/all-key') ?>", function(response) {
+            console.log('Book data response:', response);
+            
+            if (response && typeof response.books === 'object') {
+                let arr = [];
+                
+                // Handle object format
+                if (!Array.isArray(response.books)) {
+                    arr = Object.entries(response.books).map(([key, book]) => ({ 
+                        ...book, 
+                        key: book.key || book.id || key 
+                    }));
+                } else {
+                    // Handle array format
+                    arr = response.books.map(b => ({
+                        ...b,
+                        key: b.key || b.id
+                    }));
+                }
+                
+                bookTitles = arr.map(b => b.title).filter(Boolean);
+                window._allBooks = arr;
+                
+                console.log('Books loaded successfully:', arr.length, 'books');
+                console.log('First book structure:', arr[0]);
+            } else {
+                console.error('Invalid books response format');
+                bookTitles = [];
+                window._allBooks = [];
+            }
+        }).fail(function(err) {
+            console.error('Failed to fetch books data:', err);
+            bookTitles = [];
+            window._allBooks = [];
+        });
+    }
+
     // Setup autocomplete for books
     function setupBookAutocomplete() {
         $('#judulCari').autocomplete({
             source: function(request, response) {
-                // Fetch all books from the server, not limited to class books
-                $.get("<?= base_url('peminjaman-kelas/all-books') ?>", function(data) {
-                    const results = (data.books || [])
-                        .map(b => ({
-                            label: `${b.title}`,
-                            value: b.title,
-                            book: b
-                        }))
-                        .filter(item => item.label.toLowerCase().includes(request.term.toLowerCase()));
-                    response(results);
-                });
+                const results = bookTitles.filter(title => title && title.toLowerCase().includes(request.term.toLowerCase()));
+                response(results);
             },
             minLength: 1,
             select: function(event, ui) {
-                const selectedBook = ui.item.book;
-                
-                // Show UID input
+                $(this).val(ui.item.value);
+
+                const selectedBook = (window._allBooks || []).find(b => b.title === ui.item.value);
+
                 if (selectedBook && selectedBook.uid && (
                     (Array.isArray(selectedBook.uid) && selectedBook.uid.length > 0) ||
                     (!Array.isArray(selectedBook.uid) && String(selectedBook.uid).trim() !== '')
@@ -423,8 +455,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     $('#uidInputSection').hide();
                 }
-                
-                return true;
+
+                return false;
             }
         });
 
@@ -696,6 +728,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Load all books data first
+    fetchBookData();
+
     // Auto-load class for guru
     if (userRole === 'guru' && userClassId) {
         const guruClass = allClasses.find(c => c.id == userClassId);

@@ -636,7 +636,7 @@ class ClassTransactionController extends Controller
             $newScore = $currentScore;
         }
 
-        $newScore = max(0, min(100, $newScore));
+        $newScore = max(0, $newScore);
 
         $this->supabaseRequest('PATCH', 'users?id=eq.' . $userId, [
             'trust_score' => $newScore
