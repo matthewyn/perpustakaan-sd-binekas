@@ -628,9 +628,9 @@ class ClassTransactionController extends Controller
         $returnDate = strtotime(date('Y-m-d'));
         $dueTimestamp = strtotime($dueDate);
 
-        // If returned before or on due date: increase score by 0.5
+        // If returned before or on due date: increase score by 1
         if ($returnDate <= $dueTimestamp) {
-            $newScore = $currentScore + 0.5;
+            $newScore = $currentScore + 1;
         } else {
             // If returned after due date: no change to score
             $newScore = $currentScore;

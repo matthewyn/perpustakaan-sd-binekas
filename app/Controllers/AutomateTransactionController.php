@@ -87,7 +87,7 @@ class AutomateTransactionController extends Controller
 
         // Calculate new score
         if ($returnDate <= $dueTimestamp) {
-            $newScore = $currentScore + 0.5; //tepat waktu
+            $newScore = $currentScore + 1; //tepat waktu
             $status = 'ontime';
         } else {
             $newScore = $currentScore; //telat, tidak ada perubahan
