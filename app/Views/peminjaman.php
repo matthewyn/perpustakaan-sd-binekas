@@ -176,22 +176,9 @@
                         </tr>
                     </thead>
                     <tbody id="tbodyBorrowings">
-                        <?php if (!empty($borrowings)): ?>
-                            <?php $no = 1; foreach ($borrowings as $row): ?>
-                                <?php $statusClass = (isset($row['status']) && $row['status'] === 'active') ? 'table-danger' : ''; ?>
-                                <tr class="<?= $statusClass ?>">
-                                    <th scope="row"><?= $no++ ?></th>
-                                    <td><?= esc($row['nama']) ?></td>
-                                    <td><?= esc($row['judul']) ?></td>
-                                    <td><?= esc($row['class']) ?></td>
-                                    <td><?= esc($row['tanggal']) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="5" class="text-center">Belum ada data peminjaman.</td>
-                            </tr>
-                        <?php endif; ?>
+                        <tr>
+                            <td colspan="5" class="text-center">Memuat data...</td>
+                        </tr>
                     </tbody>
                 </table>
                 <nav aria-label="Pagination untuk peminjaman">
@@ -236,21 +223,9 @@
                         </tr>
                     </thead>
                     <tbody id="tbodyReturns">
-                        <?php if (!empty($returns)): ?>
-                            <?php $no = 1; foreach ($returns as $row): ?>
-                                <tr>
-                                    <th scope="row"><?= $no++ ?></th>
-                                    <td><?= esc($row['nama']) ?></td>
-                                    <td><?= esc($row['judul']) ?></td>
-                                    <td><?= esc($row['class']) ?></td>
-                                    <td><?= esc($row['tanggal']) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="5" class="text-center">Belum ada data pengembalian.</td>
-                            </tr>
-                        <?php endif; ?>
+                        <tr>
+                            <td colspan="5" class="text-center">Memuat data...</td>
+                        </tr>
                     </tbody>
                 </table>
                 <nav aria-label="Pagination untuk pengembalian">
@@ -329,7 +304,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let borrowingsList = [];
     let returnsList = [];
     let usersByKey = {};
-    let dataReady = { siswa: false, borrowings: false, books: false, guru: false };
+    let dataReady = { siswa: false, borrowings: false, guru: false };
     let fetchTimeout;
     const DATA_LOAD_TIMEOUT = 10000;
 
@@ -338,7 +313,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentReturnsPage = 1;
     let totalBorrowingsPages = 1;
     let totalReturnsPages = 1;
-    const ITEMS_PER_PAGE = 10;
+    const ITEMS_PER_PAGE = 25;
 
     // Fetch data awal
     function escapeHtml(text) {
@@ -363,7 +338,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function checkAllDataReady() {
-        if (dataReady.siswa && dataReady.borrowings && dataReady.books) {
+        if (dataReady.siswa && dataReady.borrowings) {
             clearTimeout(fetchTimeout);
             enablePengembalianAutocomplete();
             // Initialize tables with pagination on first load
@@ -516,13 +491,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function fetchBorrowingsData() {
         $.get("<?= base_url('api/borrowings') ?>", function(response) {
+            console.log('Borrowings API Response:', response);
             if (response.success && Array.isArray(response.borrowings)) {
                 borrowingsList = response.borrowings;
+                console.log('Borrowings List Updated:', borrowingsList);
+                dataReady.borrowings = true;
+                checkAllDataReady();
+            } else {
+                console.error('Invalid borrowings response:', response);
                 dataReady.borrowings = true;
                 checkAllDataReady();
             }
-        }).fail(() => {
-            console.error('Failed to fetch borrowings data');
+        }).fail((xhr, status, error) => {
+            console.error('Failed to fetch borrowings data:', status, error, xhr.responseText);
             dataReady.borrowings = true;
             checkAllDataReady();
         });
@@ -581,12 +562,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Mark books as ready since we're no longer fetching all upfront
-    function markBooksReady() {
-        dataReady.books = true;
-        checkAllDataReady();
-    }
-
     function fetchReturnsData(callback) {
         $.get("<?= base_url('api/returns') ?>", function(response) {
             if (response.success && Array.isArray(response.returns)) {
@@ -604,7 +579,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ===== INITIAL DATA FETCHING =====
     startDataLoadTimeout();
-    markBooksReady();  // Books now use server-side search instead of upfront loading
     fetchReturnsData(function() {
         fetchSiswaData();
         fetchBorrowingsData();
@@ -746,12 +720,8 @@ document.addEventListener('DOMContentLoaded', function() {
             b.status === 'active'
         );
 
-        const borrowedTitles = userBorrowings.map(b => {
-            const book = (window._allBooks || []).find(book =>
-                book.id == b.book_id || book.key == b.book_id || book.firebase_key == b.book_id
-            );
-            return book ? book.title : null;
-        }).filter(Boolean);
+        // Use book_title from the API response (includes joined data)
+        const borrowedTitles = userBorrowings.map(b => b.book_title).filter(Boolean);
 
         $('#judulCariPengembalian').autocomplete('option','source', borrowedTitles);
         if (borrowedTitles.length > 0) {
@@ -773,27 +743,8 @@ document.addEventListener('DOMContentLoaded', function() {
         peminjamanSection.style.display = 'none';
         pengembalianSection.style.display = 'block';
         
-        // Ensure data is ready before loading checklist
-        if (!dataReady.books || !window._allBooks || !Array.isArray(window._allBooks)) {
-            console.warn('Books data not ready yet, waiting...');
-            $('#checklistPengembalian').html('<p class="text-muted text-center">Memuat data buku...</p>');
-            
-            let waitCount = 0;
-            const checkInterval = setInterval(() => {
-                waitCount++;
-                if (dataReady.books && window._allBooks && Array.isArray(window._allBooks)) {
-                    clearInterval(checkInterval);
-                    console.log('Books data ready, loading checklist');
-                    loadPengembalianChecklist();
-                } else if (waitCount > 50) { // 5 second timeout (50 * 100ms)
-                    clearInterval(checkInterval);
-                    console.error('Timeout waiting for books data');
-                    $('#checklistPengembalian').html('<p class="text-danger text-center">Gagal memuat data buku. Silakan refresh halaman.</p>');
-                }
-            }, 100);
-        } else {
-            loadPengembalianChecklist();
-        }
+        // Load checklist directly - no need to wait for all books
+        loadPengembalianChecklist();
     });
 
     $('#exampleModal').on('hidden.bs.modal', function () {
@@ -805,19 +756,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ===== PENGEMBALIAN CHECKLIST FUNCTIONS =====
     function loadPengembalianChecklist() {
-        // Double-check that data is available
-        if (!window._allBooks || !Array.isArray(window._allBooks)) {
-            console.error('Books data is not available:', window._allBooks);
-            $('#checklistPengembalian').html('<p class="text-danger text-center">Error: Data buku tidak tersedia. Silakan refresh halaman.</p>');
-            return;
-        }
-
         const activeLoans = borrowingsList.filter(b => b.status === 'active');
         
         console.log('Loading checklist with:', {
+            totalBorrowings: borrowingsList.length,
             activeLoans: activeLoans.length,
-            allBooks: window._allBooks.length,
-            siswaList: siswaList.length
+            siswaList: siswaList.length,
+            borrowingsList: borrowingsList
         });
 
         if (activeLoans.length === 0) {
@@ -852,38 +797,8 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             
             loans.forEach(loan => {
-                let book = null;
-                let debugInfo = {
-                    loanBookId: loan.book_id,
-                    loanBookIdType: typeof loan.book_id
-                };
-                
-                // Find matching book with detailed logging
-                if (window._allBooks && Array.isArray(window._allBooks)) {
-                    book = window._allBooks.find(b => {
-                        const bookId = String(loan.book_id).trim().toLowerCase();
-                        const bId = String(b.id || '').trim().toLowerCase();
-                        const bKey = String(b.key || '').trim().toLowerCase();
-                        const bFirebaseKey = String(b.firebase_key || '').trim().toLowerCase();
-                        
-                        const matches = bookId === bId || bookId === bKey || bookId === bFirebaseKey;
-                        
-                        if (!matches && !book) {
-                            debugInfo.searchedId = bId;
-                            debugInfo.searchedKey = bKey;
-                            debugInfo.searchedFirebaseKey = bFirebaseKey;
-                        }
-                        
-                        return matches;
-                    });
-                }
-                
-                if (!book) {
-                    console.warn('Book not found for loan:', loan, 'Debug:', debugInfo);
-                    book = {};
-                }
-                
-                const bookTitle = escapeHtml(book.title || 'Unknown Book');
+                // Use book_title from the API response (includes joined data)
+                const bookTitle = escapeHtml(loan.book_title || 'Unknown Book');
                 const loanId = escapeHtml(loan.id || loan.key || '');
                 
                 checklistHtml += `
@@ -1100,7 +1015,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     startDataLoadTimeout();
-    markBooksReady();  // Books now use server-side search instead of upfront loading
     fetchReturnsData(function() {
         fetchSiswaData();
         fetchBorrowingsData();

@@ -226,6 +226,187 @@
 </div>
 
 <script>
+// Pagination variables (global scope)
+const ITEMS_PER_PAGE = 25;
+let borrowingsData = [];
+let returnsData = [];
+let currentBorrowingsPage = 1;
+let currentReturnsPage = 1;
+
+// Pagination functions (global scope)
+function refreshBorrowingsTable(page) {
+    currentBorrowingsPage = page;
+    const tbody = $('#tbodyBorrowings');
+    
+    if (!borrowingsData || borrowingsData.length === 0) {
+        tbody.html('<tr><td colspan="4" class="text-center">Belum ada data peminjaman.</td></tr>');
+        renderBorrowingsPagination();
+        return;
+    }
+    
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+    const pageData = borrowingsData.slice(start, end);
+    
+    let html = '';
+    pageData.forEach((t, index) => {
+        const statusClass = t.status === 'active' ? 'table-danger' : '';
+        const rowNum = start + index + 1;
+        
+        html += `<tr class="${statusClass}">
+            <th scope="row">${rowNum}</th>
+            <td>${escapeHtml(t.nama)}</td>
+            <td>${escapeHtml(t.judul)}</td>
+            <td>${escapeHtml(t.tanggal)}</td>
+        </tr>`;
+    });
+    
+    tbody.html(html);
+    renderBorrowingsPagination();
+}
+
+function renderBorrowingsPagination() {
+    const paginationContainer = $('#paginationBorrowings');
+    const totalPages = Math.ceil(borrowingsData.length / ITEMS_PER_PAGE);
+    
+    if (totalPages <= 1) {
+        paginationContainer.html('');
+        return;
+    }
+    
+    let html = '';
+    
+    // Previous button
+    html += `<li class="page-item ${currentBorrowingsPage === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="javascript:void(0)" onclick="refreshBorrowingsTable(${currentBorrowingsPage - 1})">Previous</a>
+    </li>`;
+    
+    // Page numbers
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentBorrowingsPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage < maxVisiblePages - 1) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    if (startPage > 1) {
+        html += '<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="refreshBorrowingsTable(1)">1</a></li>';
+        if (startPage > 2) html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === currentBorrowingsPage;
+        html += `<li class="page-item ${isActive ? 'active' : ''}">
+            <a class="page-link" href="javascript:void(0)" onclick="refreshBorrowingsTable(${i})">${i}</a>
+        </li>`;
+    }
+    
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        html += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="refreshBorrowingsTable(${totalPages})">${totalPages}</a></li>`;
+    }
+    
+    // Next button
+    html += `<li class="page-item ${currentBorrowingsPage === totalPages ? 'disabled' : ''}">
+        <a class="page-link" href="javascript:void(0)" onclick="refreshBorrowingsTable(${currentBorrowingsPage + 1})">Next</a>
+    </li>`;
+    
+    paginationContainer.html(html);
+}
+
+function refreshReturnsTable(page) {
+    currentReturnsPage = page;
+    const tbody = $('#tbodyReturns');
+    
+    if (!returnsData || returnsData.length === 0) {
+        tbody.html('<tr><td colspan="4" class="text-center">Belum ada data pengembalian.</td></tr>');
+        renderReturnsPagination();
+        return;
+    }
+    
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+    const pageData = returnsData.slice(start, end);
+    
+    let html = '';
+    pageData.forEach((t, index) => {
+        const rowNum = start + index + 1;
+        
+        html += `<tr>
+            <th scope="row">${rowNum}</th>
+            <td>${escapeHtml(t.nama)}</td>
+            <td>${escapeHtml(t.judul)}</td>
+            <td>${escapeHtml(t.tanggal)}</td>
+        </tr>`;
+    });
+    
+    tbody.html(html);
+    renderReturnsPagination();
+}
+
+function renderReturnsPagination() {
+    const paginationContainer = $('#paginationReturns');
+    const totalPages = Math.ceil(returnsData.length / ITEMS_PER_PAGE);
+    
+    if (totalPages <= 1) {
+        paginationContainer.html('');
+        return;
+    }
+    
+    let html = '';
+    
+    // Previous button
+    html += `<li class="page-item ${currentReturnsPage === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="javascript:void(0)" onclick="refreshReturnsTable(${currentReturnsPage - 1})">Previous</a>
+    </li>`;
+    
+    // Page numbers
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentReturnsPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage < maxVisiblePages - 1) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    if (startPage > 1) {
+        html += '<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="refreshReturnsTable(1)">1</a></li>';
+        if (startPage > 2) html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === currentReturnsPage;
+        html += `<li class="page-item ${isActive ? 'active' : ''}">
+            <a class="page-link" href="javascript:void(0)" onclick="refreshReturnsTable(${i})">${i}</a>
+        </li>`;
+    }
+    
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        html += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="refreshReturnsTable(${totalPages})">${totalPages}</a></li>`;
+    }
+    
+    // Next button
+    html += `<li class="page-item ${currentReturnsPage === totalPages ? 'disabled' : ''}">
+        <a class="page-link" href="javascript:void(0)" onclick="refreshReturnsTable(${currentReturnsPage + 1})">Next</a>
+    </li>`;
+    
+    paginationContainer.html(html);
+}
+
+// Utility function (global scope)
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return String(text || '').replace(/[&<>"']/g, m => map[m]);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const modal = new bootstrap.Modal(document.getElementById('exampleModal'));
     const modalElement = document.getElementById('exampleModal');
@@ -284,18 +465,6 @@ document.addEventListener('DOMContentLoaded', function() {
             chevronPengembalian.classList.remove('bi-chevron-up');
             chevronPengembalian.classList.add('bi-chevron-down');
         });
-    }
-
-    // Utility function
-    function escapeHtml(text) {
-        const map = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;'
-        };
-        return String(text || '').replace(/[&<>"']/g, m => map[m]);
     }
 
     // Autocomplete for class
@@ -560,47 +729,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Render borrowings table
     function renderBorrowingsTable(transactions) {
-        const tbody = $('#tbodyBorrowings');
-        
-        if (!transactions || transactions.length === 0) {
-            tbody.html('<tr><td colspan="4" class="text-center">Belum ada data peminjaman.</td></tr>');
-            return;
-        }
-        
-        let html = '';
-        transactions.forEach((t, index) => {
-            const statusClass = t.status === 'active' ? 'table-danger' : '';
-            
-            html += `<tr class="${statusClass}">
-                <th scope="row">${index + 1}</th>
-                <td>${escapeHtml(t.nama)}</td>
-                <td>${escapeHtml(t.judul)}</td>
-                <td>${escapeHtml(t.tanggal)}</td>
-            </tr>`;
-        });
-        
-        tbody.html(html);
+        borrowingsData = transactions || [];
+        currentBorrowingsPage = 1;
+        refreshBorrowingsTable(1);
     }
 
     function renderReturnsTable(transactions) {
-        const tbody = $('#tbodyReturns');
-        
-        if (!transactions || transactions.length === 0) {
-            tbody.html('<tr><td colspan="4" class="text-center">Belum ada data pengembalian.</td></tr>');
-            return;
-        }
-        
-        let html = '';
-        transactions.forEach((t, index) => {
-            html += `<tr>
-                <th scope="row">${index + 1}</th>
-                <td>${escapeHtml(t.nama)}</td>
-                <td>${escapeHtml(t.judul)}</td>
-                <td>${escapeHtml(t.tanggal)}</td>
-            </tr>`;
-        });
-        
-        tbody.html(html);
+        returnsData = transactions || [];
+        currentReturnsPage = 1;
+        refreshReturnsTable(1);
     }
 
     // Modal handlers

@@ -683,12 +683,82 @@ class TransactionController extends Controller
     {
         $transactions = $this->supabaseRequest('GET', 'transactions', null, [
             'type' => 'eq.borrow',
-            'status' => 'eq.active',
             'select' => '*'
         ]);
 
         if (isset($transactions['error'])) {
+            log_message('error', 'API Borrowings Error: ' . print_r($transactions, true));
             $transactions = [];
+        } else if (is_array($transactions)) {
+            // Fetch all books with pagination to add titles
+            $allBooks = [];
+            $limit = 1000;
+            $offset = 0;
+            $hasMore = true;
+
+            while ($hasMore) {
+                $bookBatch = $this->supabaseRequest('GET', 'books', null, [
+                    'select' => 'id,title',
+                    'limit' => $limit,
+                    'offset' => $offset
+                ]);
+                
+                if (!isset($bookBatch['error']) && is_array($bookBatch)) {
+                    $count = count($bookBatch);
+                    if ($count > 0) {
+                        $allBooks = array_merge($allBooks, $bookBatch);
+                        $offset += $limit;
+                        if ($count < $limit) {
+                            $hasMore = false;
+                        }
+                    } else {
+                        $hasMore = false;
+                    }
+                } else {
+                    log_message('error', 'Failed to fetch book batch at offset ' . $offset);
+                    $hasMore = false;
+                }
+            }
+            
+            if (!empty($allBooks)) {
+                log_message('info', 'API Borrowings: Retrieved ' . count($transactions) . ' transactions, ' . count($allBooks) . ' books');
+                
+                // Create book lookup map for faster matching
+                $bookMap = [];
+                foreach ($allBooks as $book) {
+                    if (isset($book['id']) && isset($book['title'])) {
+                        $bookId = (string)$book['id'];  // Convert to string for consistent matching
+                        $bookMap[$bookId] = $book['title'];
+                    }
+                }
+                
+                // Map book titles to transactions and filter for active status
+                $activeTransactions = [];
+                foreach ($transactions as $t) {
+                    // Set book title using the lookup map
+                    if (!empty($t['book_id'])) {
+                        $bookId = (string)$t['book_id'];  // Convert to string for matching
+                        $t['book_title'] = isset($bookMap[$bookId]) ? $bookMap[$bookId] : '-';
+                        
+                        // Log unmatched books
+                        if ($t['book_title'] === '-') {
+                            log_message('warning', 'Book not found for transaction: book_id=' . $bookId . ', transaction_id=' . ($t['id'] ?? 'unknown'));
+                        }
+                    } else {
+                        $t['book_title'] = '-';
+                    }
+                    
+                    // Only include active borrowings
+                    if (isset($t['status']) && $t['status'] === 'active') {
+                        $activeTransactions[] = $t;
+                    }
+                }
+                
+                $transactions = $activeTransactions;
+                log_message('info', 'API Borrowings: After filtering, ' . count($transactions) . ' active transactions');
+            } else {
+                log_message('error', 'No books fetched from database');
+            }
         }
 
         return $this->response->setJSON([
@@ -699,38 +769,52 @@ class TransactionController extends Controller
 
     public function apiAllBorrowings()
     {
-        $currentRole = session()->get('role');
-        $currentPicName = session()->get('name');
-        $page = (int)($this->request->getVar('page') ?? 1);
-        $limit = (int)($this->request->getVar('limit') ?? 10);
-        $offset = ($page - 1) * $limit;
+        try {
+            $currentRole = session()->get('role');
+            $currentPicName = session()->get('name');
+            $page = (int)($this->request->getVar('page') ?? 1);
+            $limit = (int)($this->request->getVar('limit') ?? 10);
+            $offset = ($page - 1) * $limit;
 
-        // Get paginated data with book title joined
-        $params = [
-            'type' => 'eq.borrow',
-            'select' => '*,books(id,title)',
-            'order' => 'created_at.desc',
-            'limit' => $limit,
-            'offset' => $offset
-        ];
+            // Get paginated data - fetch without join first
+            $params = [
+                'type' => 'eq.borrow',
+                'select' => '*',
+                'order' => 'created_at.desc',
+                'limit' => $limit,
+                'offset' => $offset
+            ];
 
-        if ($currentRole !== 'admin') {
-            $params['pic_name'] = 'eq.' . $currentPicName;
-        }
+            if ($currentRole !== 'admin') {
+                $params['pic_name'] = 'eq.' . $currentPicName;
+            }
 
-        $transactions = $this->supabaseRequest('GET', 'transactions', null, $params);
+            $transactions = $this->supabaseRequest('GET', 'transactions', null, $params);
 
-        if (isset($transactions['error'])) {
-            $transactions = [];
-        } else if (is_array($transactions)) {
-            // Flatten the book data from the relationship
-            foreach ($transactions as &$t) {
-                if (isset($t['books']) && is_array($t['books']) && count($t['books']) > 0) {
-                    $t['book_title'] = $t['books'][0]['title'];
-                } else {
+            if (isset($transactions['error'])) {
+                $transactions = [];
+            } else if (is_array($transactions)) {
+                // Fetch book titles separately and attach
+                foreach ($transactions as &$t) {
                     $t['book_title'] = '-';
+                    
+                    // Fetch the book title for this transaction
+                    if (isset($t['book_id']) && !empty($t['book_id'])) {
+                        $bookParams = [
+                            'id' => 'eq.' . intval($t['book_id']),
+                            'select' => 'id,title'
+                        ];
+                        $books = $this->supabaseRequest('GET', 'books', null, $bookParams);
+                        
+                        if (is_array($books) && count($books) > 0) {
+                            $t['book_title'] = $books[0]['title'] ?? '-';
+                        }
+                    }
                 }
             }
+        } catch (\Exception $e) {
+            log_message('error', 'Error in apiAllBorrowings: ' . $e->getMessage());
+            $transactions = [];
         }
 
         // Get total count for pagination
@@ -775,38 +859,52 @@ class TransactionController extends Controller
 
     public function apiAllReturns()
     {
-        $currentRole = session()->get('role');
-        $currentPicName = session()->get('name');
-        $page = (int)($this->request->getVar('page') ?? 1);
-        $limit = (int)($this->request->getVar('limit') ?? 10);
-        $offset = ($page - 1) * $limit;
+        try {
+            $currentRole = session()->get('role');
+            $currentPicName = session()->get('name');
+            $page = (int)($this->request->getVar('page') ?? 1);
+            $limit = (int)($this->request->getVar('limit') ?? 10);
+            $offset = ($page - 1) * $limit;
 
-        // Get paginated data with book title joined
-        $params = [
-            'type' => 'eq.return',
-            'select' => '*,books(id,title)',
-            'order' => 'created_at.desc',
-            'limit' => $limit,
-            'offset' => $offset
-        ];
+            // Get paginated data - fetch without join first
+            $params = [
+                'type' => 'eq.return',
+                'select' => '*',
+                'order' => 'created_at.desc',
+                'limit' => $limit,
+                'offset' => $offset
+            ];
 
-        if ($currentRole !== 'admin') {
-            $params['pic_name'] = 'eq.' . $currentPicName;
-        }
+            if ($currentRole !== 'admin') {
+                $params['pic_name'] = 'eq.' . $currentPicName;
+            }
 
-        $transactions = $this->supabaseRequest('GET', 'transactions', null, $params);
+            $transactions = $this->supabaseRequest('GET', 'transactions', null, $params);
 
-        if (isset($transactions['error'])) {
-            $transactions = [];
-        } else if (is_array($transactions)) {
-            // Flatten the book data from the relationship
-            foreach ($transactions as &$t) {
-                if (isset($t['books']) && is_array($t['books']) && count($t['books']) > 0) {
-                    $t['book_title'] = $t['books'][0]['title'];
-                } else {
+            if (isset($transactions['error'])) {
+                $transactions = [];
+            } else if (is_array($transactions)) {
+                // Fetch book titles separately and attach
+                foreach ($transactions as &$t) {
                     $t['book_title'] = '-';
+                    
+                    // Fetch the book title for this transaction
+                    if (isset($t['book_id']) && !empty($t['book_id'])) {
+                        $bookParams = [
+                            'id' => 'eq.' . intval($t['book_id']),
+                            'select' => 'id,title'
+                        ];
+                        $books = $this->supabaseRequest('GET', 'books', null, $bookParams);
+                        
+                        if (is_array($books) && count($books) > 0) {
+                            $t['book_title'] = $books[0]['title'] ?? '-';
+                        }
+                    }
                 }
             }
+        } catch (\Exception $e) {
+            log_message('error', 'Error in apiAllReturns: ' . $e->getMessage());
+            $transactions = [];
         }
 
         // Get total count for pagination
