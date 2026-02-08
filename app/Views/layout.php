@@ -209,14 +209,12 @@
                         </ul>
                     </div>
                 </li>
-                <?php if (session('role') === 'admin'): ?>
-                    <li class="list-group-item border-0 text-mobile-md">
-                        <a href="<?= base_url('user') ?>" style="text-decoration: none; color: inherit;">
-                            <i class="bi bi-person"></i>
-                            Manajemen User
-                        </a>
-                    </li>
-                <?php endif; ?>
+                <li class="list-group-item border-0 text-mobile-md">
+                    <a href="<?= base_url('user') ?>" style="text-decoration: none; color: inherit;">
+                        <i class="bi bi-person"></i>
+                        Manajemen User
+                    </a>
+                </li>
                 <?php if (session('role') === 'admin'): ?>
                     <li class="list-group-item border-0 text-mobile-md">
                         <a href="<?= base_url('management-buku') ?>" style="text-decoration: none; color: inherit;">

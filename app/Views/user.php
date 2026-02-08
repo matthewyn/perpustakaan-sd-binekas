@@ -220,6 +220,25 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="siswaTrustScore" class="form-label">Trust Score</label>
+                                    <input type="number" name="trust_score" class="form-control" id="siswaTrustScore" min="0" max="100" step="0.1" placeholder="0-100">
+                                    <small class="text-muted">Nilai kepercayaan siswa (0-100)</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="mb-3">
+                                <div class="d-flex gap-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="isFreezed" name="isFreezed">
+                                        <label class="form-check-label" for="isFreezed">Bekukan Trust Score</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -804,6 +823,16 @@ function fillSiswaForm(siswa) {
     if (maxBorrowEl) {
         maxBorrowEl.value = siswa.maxBorrow || siswa.max_borrow || 1;
     }
+    
+    const trustScoreEl = document.getElementById('siswaTrustScore');
+    if (trustScoreEl) {
+        trustScoreEl.value = siswa.trust_score || '';
+    }
+    
+    const isFreezedEl = document.getElementById('isFreezed');
+    if (isFreezedEl) {
+        isFreezedEl.checked = siswa.is_freezed == 1 || siswa.is_freezed === true;
+    }
 }
 
 function fillGuruForm(guru) {
@@ -827,6 +856,8 @@ function handleSiswaSubmit(event) {
     const nama = document.getElementById('siswaNama').value.trim();
     const classId = document.getElementById('siswaKelas').value;
     const maxBorrow = document.getElementById('siswaMaxBorrow').value.trim();
+    const trustScore = document.getElementById('siswaTrustScore').value.trim();
+    const isFreezed = document.getElementById('isFreezed').checked ? 1 : 0;
     
     if (!nisn || !nama || !classId || !maxBorrow) {
         showToast('Semua field wajib diisi!', 'warning');
@@ -837,7 +868,9 @@ function handleSiswaSubmit(event) {
         nisn: nisn,
         nama: nama,
         class_id: classId,
-        maxBorrow: maxBorrow
+        maxBorrow: maxBorrow,
+        trust_score: trustScore ? parseFloat(trustScore) : null,
+        isFreezed: isFreezed
     };
     
     const url = mode === 'add' 

@@ -863,14 +863,20 @@ class ClassTransactionController extends Controller
                     continue;
                 }
 
-                // Get current user trust score
+                // Get current user trust score and is_freezed status
                 $user = $this->supabaseRequest('GET', 'users', null, [
                     'id' => 'eq.' . $userId,
-                    'select' => 'id,nama,trust_score',
+                    'select' => 'id,nama,trust_score,is_freezed',
                     'limit' => 1
                 ]);
 
                 if (!empty($user) && !isset($user['error'])) {
+                    // Skip penalty if user has is_freezed set to true
+                    if ($user[0]['is_freezed'] == 1 || $user[0]['is_freezed'] === true) {
+                        log_message('info', "Skipping penalty for user {$user[0]['nama']} (ID: $userId) - trust score is frozen");
+                        continue;
+                    }
+
                     $currentScore = (float)($user[0]['trust_score'] ?? 100);
                     $penalty = 2; // 2 points per day
                     $newScore = max(0, $currentScore - $penalty);

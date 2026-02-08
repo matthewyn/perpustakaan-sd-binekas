@@ -132,6 +132,8 @@ class UserController extends Controller
         $nisn = $this->request->getPost('nisn');
         $classId = $this->request->getPost('class_id');
         $maxBorrow = $this->request->getPost('maxBorrow');
+        $trustScore = $this->request->getPost('trust_score');
+        $isFreezed = $this->request->getPost('isFreezed');
         
         if (empty($nama) || empty($nisn) || empty($maxBorrow)) {
             return $this->response->setJSON([
@@ -151,7 +153,8 @@ class UserController extends Controller
             'class_id' => !empty($classId) ? (int)$classId : null,
             'maxBorrow' => (int)$maxBorrow,
             'role' => 'murid',
-            'trust_score' => 100.00,
+            'trust_score' => !empty($trustScore) ? (float)$trustScore : 100.00,
+            'is_freezed' => (int)$isFreezed,
             'password' => PasswordHelper::hashPassword($nisn),
         ];
 
@@ -175,12 +178,16 @@ class UserController extends Controller
         log_message('info', 'Update User ID: ' . $id . ' POST Data: ' . json_encode($this->request->getPost()));
 
         $classId = $this->request->getPost('class_id');
+        $trustScore = $this->request->getPost('trust_score');
+        $isFreezed = $this->request->getPost('isFreezed');
         
         $data = [
             'nama' => $this->request->getPost('nama'),
             'nisn' => $this->request->getPost('nisn'),
             'class_id' => !empty($classId) ? (int)$classId : null,
             'maxBorrow' => (int)$this->request->getPost('maxBorrow'),
+            'trust_score' => !empty($trustScore) ? (float)$trustScore : null,
+            'is_freezed' => (int)$isFreezed,
             'password' => PasswordHelper::hashPassword($this->request->getPost('nisn')),
             'updated_at' => date('Y-m-d H:i:s')
         ];
