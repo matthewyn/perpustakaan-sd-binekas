@@ -7,11 +7,13 @@ class AutomateTransactionController extends Controller
 {
     private $supabaseUrl;
     private $supabaseKey;
+    private $cache;
 
     public function __construct()
     {
         $this->supabaseUrl = getenv('SUPABASE_URL');
         $this->supabaseKey = getenv('SUPABASE_API_KEY');
+        $this->cache = \Config\Services::cache();
     }
 
     private function supabaseRequest($method, $endpoint, $data = null, $queryParams = [])
@@ -66,6 +68,101 @@ class AutomateTransactionController extends Controller
         return json_decode($response, true);
     }
 
+    private function fetchAllBooks($queryParams = [])
+    {
+        // Try cache first
+        $cacheKey = 'all_books_automate_' . md5(json_encode($queryParams));
+        $cachedBooks = $this->cache->get($cacheKey);
+
+        if ($cachedBooks !== null) {
+            log_message('info', 'Books fetched from cache: ' . count($cachedBooks) . ' books');
+            return $cachedBooks;
+        }
+
+        $allBooks = [];
+        $limit = 1000;
+        $offset = 0;
+        $hasMore = true;
+
+        log_message('info', 'Starting fetchAllBooks with pagination');
+
+        while ($hasMore) {
+            $params = array_merge($queryParams, [
+                'limit' => $limit,
+                'offset' => $offset
+            ]);
+
+            $books = $this->supabaseRequest('GET', 'books', null, $params);
+
+            if (isset($books['error']) || !is_array($books)) {
+                log_message('error', 'Error fetching books at offset ' . $offset);
+                break;
+            }
+
+            $count = count($books);
+            log_message('info', "Fetched {$count} books at offset {$offset}");
+
+            if ($count > 0) {
+                $allBooks = array_merge($allBooks, $books);
+                $offset += $limit;
+                
+                if ($count < $limit) {
+                    $hasMore = false;
+                }
+            } else {
+                $hasMore = false;
+            }
+        }
+
+        log_message('info', 'Total books fetched: ' . count($allBooks));
+        
+        // Cache for 5 minutes
+        $this->cache->save($cacheKey, $allBooks, 300);
+        
+        return $allBooks;
+    }
+
+    private function fetchAllTransactions($queryParams = [])
+    {
+        $allTransactions = [];
+        $limit = 1000;
+        $offset = 0;
+        $hasMore = true;
+
+        log_message('info', 'Starting fetchAllTransactions with pagination');
+
+        while ($hasMore) {
+            $params = array_merge($queryParams, [
+                'limit' => $limit,
+                'offset' => $offset
+            ]);
+
+            $transactions = $this->supabaseRequest('GET', 'transactions', null, $params);
+
+            if (isset($transactions['error']) || !is_array($transactions)) {
+                log_message('error', 'Error fetching transactions at offset ' . $offset);
+                break;
+            }
+
+            $count = count($transactions);
+            log_message('info', "Fetched {$count} transactions at offset {$offset}");
+
+            if ($count > 0) {
+                $allTransactions = array_merge($allTransactions, $transactions);
+                $offset += $limit;
+                
+                if ($count < $limit) {
+                    $hasMore = false;
+                }
+            } else {
+                $hasMore = false;
+            }
+        }
+
+        log_message('info', 'Total transactions fetched: ' . count($allTransactions));
+        return $allTransactions;
+    }
+
     // Update trust score
     private function updateTrustScore($userId, $borrowDate, $dueDate)
     {
@@ -102,6 +199,9 @@ class AutomateTransactionController extends Controller
             'trust_score' => $newScore
         ]);
 
+        // Clear cache
+        $this->cache->delete('all_users_automate_' . md5(json_encode(['select' => '*'])));
+
         log_message('info', "Trust score updated for user $userId: $currentScore -> $newScore ($status)");
 
         return !isset($updateResult['error']);
@@ -126,11 +226,10 @@ class AutomateTransactionController extends Controller
         }
 
         try {
-            // cari buku dari UID
-            $allBooks = $this->supabaseRequest('GET', 'books');
+            $allBooks = $this->fetchAllBooks();
             
-            if (isset($allBooks['error'])) {
-                log_message('error', 'Failed to fetch books: ' . json_encode($allBooks));
+            if (empty($allBooks)) {
+                log_message('error', 'Failed to fetch books');
                 return $this->response->setJSON(['success' => false, 'message' => 'Gagal mengambil data buku']);
             }
 
@@ -153,7 +252,7 @@ class AutomateTransactionController extends Controller
                 return $this->response->setJSON(['success' => false, 'message' => 'UID buku tidak ditemukan']);
             }
 
-            // cari dari nisn/nip
+            // Cari dari nisn/nip
             $userData = null;
             
             $userByNisn = $this->supabaseRequest('GET', 'users', null, [
@@ -180,15 +279,14 @@ class AutomateTransactionController extends Controller
                 return $this->response->setJSON(['success' => false, 'message' => 'User tidak ditemukan']);
             }
 
-            // Validasi histori transaksi
-            $activeTx = $this->supabaseRequest('GET', 'transactions', null, [
+            // Validasi histori transaksi dengan pagination
+            $activeTx = $this->fetchAllTransactions([
                 'uid' => 'eq.' . $uidScan,
                 'status' => 'eq.active',
-                'type' => 'eq.borrow',
-                'limit' => 1
+                'type' => 'eq.borrow'
             ]);
             
-            $type = (!isset($activeTx['error']) && !empty($activeTx)) ? 'return' : 'borrow';
+            $type = (!empty($activeTx)) ? 'return' : 'borrow';
 
             // Get PIC info from session
             $picName = session()->get('name') ?? 'Admin';
@@ -206,16 +304,14 @@ class AutomateTransactionController extends Controller
                 $trustScore = (float)($userData['trust_score'] ?? 100);
                 $maxBorrow = (int)($userData['maxBorrow'] ?? 1);
                 
-                // Count active borrows
-                $userActiveBorrows = $this->supabaseRequest('GET', 'transactions', null, [
+                // Count active borrows with pagination
+                $userActiveBorrows = $this->fetchAllTransactions([
                     'user_id' => 'eq.' . $userData['id'],
                     'type' => 'eq.borrow',
                     'status' => 'eq.active'
                 ]);
                 
-                $activeBorrowCount = (!isset($userActiveBorrows['error']) && is_array($userActiveBorrows)) 
-                    ? count($userActiveBorrows) 
-                    : 0;
+                $activeBorrowCount = count($userActiveBorrows);
 
                 if ($activeBorrowCount >= $maxBorrow) {
                     return $this->response->setJSON([
@@ -259,6 +355,9 @@ class AutomateTransactionController extends Controller
                     'quantity' => $newQuantity,
                     'available' => $newQuantity > 0
                 ]);
+
+                // Clear cache
+                $this->cache->delete('all_books_automate_' . md5(json_encode([])));
 
                 log_message('info', 'Borrowing success: User=' . $userData['nama'] . ', Book=' . $bookData['title']);
 
@@ -319,6 +418,9 @@ class AutomateTransactionController extends Controller
                     'quantity' => $newQuantity,
                     'available' => true
                 ]);
+
+                // Clear cache
+                $this->cache->delete('all_books_automate_' . md5(json_encode([])));
 
                 // Update trust score
                 $this->updateTrustScore($userData['id'], $borrowDate, $dueDate);

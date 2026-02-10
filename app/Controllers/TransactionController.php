@@ -11,11 +11,13 @@ class TransactionController extends Controller
 {
     private $supabaseUrl;
     private $supabaseKey;
+    private $cache;
 
     public function __construct()
     {
         $this->supabaseUrl = getenv('SUPABASE_URL');
         $this->supabaseKey = getenv('SUPABASE_API_KEY');
+        $this->cache = \Config\Services::cache();
     }
 
     private function supabaseRequest($method, $endpoint, $data = null, $queryParams = [])
@@ -62,38 +64,225 @@ class TransactionController extends Controller
         return json_decode($response, true);
     }
 
+    private function fetchAllTransactions($queryParams = [])
+    {
+        $allTransactions = [];
+        $limit = 1000;
+        $offset = 0;
+        $hasMore = true;
+
+        log_message('info', 'Starting fetchAllTransactions with pagination');
+
+        while ($hasMore) {
+            $params = array_merge($queryParams, [
+                'limit' => $limit,
+                'offset' => $offset
+            ]);
+
+            $transactions = $this->supabaseRequest('GET', 'transactions', null, $params);
+
+            if (isset($transactions['error']) || !is_array($transactions)) {
+                log_message('error', 'Error fetching transactions at offset ' . $offset);
+                break;
+            }
+
+            $count = count($transactions);
+            log_message('info', "Fetched {$count} transactions at offset {$offset}");
+
+            if ($count > 0) {
+                $allTransactions = array_merge($allTransactions, $transactions);
+                $offset += $limit;
+                
+                if ($count < $limit) {
+                    $hasMore = false;
+                }
+            } else {
+                $hasMore = false;
+            }
+        }
+
+        log_message('info', 'Total transactions fetched: ' . count($allTransactions));
+        return $allTransactions;
+    }
+
+    private function fetchAllBooks($queryParams = [])
+    {
+        $cacheKey = 'all_books_' . md5(json_encode($queryParams));
+        $cachedBooks = $this->cache->get($cacheKey);
+
+        if ($cachedBooks !== null) {
+            log_message('info', 'Books fetched from cache: ' . count($cachedBooks) . ' books');
+            return $cachedBooks;
+        }
+
+        $allBooks = [];
+        $limit = 1000;
+        $offset = 0;
+        $hasMore = true;
+
+        log_message('info', 'Starting fetchAllBooks with pagination');
+
+        while ($hasMore) {
+            $params = array_merge($queryParams, [
+                'limit' => $limit,
+                'offset' => $offset
+            ]);
+
+            $books = $this->supabaseRequest('GET', 'books', null, $params);
+
+            if (isset($books['error']) || !is_array($books)) {
+                log_message('error', 'Error fetching books at offset ' . $offset);
+                break;
+            }
+
+            $count = count($books);
+            log_message('info', "Fetched {$count} books at offset {$offset}");
+
+            if ($count > 0) {
+                $allBooks = array_merge($allBooks, $books);
+                $offset += $limit;
+                
+                if ($count < $limit) {
+                    $hasMore = false;
+                }
+            } else {
+                $hasMore = false;
+            }
+        }
+
+        log_message('info', 'Total books fetched: ' . count($allBooks));
+        
+        // Cache for 5 minutes
+        $this->cache->save($cacheKey, $allBooks, 300);
+        
+        return $allBooks;
+    }
+
+    private function fetchAllUsers($queryParams = [])
+    {
+        $cacheKey = 'all_users_' . md5(json_encode($queryParams));
+        $cachedUsers = $this->cache->get($cacheKey);
+
+        if ($cachedUsers !== null) {
+            log_message('info', 'Users fetched from cache: ' . count($cachedUsers) . ' users');
+            return $cachedUsers;
+        }
+
+        $allUsers = [];
+        $limit = 1000;
+        $offset = 0;
+        $hasMore = true;
+
+        log_message('info', 'Starting fetchAllUsers with pagination');
+
+        while ($hasMore) {
+            $params = array_merge($queryParams, [
+                'limit' => $limit,
+                'offset' => $offset
+            ]);
+
+            $users = $this->supabaseRequest('GET', 'users', null, $params);
+
+            if (isset($users['error']) || !is_array($users)) {
+                log_message('error', 'Error fetching users at offset ' . $offset);
+                break;
+            }
+
+            $count = count($users);
+            log_message('info', "Fetched {$count} users at offset {$offset}");
+
+            if ($count > 0) {
+                $allUsers = array_merge($allUsers, $users);
+                $offset += $limit;
+                
+                if ($count < $limit) {
+                    $hasMore = false;
+                }
+            } else {
+                $hasMore = false;
+            }
+        }
+
+        log_message('info', 'Total users fetched: ' . count($allUsers));
+        
+        // Cache for 5 minutes
+        $this->cache->save($cacheKey, $allUsers, 300);
+        
+        return $allUsers;
+    }
+
+    /**
+     * Fetch all classes with pagination
+     */
+    private function fetchAllClasses($queryParams = [])
+    {
+        // Try cache first
+        $cacheKey = 'all_classes_' . md5(json_encode($queryParams));
+        $cachedClasses = $this->cache->get($cacheKey);
+
+        if ($cachedClasses !== null) {
+            log_message('info', 'Classes fetched from cache: ' . count($cachedClasses) . ' classes');
+            return $cachedClasses;
+        }
+
+        $allClasses = [];
+        $limit = 1000;
+        $offset = 0;
+        $hasMore = true;
+
+        log_message('info', 'Starting fetchAllClasses with pagination');
+
+        while ($hasMore) {
+            $params = array_merge($queryParams, [
+                'limit' => $limit,
+                'offset' => $offset
+            ]);
+
+            $classes = $this->supabaseRequest('GET', 'classes', null, $params);
+
+            if (isset($classes['error']) || !is_array($classes)) {
+                log_message('error', 'Error fetching classes at offset ' . $offset);
+                break;
+            }
+
+            $count = count($classes);
+            log_message('info', "Fetched {$count} classes at offset {$offset}");
+
+            if ($count > 0) {
+                $allClasses = array_merge($allClasses, $classes);
+                $offset += $limit;
+                
+                if ($count < $limit) {
+                    $hasMore = false;
+                }
+            } else {
+                $hasMore = false;
+            }
+        }
+
+        log_message('info', 'Total classes fetched: ' . count($allClasses));
+        
+        // Cache for 5 minutes
+        $this->cache->save($cacheKey, $allClasses, 300);
+        
+        return $allClasses;
+    }
+
     public function peminjaman()
     {
         $currentPicName = session()->get('name');
         $currentRole = session()->get('role');
 
-        // Get all transactions
-        $transactions = $this->supabaseRequest('GET', 'transactions', null, [
+        // Get all transactions with pagination
+        $transactions = $this->fetchAllTransactions([
             'select' => '*',
             'order' => 'created_at.desc'
         ]);
 
-        if (isset($transactions['error'])) {
-            $transactions = [];
-        }
-
-        // Get users
-        $users = $this->supabaseRequest('GET', 'users', null, [
-            'select' => '*'
-        ]);
-        $users = isset($users['error']) ? [] : $users;
-
-        // Get classes
-        $classes = $this->supabaseRequest('GET', 'classes', null, [
-            'select' => '*'
-        ]);
-        $classes = isset($classes['error']) ? [] : $classes;
-
-        // Get books
-        $books = $this->supabaseRequest('GET', 'books', null, [
-            'select' => '*'
-        ]);
-        $books = isset($books['error']) ? [] : $books;
+        // Get users, classes, books with pagination and caching
+        $users = $this->fetchAllUsers(['select' => '*']);
+        $classes = $this->fetchAllClasses(['select' => '*']);
+        $books = $this->fetchAllBooks(['select' => '*']);
         
         $usersById = [];
         foreach ($users as $user) {
@@ -137,7 +326,6 @@ class TransactionController extends Controller
                     $judul = $booksById[$bookId]['title'] ?? '-';
                 } else {
                     // Book not in cache, try to fetch it individually
-                    // This handles cases where the book exists but wasn't in the initial fetch
                     $singleBook = $this->supabaseRequest('GET', 'books', null, [
                         'id' => 'eq.' . $bookId,
                         'limit' => 1
@@ -214,305 +402,253 @@ class TransactionController extends Controller
             'tahunan' => ['borrowings' => $borrowingsByYear, 'returns' => $returnsByYear],
         ];
 
-        // Calculate percentage changes
         $currentMonth = date('Y-m');
         $prevMonth = date('Y-m', strtotime('-1 month'));
 
-        $borrowCurrent = $borrowingsByMonth[$currentMonth] ?? 0;
-        $borrowPrev = $borrowingsByMonth[$prevMonth] ?? 0;
-        $returnCurrent = $returnsByMonth[$currentMonth] ?? 0;
-        $returnPrev = $returnsByMonth[$prevMonth] ?? 0;
+        $totalBorrowed = $borrowingsByMonth[$currentMonth] ?? 0;
+        $totalReturned = $returnsByMonth[$currentMonth] ?? 0;
+        $prevBorrowed = $borrowingsByMonth[$prevMonth] ?? 0;
+        $prevReturned = $returnsByMonth[$prevMonth] ?? 0;
 
-        $calcPercent = function($now, $prev) {
-            if ($prev == 0) return $now > 0 ? 100 : 0;
-            return round((($now - $prev) / $prev) * 100);
-        };
+        $totalBorrowedPercent = $prevBorrowed > 0 
+            ? round((($totalBorrowed - $prevBorrowed) / $prevBorrowed) * 100, 1)
+            : 0;
 
-        return view('peminjaman', [
-            'totalAvailable' => count($books),
-            'availableBooks' => $books,
+        $totalReturnedPercent = $prevReturned > 0 
+            ? round((($totalReturned - $prevReturned) / $prevReturned) * 100, 1)
+            : 0;
+
+        $totalAvailablePercent = 0;
+
+        $data = [
             'borrowings' => $borrowRows,
             'returns' => $returnRows,
-            'totalBorrowed' => $borrowCurrent,
-            'totalBorrowedPercent' => $calcPercent($borrowCurrent, $borrowPrev),
-            'totalReturned' => $returnCurrent,
-            'totalReturnedPercent' => $calcPercent($returnCurrent, $returnPrev),
-            'totalAvailablePercent' => 0,
-            'chartData' => $chartData
-        ]);
-    }
+            'totalBorrowed' => $totalBorrowed,
+            'totalReturned' => $totalReturned,
+            'totalAvailable' => $totalAvailable,
+            'totalBorrowedPercent' => $totalBorrowedPercent,
+            'totalReturnedPercent' => $totalReturnedPercent,
+            'totalAvailablePercent' => $totalAvailablePercent,
+            'chartData' => $chartData,
+        ];
 
-    // Tambah bintang dan num_borrows hanya saat pengembalian sukses
-    private function updateBintangDanNumBorrows($userId)
-    {
-        // Ambil bintang & num_borrows
-        $user = $this->supabaseRequest('GET', 'users', null, [
-            'id' => 'eq.' . $userId,
-            'select' => 'trust_score,num_borrows',
-            'limit' => 1
-        ]);
-        if (isset($user['error']) || empty($user)) {
-            return false;
-        }
-        $currentTrustScore = (int)($user[0]['trust_score'] ?? 0);
-        $currentNumBorrows = (int)($user[0]['num_borrows'] ?? 0);
-
-        $this->supabaseRequest('PATCH', 'users?id=eq.' . $userId, [
-            'trust_score' => $currentTrustScore + 1,
-            'num_borrows' => $currentNumBorrows + 1
-        ]);
-        return true;
+        return view('peminjaman', $data);
     }
 
     public function addBorrowing()
     {
-        // Debug logging
-        log_message('info', '=== ADD BORROWING DEBUG ===');
-        log_message('info', 'POST Data: ' . json_encode($this->request->getPost()));
-        
-        $nama = $this->request->getPost('namaCari');
-        $judul = $this->request->getPost('judulCari');
-        $uidCari = trim($this->request->getPost('uidCari') ?? '');
-        
-        log_message('info', "Nama: $nama, Judul: $judul, UID: $uidCari");
+        try {
+            $userId = $this->request->getPost('user_id');
+            $bookId = $this->request->getPost('book_id');
+            $namaCari = $this->request->getPost('namaCari');
+            $judulCari = $this->request->getPost('judulCari');
+            $tanggal = $this->request->getPost('tanggal') ?: date('Y-m-d');
+            $picName = session()->get('name');
+            $picUsername = session()->get('username');
+            $picId = session()->get('user_id');
 
-        // Validasi input
-        if (empty($nama) || empty($judul)) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Nama Siswa dan Judul buku harus diisi'
-            ]);
-        }
-
-        // get user
-        $users = $this->supabaseRequest('GET', 'users', null, [
-            'nama' => 'eq.' . $nama,
-            'limit' => 1
-        ]);
-        
-        log_message('info', 'User Query Result: ' . json_encode($users));
-
-        if (isset($users['error']) || empty($users)) {
-            log_message('error', 'User not found for Nama: ' . $nama);
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Siswa dengan nama ' . $nama . ' tidak ditemukan'
-            ]);
-        }
-
-        $user = $users[0];
-        $userId = $user['id'];
-        $trustScore = (int)($user['trust_score'] ?? 0);
-
-        log_message('info', "Found User ID: $userId, Trust Score: $trustScore");
-
-        // Get max borrow from user table
-        $maxBorrow = (int)($user['maxBorrow'] ?? 1);
-        
-        // Count active borrowings
-        $activeBorrows = $this->supabaseRequest('GET', 'transactions', null, [
-            'user_id' => 'eq.' . $userId,
-            'type' => 'eq.borrow',
-            'status' => 'eq.active'
-        ]);
-
-        $activeBorrows = isset($activeBorrows['error']) ? [] : $activeBorrows;
-        
-        log_message('info', 'Active Borrows: ' . count($activeBorrows) . ' / Max: ' . $maxBorrow);
-
-        if (count($activeBorrows) >= $maxBorrow) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => "Batas maksimal peminjaman ($maxBorrow buku) telah tercapai. Trust Score: " . number_format($trustScore, 1)
-            ]);
-        }
-
-        // Find book
-        $books = $this->supabaseRequest('GET', 'books', null, [
-            'title' => 'eq.' . $judul,
-            'limit' => 1
-        ]);
-        
-        log_message('info', 'Book Query Result: ' . json_encode($books));
-
-        if (isset($books['error']) || empty($books)) {
-            log_message('error', 'Book not found: ' . $judul);
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Buku "' . $judul . '" tidak ditemukan'
-            ]);
-        }
-
-        $book = $books[0];
-        $bookId = $book['id'];
-
-        log_message('info', "Found Book ID: $bookId, Quantity: " . ($book['quantity'] ?? 0));
-
-        // Check quantity
-        if (($book['quantity'] ?? 0) < 1) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Stok buku habis'
-            ]);
-        }
-
-        // Validate UID if book has UIDs
-        $bookUids = $book['uid'] ?? [];
-        if (is_array($bookUids) && !empty($bookUids)) {
-            if (empty($uidCari)) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'UID wajib diisi untuk buku ini. Silakan tap/ketik UID buku.'
+            if (!empty($namaCari) && empty($userId)) {
+                $users = $this->supabaseRequest('GET', 'users', null, [
+                    'nama' => 'ilike.' . $namaCari,
+                    'role' => 'eq.murid',
+                    'limit' => 1
                 ]);
-            }
 
-            $uidFound = false;
-            foreach ($bookUids as $bookUid) {
-                if (strcasecmp(trim($bookUid), trim($uidCari)) === 0) {
-                    $uidFound = true;
-                    break;
+                if (isset($users['error']) || empty($users)) {
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => 'Siswa tidak ditemukan'
+                    ]);
                 }
+
+                $userId = $users[0]['id'];
             }
 
-            if (!$uidFound) {
-                log_message('error', 'UID not valid. Input: ' . $uidCari . ', Available: ' . json_encode($bookUids));
+            if (!empty($judulCari) && empty($bookId)) {
+                $books = $this->supabaseRequest('GET', 'books', null, [
+                    'title' => 'ilike.' . $judulCari,
+                    'limit' => 1
+                ]);
+
+                if (isset($books['error']) || empty($books)) {
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => 'Buku tidak ditemukan'
+                    ]);
+                }
+
+                $bookId = $books[0]['id'];
+            }
+
+            if (empty($userId) || empty($bookId)) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'UID tidak valid untuk buku ini'
+                    'message' => 'User dan buku wajib dipilih'
                 ]);
             }
-            
-            log_message('info', 'UID validated successfully: ' . $uidCari);
-        }
 
-        // due date
-        $isOneDayBook = $book['is_one_day_book'] ?? false;
-        $dueDays = $isOneDayBook ? 1 : 7;
-        $dueDate = date('Y-m-d', strtotime("+$dueDays days"));
+            // Get book data
+            $book = $this->supabaseRequest('GET', 'books', null, [
+                'id' => 'eq.' . $bookId,
+                'limit' => 1
+            ]);
 
-        log_message('info', "Due Date: $dueDate (Days: $dueDays)");
+            if (isset($book['error']) || empty($book)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Buku tidak ditemukan'
+                ]);
+            }
 
-        //transaction
-        $transactionData = [
-            'user_id' => $userId,
-            'book_id' => $bookId,
-            'uid' => $uidCari ?: null,
-            'type' => 'borrow',
-            'tanggal' => date('Y-m-d'),
-            'status' => 'active',
-            'pic_name' => session()->get('name') ?? 'Admin',
-            'pic_username' => session()->get('username') ?? 'admin',
-            'pic_id' => session()->get('id') ?? null,
-            'transaction_location' => 'perpustakaan',
-            'created_at' => date('Y-m-d H:i:s'),
-            'due_date' => $dueDate,
-            'completed_at' => null,
-            'completed_by_name' => null,
-            'completed_by_username' => null
-        ];
+            $bookData = $book[0];
+            $currentQty = (int)($bookData['quantity'] ?? 0);
 
-        log_message('info', 'Creating transaction: ' . json_encode($transactionData));
+            if ($currentQty < 1) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Stok buku habis'
+                ]);
+            }
 
-        $result = $this->supabaseRequest('POST', 'transactions', $transactionData);
+            // Get user data for trust score validation
+            $user = $this->supabaseRequest('GET', 'users', null, [
+                'id' => 'eq.' . $userId,
+                'limit' => 1
+            ]);
 
-        log_message('info', 'Transaction Result: ' . json_encode($result));
+            if (isset($user['error']) || empty($user)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'User tidak ditemukan'
+                ]);
+            }
 
-        if (isset($result['error'])) {
-            log_message('error', 'Failed to create transaction: ' . json_encode($result));
+            $userData = $user[0];
+            $maxBorrow = (int)($userData['maxBorrow'] ?? 1);
+
+            // Count active borrows using pagination
+            $userActiveBorrows = $this->fetchAllTransactions([
+                'user_id' => 'eq.' . $userId,
+                'type' => 'eq.borrow',
+                'status' => 'eq.active'
+            ]);
+
+            $activeBorrowCount = count($userActiveBorrows);
+
+            if ($activeBorrowCount >= $maxBorrow) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => "Batas maksimal peminjaman ($maxBorrow buku) telah tercapai"
+                ]);
+            }
+
+            // Calculate due date
+            $isOneDayBook = $bookData['is_one_day_book'] ?? false;
+            $dueDays = $isOneDayBook ? 1 : 7;
+            $dueDate = date('Y-m-d', strtotime($tanggal . " +$dueDays days"));
+
+            $transactionData = [
+                'user_id' => $userId,
+                'book_id' => $bookId,
+                'type' => 'borrow',
+                'tanggal' => $tanggal,
+                'due_date' => $dueDate,
+                'status' => 'active',
+                'pic_name' => $picName,
+                'pic_username' => $picUsername,
+                'pic_id' => $picId,
+                'transaction_location' => 'perpustakaan',
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+
+            $result = $this->supabaseRequest('POST', 'transactions', $transactionData);
+
+            if (isset($result['error'])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Gagal menyimpan transaksi peminjaman'
+                ]);
+            }
+
+            $newQuantity = $currentQty - 1;
+            $this->supabaseRequest('PATCH', 'books?id=eq.' . $bookId, [
+                'quantity' => $newQuantity,
+                'available' => $newQuantity > 0
+            ]);
+
+            $this->cache->delete('all_books_' . md5(json_encode(['select' => '*'])));
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Peminjaman berhasil dicatat'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error in addBorrowing: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal menyimpan transaksi peminjaman'
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
             ]);
         }
-
-        // Update book quantity
-        $newQty = $book['quantity'] - 1;
-        $updateResult = $this->supabaseRequest('PATCH', 'books?id=eq.' . $bookId, [
-            'quantity' => $newQty,
-            'available' => $newQty > 0
-        ]);
-        
-        // Hapus penambahan bintang di sini
-        // $this->updateBintang($userId); // HAPUS BARIS INI
-
-        log_message('info', 'Book Update Result: ' . json_encode($updateResult));
-
-        return $this->response->setJSON([
-            'success' => true,
-            'message' => 'Peminjaman berhasil!'
-        ]);
     }
 
     public function addReturn()
     {
-        // Support both single and multiple returns
-        $selectedLoansJson = $this->request->getPost('selectedLoans');
-        if ($selectedLoansJson) {
-            // Multiple returns
-            $selectedLoans = json_decode($selectedLoansJson, true);
-            if (!is_array($selectedLoans) || empty($selectedLoans)) {
+        try {
+            $selectedLoans = $this->request->getPost('selectedLoans');
+            $loanIds = $this->request->getPost('loan_id');
+            
+            $loansToProcess = [];
+
+            if (!empty($selectedLoans)) {
+                $decoded = json_decode($selectedLoans, true);
+                if (is_array($decoded)) {
+                    foreach ($decoded as $loan) {
+                        $loansToProcess[] = $loan['loanId'] ?? $loan['loan_id'] ?? null;
+                    }
+                }
+            }
+            elseif (!empty($loanIds)) {
+                if (!is_array($loanIds)) {
+                    $loansToProcess = [$loanIds];
+                } else {
+                    $loansToProcess = $loanIds;
+                }
+            }
+
+            if (empty($loansToProcess)) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Tidak ada data pengembalian yang dipilih.'
+                    'message' => 'Pilih minimal satu peminjaman untuk dikembalikan'
                 ]);
             }
 
-            $successCount = 0;
-            $failCount = 0;
-            $messages = [];
+            $processedCount = 0;
+            $errors = [];
 
-            foreach ($selectedLoans as $loan) {
-                $loanId = $loan['loanId'] ?? null;
-                $userId = $loan['userId'] ?? null;
-                $bookId = $loan['bookId'] ?? null;
+            foreach ($loansToProcess as $loanId) {
+                if (empty($loanId)) continue;
 
-                if (!$loanId || !$userId || !$bookId) {
-                    $failCount++;
-                    $messages[] = "Data tidak lengkap untuk pengembalian.";
-                    continue;
-                }
-
-                // Get user
-                $users = $this->supabaseRequest('GET', 'users', null, [
-                    'id' => 'eq.' . $userId,
-                    'limit' => 1
-                ]);
-                if (isset($users['error']) || empty($users)) {
-                    $failCount++;
-                    $messages[] = "Siswa tidak ditemukan.";
-                    continue;
-                }
-                $user = $users[0];
-
-                // Get book
-                $books = $this->supabaseRequest('GET', 'books', null, [
-                    'id' => 'eq.' . $bookId,
-                    'limit' => 1
-                ]);
-                if (isset($books['error']) || empty($books)) {
-                    $failCount++;
-                    $messages[] = "Buku tidak ditemukan.";
-                    continue;
-                }
-                $book = $books[0];
-
-                // Get active borrow transaction
-                $borrows = $this->supabaseRequest('GET', 'transactions', null, [
+                // Get borrow transaction
+                $borrowTransaction = $this->supabaseRequest('GET', 'transactions', null, [
                     'id' => 'eq.' . $loanId,
                     'type' => 'eq.borrow',
                     'status' => 'eq.active',
                     'limit' => 1
                 ]);
-                if (isset($borrows['error']) || empty($borrows)) {
-                    $failCount++;
-                    $messages[] = "Data peminjaman tidak ditemukan.";
+
+                if (isset($borrowTransaction['error']) || empty($borrowTransaction)) {
+                    $errors[] = 'Peminjaman ID ' . $loanId . ' tidak ditemukan';
                     continue;
                 }
-                $borrow = $borrows[0];
+
+                $borrow = $borrowTransaction[0];
+                $userId = $borrow['user_id'];
+                $bookId = $borrow['book_id'];
                 $borrowDate = $borrow['tanggal'];
                 $dueDate = $borrow['due_date'] ?? date('Y-m-d', strtotime($borrowDate . ' +7 days'));
 
-                // Insert return transaction
+                // Create return transaction
                 $returnData = [
                     'user_id' => $userId,
                     'book_id' => $bookId,
@@ -520,251 +656,209 @@ class TransactionController extends Controller
                     'tanggal' => date('Y-m-d'),
                     'status' => 'completed',
                     'pic_name' => session()->get('name'),
-                    'pic_username' => session()->get('role'),
-                    'transaction_location' => 'perpustakaan'
+                    'pic_username' => session()->get('username'),
+                    'pic_id' => session()->get('user_id'),
+                    'transaction_location' => 'perpustakaan',
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'completed_at' => date('Y-m-d H:i:s'),
+                    'completed_by_name' => session()->get('name'),
+                    'completed_by_username' => session()->get('username'),
+                    'due_date' => $dueDate
                 ];
+
                 $result = $this->supabaseRequest('POST', 'transactions', $returnData);
+
                 if (isset($result['error'])) {
-                    $failCount++;
-                    $messages[] = "Gagal menyimpan pengembalian.";
+                    $errors[] = 'Gagal menyimpan pengembalian untuk peminjaman ID ' . $loanId;
                     continue;
                 }
 
-                // Update status pinjam
+                // Update borrow status
                 $this->supabaseRequest('PATCH', 'transactions?id=eq.' . $loanId, [
                     'status' => 'completed',
                     'completed_at' => date('Y-m-d H:i:s'),
                     'completed_by_name' => session()->get('name'),
-                    'completed_by_username' => session()->get('role')
+                    'completed_by_username' => session()->get('username')
                 ]);
 
-                // Update quantity buku
-                $newQty = ($book['quantity'] ?? 0) + 1;
-                $this->supabaseRequest('PATCH', 'books?id=eq.' . $bookId, [
-                    'quantity' => $newQty,
-                    'available' => true
+                // Update book quantity
+                $book = $this->supabaseRequest('GET', 'books', null, [
+                    'id' => 'eq.' . $bookId,
+                    'limit' => 1
                 ]);
 
-                // Update bintang & num_borrows hanya saat pengembalian sukses
-                $this->updateBintangDanNumBorrows($userId);
+                if (!isset($book['error']) && !empty($book)) {
+                    $currentQty = (int)($book[0]['quantity'] ?? 0);
+                    $newQty = $currentQty + 1;
+                    $this->supabaseRequest('PATCH', 'books?id=eq.' . $bookId, [
+                        'quantity' => $newQty,
+                        'available' => true
+                    ]);
+                }
 
-                $successCount++;
+                // Update trust score
+                $this->updateTrustScore($userId, $borrowDate, $dueDate);
+
+                $processedCount++;
             }
 
-            $msg = "Pengembalian berhasil: $successCount, gagal: $failCount.";
-            if (!empty($messages)) {
-                $msg .= " " . implode(' ', $messages);
+            // Clear relevant caches
+            $this->cache->delete('all_books_' . md5(json_encode(['select' => '*'])));
+            $this->cache->delete('all_users_' . md5(json_encode(['select' => '*'])));
+
+            $message = 'Pengembalian berhasil untuk ' . $processedCount . ' buku!';
+            if (!empty($errors)) {
+                $message .= ' Terdapat ' . count($errors) . ' kesalahan.';
             }
+
             return $this->response->setJSON([
-                'success' => $successCount > 0,
-                'message' => $msg
+                'success' => true,
+                'message' => $message,
+                'processed' => $processedCount,
+                'errors' => $errors
             ]);
-        }
 
-        // ...existing code for single return...
-        $nama = $this->request->getPost('namaCariPengembalian');
-        $judul = $this->request->getPost('judulCariPengembalian');
-
-        // Find user
-        $users = $this->supabaseRequest('GET', 'users', null, [
-            'nama' => 'eq.' . $nama,
-            'limit' => 1
-        ]);
-
-        if (isset($users['error']) || empty($users)) {
+        } catch (\Exception $e) {
+            log_message('error', 'Error in addReturn: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Siswa tidak ditemukan'
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
             ]);
         }
+    }
 
-        $user = $users[0];
-        $userId = $user['id'];
-
-        // Find book
-        $books = $this->supabaseRequest('GET', 'books', null, [
-            'title' => 'eq.' . $judul,
-            'limit' => 1
-        ]);
-
-        if (isset($books['error']) || empty($books)) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Buku tidak ditemukan'
-            ]);
-        }
-
-        $book = $books[0];
-        $bookId = $book['id'];
-
-        // Find active borrow
-        $borrows = $this->supabaseRequest('GET', 'transactions', null, [
-            'user_id' => 'eq.' . $userId,
-            'book_id' => 'eq.' . $bookId,
-            'type' => 'eq.borrow',
-            'status' => 'eq.active',
-            'limit' => 1
-        ]);
-
-        if (isset($borrows['error']) || empty($borrows)) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Data peminjaman tidak ditemukan'
-            ]);
-        }
-
-        $borrow = $borrows[0];
-        $borrowId = $borrow['id'];
-        $borrowDate = $borrow['tanggal'];
-        $dueDate = $borrow['due_date'] ?? date('Y-m-d', strtotime($borrowDate . ' +7 days'));
-
-        $returnData = [
-            'user_id' => $userId,
-            'book_id' => $bookId,
-            'type' => 'return',
-            'tanggal' => date('Y-m-d'),
-            'status' => 'completed',
-            'pic_name' => session()->get('name'),
-            'pic_username' => session()->get('role'),
-            'transaction_location' => 'perpustakaan'
-        ];
-
-        $result = $this->supabaseRequest('POST', 'transactions', $returnData);
-
-        if (isset($result['error'])) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Gagal menyimpan pengembalian'
-            ]);
-        }
-
-        // Update status pinjam
-        $this->supabaseRequest('PATCH', 'transactions?id=eq.' . $borrowId, [
-            'status' => 'completed',
-            'completed_at' => date('Y-m-d H:i:s'),
-            'completed_by_name' => session()->get('name'),
-            'completed_by_username' => session()->get('role')
-        ]);
-
-        // Update quantity buku
-        $newQty = ($book['quantity'] ?? 0) + 1;
-        $this->supabaseRequest('PATCH', 'books?id=eq.' . $bookId, [
-            'quantity' => $newQty,
-            'available' => true
-        ]);
-
-        // Update bintang & num_borrows hanya saat pengembalian sukses
-        $this->updateBintangDanNumBorrows($userId);
-        $updatedUser = $this->supabaseRequest('GET', 'users', null, [
+    // Update trust score
+    private function updateTrustScore($userId, $borrowDate, $dueDate)
+    {
+        $user = $this->supabaseRequest('GET', 'users', null, [
             'id' => 'eq.' . $userId,
-            'select' => 'trust_score,num_borrows',
+            'select' => 'trust_score',
             'limit' => 1
         ]);
 
-        $newTrustScore = !isset($updatedUser['error']) && !empty($updatedUser) 
-            ? (int)$updatedUser[0]['trust_score'] 
-            : (int)($user['trust_score'] ?? 0);
+        if (isset($user['error']) || empty($user)) {
+            log_message('error', 'Failed to get user for trust score update');
+            return false;
+        }
 
-        $newNumBorrows = !isset($updatedUser['error']) && !empty($updatedUser)
-            ? (int)$updatedUser[0]['num_borrows']
-            : (int)($user['num_borrows'] ?? 0);
+        $currentScore = (float)($user[0]['trust_score'] ?? 100);
+        $returnDate = strtotime(date('Y-m-d'));
+        $dueTimestamp = strtotime($dueDate);
 
-        $isLate = strtotime(date('Y-m-d')) > strtotime($dueDate);
-        $scoreChange = $isLate ? '-2' : '+1';
-        $message = 'Pengembalian berhasil. Trust Score: ' . $newTrustScore . ', Total Peminjaman: ' . $newNumBorrows . " ($scoreChange)";
+        if ($returnDate <= $dueTimestamp) {
+            $newScore = $currentScore + 1;
+            $status = 'ontime';
+        } else {
+            $newScore = $currentScore;
+            $status = 'late';
+        }
 
-        return $this->response->setJSON([
-            'success' => true,
-            'message' => $message
+        $newScore = max(0, $newScore);
+
+        $updateResult = $this->supabaseRequest('PATCH', 'users?id=eq.' . $userId, [
+            'trust_score' => $newScore
         ]);
+
+        // Clear users cache
+        $this->cache->delete('all_users_' . md5(json_encode(['select' => '*'])));
+
+        log_message('info', "Trust score updated for user $userId: $currentScore -> $newScore ($status)");
+
+        return !isset($updateResult['error']);
     }
 
     public function apiBorrowings()
     {
-        $transactions = $this->supabaseRequest('GET', 'transactions', null, [
-            'type' => 'eq.borrow',
-            'select' => '*'
-        ]);
+        try {
+            $currentRole = session()->get('role');
+            $currentPicName = session()->get('name');
+            $classIdFilter = $this->request->getVar('class_id');
 
-        if (isset($transactions['error'])) {
-            log_message('error', 'API Borrowings Error: ' . print_r($transactions, true));
-            $transactions = [];
-        } else if (is_array($transactions)) {
-            // Fetch all books with pagination to add titles
-            $allBooks = [];
-            $limit = 1000;
-            $offset = 0;
-            $hasMore = true;
+            log_message('info', 'apiBorrowings called with class_id filter: ' . ($classIdFilter ?? 'none'));
 
-            while ($hasMore) {
-                $bookBatch = $this->supabaseRequest('GET', 'books', null, [
-                    'select' => 'id,title',
-                    'limit' => $limit,
-                    'offset' => $offset
-                ]);
-                
-                if (!isset($bookBatch['error']) && is_array($bookBatch)) {
-                    $count = count($bookBatch);
-                    if ($count > 0) {
-                        $allBooks = array_merge($allBooks, $bookBatch);
-                        $offset += $limit;
-                        if ($count < $limit) {
-                            $hasMore = false;
-                        }
-                    } else {
-                        $hasMore = false;
-                    }
-                } else {
-                    log_message('error', 'Failed to fetch book batch at offset ' . $offset);
-                    $hasMore = false;
-                }
+            $params = [
+                'type' => 'eq.borrow',
+                'status' => 'eq.active',
+                'select' => '*',
+                'order' => 'created_at.desc'
+            ];
+
+            // Apply PIC filter for non-admin
+            if ($currentRole !== 'admin') {
+                $params['pic_name'] = 'eq.' . $currentPicName;
             }
-            
-            if (!empty($allBooks)) {
-                log_message('info', 'API Borrowings: Retrieved ' . count($transactions) . ' transactions, ' . count($allBooks) . ' books');
+
+            // Fetch all transactions with pagination
+            $transactions = $this->fetchAllTransactions($params);
+
+            if (!empty($transactions)) {
+                $allUsers = $this->fetchAllUsers(['select' => 'id,nama,class_id']);
                 
-                // Create book lookup map for faster matching
+                // Create user lookup map
+                $userMap = [];
+                foreach ($allUsers as $user) {
+                    $userMap[$user['id']] = [
+                        'nama' => $user['nama'] ?? '-',
+                        'class_id' => $user['class_id'] ?? null
+                    ];
+                }
+
+                // Fetch all books with pagination and caching
+                $allBooks = $this->fetchAllBooks(['select' => 'id,title']);
+                
+                // Create book lookup map
                 $bookMap = [];
                 foreach ($allBooks as $book) {
                     if (isset($book['id']) && isset($book['title'])) {
-                        $bookId = (string)$book['id'];  // Convert to string for consistent matching
+                        $bookId = (string)$book['id'];
                         $bookMap[$bookId] = $book['title'];
                     }
                 }
                 
-                // Map book titles to transactions and filter for active status
                 $activeTransactions = [];
                 foreach ($transactions as $t) {
-                    // Set book title using the lookup map
+                    // Add book title
                     if (!empty($t['book_id'])) {
-                        $bookId = (string)$t['book_id'];  // Convert to string for matching
+                        $bookId = (string)$t['book_id'];
                         $t['book_title'] = isset($bookMap[$bookId]) ? $bookMap[$bookId] : '-';
-                        
-                        // Log unmatched books
-                        if ($t['book_title'] === '-') {
-                            log_message('warning', 'Book not found for transaction: book_id=' . $bookId . ', transaction_id=' . ($t['id'] ?? 'unknown'));
-                        }
                     } else {
                         $t['book_title'] = '-';
                     }
+
+                    // Add user info and class_id
+                    if (!empty($t['user_id']) && isset($userMap[$t['user_id']])) {
+                        $t['user_name'] = $userMap[$t['user_id']]['nama'];
+                        $t['user_class_id'] = $userMap[$t['user_id']]['class_id'];
+                    } else {
+                        $t['user_name'] = '-';
+                        $t['user_class_id'] = null;
+                    }
                     
-                    // Only include active borrowings
-                    if (isset($t['status']) && $t['status'] === 'active') {
+                    // Filter by class_id if specified
+                    if ($classIdFilter !== null) {
+                        if ($t['user_class_id'] == $classIdFilter) {
+                            $activeTransactions[] = $t;
+                        }
+                    } else {
                         $activeTransactions[] = $t;
                     }
                 }
                 
                 $transactions = $activeTransactions;
-                log_message('info', 'API Borrowings: After filtering, ' . count($transactions) . ' active transactions');
-            } else {
-                log_message('error', 'No books fetched from database');
             }
-        }
 
-        return $this->response->setJSON([
-            'success' => true,
-            'borrowings' => $transactions
-        ]);
+            return $this->response->setJSON([
+                'success' => true,
+                'borrowings' => $transactions
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error in apiBorrowings: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'borrowings' => []
+            ]);
+        }
     }
 
     public function apiAllBorrowings()
@@ -772,89 +866,141 @@ class TransactionController extends Controller
         try {
             $currentRole = session()->get('role');
             $currentPicName = session()->get('name');
+            $classIdFilter = $this->request->getVar('class_id'); 
             $page = (int)($this->request->getVar('page') ?? 1);
             $limit = (int)($this->request->getVar('limit') ?? 10);
-            $offset = ($page - 1) * $limit;
 
-            // Get paginated data - fetch without join first
-            $params = [
+            log_message('info', 'apiAllBorrowings called with class_id filter: ' . ($classIdFilter ?? 'none'));
+
+            $allParams = [
                 'type' => 'eq.borrow',
                 'select' => '*',
-                'order' => 'created_at.desc',
-                'limit' => $limit,
-                'offset' => $offset
+                'order' => 'created_at.desc'
+            ];
+
+            if ($currentRole !== 'admin') {
+                $allParams['pic_name'] = 'eq.' . $currentPicName;
+            }
+
+            $allTransactions = $this->fetchAllTransactions($allParams);
+
+            if ($classIdFilter !== null && !empty($allTransactions)) {
+                $allUsers = $this->fetchAllUsers(['select' => 'id,class_id']);
+                $userClassMap = [];
+                foreach ($allUsers as $user) {
+                    $userClassMap[$user['id']] = $user['class_id'] ?? null;
+                }
+
+                $filteredTransactions = [];
+                foreach ($allTransactions as $t) {
+                    $userClassId = isset($userClassMap[$t['user_id']]) ? $userClassMap[$t['user_id']] : null;
+                    if ($userClassId == $classIdFilter) {
+                        $filteredTransactions[] = $t;
+                    }
+                }
+                $allTransactions = $filteredTransactions;
+            }
+
+            $totalCount = count($allTransactions);
+            $offset = ($page - 1) * $limit;
+            $transactions = array_slice($allTransactions, $offset, $limit);
+
+            if (!empty($transactions)) {
+                $bookIds = array_unique(array_filter(array_column($transactions, 'book_id')));
+                
+                if (!empty($bookIds)) {
+                    $books = $this->supabaseRequest('GET', 'books', null, [
+                        'id' => 'in.(' . implode(',', $bookIds) . ')',
+                        'select' => 'id,title'
+                    ]);
+                    
+                    $bookMap = [];
+                    if (!isset($books['error']) && is_array($books)) {
+                        foreach ($books as $book) {
+                            $bookMap[$book['id']] = $book['title'];
+                        }
+                    }
+                    
+                    foreach ($transactions as &$t) {
+                        $t['book_title'] = isset($bookMap[$t['book_id']]) ? $bookMap[$t['book_id']] : '-';
+                    }
+                }
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'borrowings' => $transactions,
+                'totalCount' => $totalCount,
+                'page' => $page,
+                'limit' => $limit
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error in apiAllBorrowings: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'borrowings' => [],
+                'totalCount' => 0
+            ]);
+        }
+    }
+
+    public function apiReturns()
+    {
+        try {
+            $currentRole = session()->get('role');
+            $currentPicName = session()->get('name');
+            $classIdFilter = $this->request->getVar('class_id');
+
+            $params = [
+                'type' => 'eq.return',
+                'select' => '*',
+                'order' => 'created_at.desc'
             ];
 
             if ($currentRole !== 'admin') {
                 $params['pic_name'] = 'eq.' . $currentPicName;
             }
 
-            $transactions = $this->supabaseRequest('GET', 'transactions', null, $params);
+            $transactions = $this->fetchAllTransactions($params);
 
-            if (isset($transactions['error'])) {
-                $transactions = [];
-            } else if (is_array($transactions)) {
-                // Fetch book titles separately and attach
-                foreach ($transactions as &$t) {
-                    $t['book_title'] = '-';
-                    
-                    // Fetch the book title for this transaction
-                    if (isset($t['book_id']) && !empty($t['book_id'])) {
-                        $bookParams = [
-                            'id' => 'eq.' . intval($t['book_id']),
-                            'select' => 'id,title'
-                        ];
-                        $books = $this->supabaseRequest('GET', 'books', null, $bookParams);
+            if ($classIdFilter !== null && !empty($transactions)) {
+                $allUsers = $this->fetchAllUsers(['select' => 'id,nama,class_id']);
+                
+                $userMap = [];
+                foreach ($allUsers as $user) {
+                    $userMap[$user['id']] = [
+                        'nama' => $user['nama'] ?? '-',
+                        'class_id' => $user['class_id'] ?? null
+                    ];
+                }
+
+                $filteredTransactions = [];
+                foreach ($transactions as $t) {
+                    if (!empty($t['user_id']) && isset($userMap[$t['user_id']])) {
+                        $t['user_name'] = $userMap[$t['user_id']]['nama'];
+                        $t['user_class_id'] = $userMap[$t['user_id']]['class_id'];
                         
-                        if (is_array($books) && count($books) > 0) {
-                            $t['book_title'] = $books[0]['title'] ?? '-';
+                        if ($t['user_class_id'] == $classIdFilter) {
+                            $filteredTransactions[] = $t;
                         }
                     }
                 }
+                $transactions = $filteredTransactions;
             }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'returns' => $transactions
+            ]);
+
         } catch (\Exception $e) {
-            log_message('error', 'Error in apiAllBorrowings: ' . $e->getMessage());
-            $transactions = [];
+            log_message('error', 'Error in apiReturns: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'returns' => []
+            ]);
         }
-
-        // Get total count for pagination
-        $countParams = [
-            'type' => 'eq.borrow',
-            'select' => 'id'
-        ];
-
-        if ($currentRole !== 'admin') {
-            $countParams['pic_name'] = 'eq.' . $currentPicName;
-        }
-
-        $allTransactions = $this->supabaseRequest('GET', 'transactions', null, $countParams);
-        $totalCount = isset($allTransactions['error']) ? 0 : count($allTransactions);
-
-        return $this->response->setJSON([
-            'success' => true,
-            'borrowings' => $transactions,
-            'totalCount' => $totalCount,
-            'page' => $page,
-            'limit' => $limit
-        ]);
-    }
-
-    public function apiReturns()
-    {
-        $transactions = $this->supabaseRequest('GET', 'transactions', null, [
-            'type' => 'eq.return',
-            'select' => '*',
-            'order' => 'created_at.desc'
-        ]);
-
-        if (isset($transactions['error'])) {
-            $transactions = [];
-        }
-
-        return $this->response->setJSON([
-            'success' => true,
-            'returns' => $transactions
-        ]);
     }
 
     public function apiAllReturns()
@@ -862,70 +1008,80 @@ class TransactionController extends Controller
         try {
             $currentRole = session()->get('role');
             $currentPicName = session()->get('name');
+            $classIdFilter = $this->request->getVar('class_id');
             $page = (int)($this->request->getVar('page') ?? 1);
             $limit = (int)($this->request->getVar('limit') ?? 10);
-            $offset = ($page - 1) * $limit;
 
-            // Get paginated data - fetch without join first
-            $params = [
+            $allParams = [
                 'type' => 'eq.return',
                 'select' => '*',
-                'order' => 'created_at.desc',
-                'limit' => $limit,
-                'offset' => $offset
+                'order' => 'created_at.desc'
             ];
 
             if ($currentRole !== 'admin') {
-                $params['pic_name'] = 'eq.' . $currentPicName;
+                $allParams['pic_name'] = 'eq.' . $currentPicName;
             }
 
-            $transactions = $this->supabaseRequest('GET', 'transactions', null, $params);
+            $allTransactions = $this->fetchAllTransactions($allParams);
 
-            if (isset($transactions['error'])) {
-                $transactions = [];
-            } else if (is_array($transactions)) {
-                // Fetch book titles separately and attach
-                foreach ($transactions as &$t) {
-                    $t['book_title'] = '-';
+            if ($classIdFilter !== null && !empty($allTransactions)) {
+                $allUsers = $this->fetchAllUsers(['select' => 'id,class_id']);
+                $userClassMap = [];
+                foreach ($allUsers as $user) {
+                    $userClassMap[$user['id']] = $user['class_id'] ?? null;
+                }
+
+                $filteredTransactions = [];
+                foreach ($allTransactions as $t) {
+                    $userClassId = isset($userClassMap[$t['user_id']]) ? $userClassMap[$t['user_id']] : null;
+                    if ($userClassId == $classIdFilter) {
+                        $filteredTransactions[] = $t;
+                    }
+                }
+                $allTransactions = $filteredTransactions;
+            }
+
+            $totalCount = count($allTransactions);
+            $offset = ($page - 1) * $limit;
+            $transactions = array_slice($allTransactions, $offset, $limit);
+
+            if (!empty($transactions)) {
+                $bookIds = array_unique(array_filter(array_column($transactions, 'book_id')));
+                
+                if (!empty($bookIds)) {
+                    $books = $this->supabaseRequest('GET', 'books', null, [
+                        'id' => 'in.(' . implode(',', $bookIds) . ')',
+                        'select' => 'id,title'
+                    ]);
                     
-                    // Fetch the book title for this transaction
-                    if (isset($t['book_id']) && !empty($t['book_id'])) {
-                        $bookParams = [
-                            'id' => 'eq.' . intval($t['book_id']),
-                            'select' => 'id,title'
-                        ];
-                        $books = $this->supabaseRequest('GET', 'books', null, $bookParams);
-                        
-                        if (is_array($books) && count($books) > 0) {
-                            $t['book_title'] = $books[0]['title'] ?? '-';
+                    $bookMap = [];
+                    if (!isset($books['error']) && is_array($books)) {
+                        foreach ($books as $book) {
+                            $bookMap[$book['id']] = $book['title'];
                         }
+                    }
+                    
+                    foreach ($transactions as &$t) {
+                        $t['book_title'] = isset($bookMap[$t['book_id']]) ? $bookMap[$t['book_id']] : '-';
                     }
                 }
             }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'returns' => $transactions,
+                'totalCount' => $totalCount,
+                'page' => $page,
+                'limit' => $limit
+            ]);
+
         } catch (\Exception $e) {
             log_message('error', 'Error in apiAllReturns: ' . $e->getMessage());
-            $transactions = [];
+            return $this->response->setJSON([
+                'success' => false,
+                'returns' => [],
+                'totalCount' => 0
+            ]);
         }
-
-        // Get total count for pagination
-        $countParams = [
-            'type' => 'eq.return',
-            'select' => 'id'
-        ];
-
-        if ($currentRole !== 'admin') {
-            $countParams['pic_name'] = 'eq.' . $currentPicName;
-        }
-
-        $allTransactions = $this->supabaseRequest('GET', 'transactions', null, $countParams);
-        $totalCount = isset($allTransactions['error']) ? 0 : count($allTransactions);
-
-        return $this->response->setJSON([
-            'success' => true,
-            'returns' => $transactions,
-            'totalCount' => $totalCount,
-            'page' => $page,
-            'limit' => $limit
-        ]);
     }
 }

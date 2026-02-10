@@ -179,6 +179,9 @@
         <form id="transactionForm">
             <div class="modal-body">
                 <input type="hidden" id="selectedClassId" name="class_id">
+                <!-- HIDDEN FIELDS untuk menyimpan ID dari autocomplete -->
+                <input type="hidden" id="selectedUserId" name="user_id">
+                <input type="hidden" id="selectedBookId" name="book_id">
                 
                 <!-- Tambah peminjaman -->
                 <div id="peminjamanSection">
@@ -251,8 +254,8 @@ function refreshBorrowingsTable(page) {
         
         html += `<tr class="${statusClass}">
             <th scope="row">${rowNum}</th>
-            <td>${escapeHtml(t.nama)}</td>
-            <td>${escapeHtml(t.judul)}</td>
+            <td>${escapeHtml(t.user_name || t.nama || '-')}</td>
+            <td>${escapeHtml(t.book_title || t.judul || '-')}</td>
             <td>${escapeHtml(t.tanggal)}</td>
         </tr>`;
     });
@@ -331,8 +334,8 @@ function refreshReturnsTable(page) {
         
         html += `<tr>
             <th scope="row">${rowNum}</th>
-            <td>${escapeHtml(t.nama)}</td>
-            <td>${escapeHtml(t.judul)}</td>
+            <td>${escapeHtml(t.user_name || t.nama || '-')}</td>
+            <td>${escapeHtml(t.book_title || t.judul || '-')}</td>
             <td>${escapeHtml(t.tanggal)}</td>
         </tr>`;
     });
@@ -549,14 +552,28 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#namaCari').autocomplete({
             source: function(request, response) {
                 const results = classStudents
-                    .map(s => s.nama)
-                    .filter(nama => nama && nama.toLowerCase().includes(request.term.toLowerCase()));
+                    .map(s => ({
+                        label: s.nama,
+                        value: s.nama,
+                        id: s.id
+                    }))
+                    .filter(item => item.label && item.label.toLowerCase().includes(request.term.toLowerCase()));
                 response(results);
             },
             minLength: 1,
             select: function(event, ui) {
+                // SAVE USER ID ke hidden field
+                $('#selectedUserId').val(ui.item.id);
+                $('#namaCari').val(ui.item.value);
                 setTimeout(() => $('#judulCari').focus(), 100);
-                return true;
+                return false;
+            }
+        });
+        
+        // Clear user_id when input is cleared
+        $('#namaCari').on('input', function() {
+            if (!$(this).val().trim()) {
+                $('#selectedUserId').val('');
             }
         });
     }
@@ -601,6 +618,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Setup autocomplete for books (SERVER-SIDE)
     function setupBookAutocomplete() {
+        // Store books globally for lookup
+        window.allBooksSearchCache = {};
+        
         $('#judulCari').autocomplete({
             source: function(request, response) {
                 if (request.term.length < 1) {
@@ -609,22 +629,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 searchBooksServer(request.term, function(books) {
-                    const titles = books.map(b => b.title).filter(Boolean);
-                    response(titles);
+                    // Store books in global cache for select handler
+                    window.allBooksSearchCache = {};
+                    const results = books.map(b => ({
+                        label: b.title,
+                        value: b.title,
+                        id: b.id,
+                        uid: b.uid
+                    }));
+                    
+                    // Also cache by ID for quick lookup
+                    books.forEach(b => {
+                        window.allBooksSearchCache[b.title] = b;
+                    });
+                    
+                    response(results);
                 });
             },
             minLength: 1,
             select: function(event, ui) {
-                $(this).val(ui.item.value);
+                // SAVE BOOK ID ke hidden field
+                $('#selectedBookId').val(ui.item.id);
+                $('#judulCari').val(ui.item.value);
 
-                // Find the selected book from cache
-                let selectedBook = null;
-                for (const cacheKey in bookSearchCache) {
-                    const books = bookSearchCache[cacheKey].data;
-                    selectedBook = books.find(b => b.title === ui.item.value);
-                    if (selectedBook) break;
-                }
-
+                // Check if book has UID requirement
+                const selectedBook = window.allBooksSearchCache[ui.item.value];
                 if (selectedBook && selectedBook.uid && (
                     (Array.isArray(selectedBook.uid) && selectedBook.uid.length > 0) ||
                     (!Array.isArray(selectedBook.uid) && String(selectedBook.uid).trim() !== '')
@@ -640,24 +669,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
         $('#judulCari').on('input', function() {
             if (!$(this).val().trim()) {
+                $('#selectedBookId').val('');
                 $('#uidInputSection').hide();
             }
         });
     }
 
-    // autocomplete - REMOVED for pengembalian checklist
     // Return checklist functions
     function loadPengembalianChecklist() {
         const activeLoans = activeBorrowings || [];
         
-        console.log('Loading checklist with:', {
-            totalBorrowings: activeBorrowings.length,
-            activeLoans: activeLoans.length,
-            classStudents: classStudents.length
-        });
+        console.log('=== LOADING PENGEMBALIAN CHECKLIST ===');
+        console.log('Total active borrowings:', activeLoans.length);
+        console.log('Class students count:', classStudents.length);
+        console.log('Active borrowings data:', activeLoans);
+        console.log('Class students data:', classStudents);
 
         if (activeLoans.length === 0) {
-            $('#checklistPengembalian').html('<p class="text-muted text-center">Tidak ada peminjaman aktif.</p>');
+            $('#checklistPengembalian').html('<p class="text-muted text-center">Tidak ada peminjaman aktif di kelas ini.</p>');
+            console.warn('No active borrowings to display');
             return;
         }
 
@@ -665,6 +695,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const groupedByStudent = {};
         activeLoans.forEach(loan => {
             const studentId = loan.user_id;
+            if (!studentId) {
+                console.warn('Loan missing user_id:', loan);
+                return;
+            }
+            
             if (!groupedByStudent[studentId]) {
                 const student = classStudents.find(s => s.id === studentId) || {};
                 groupedByStudent[studentId] = {
@@ -675,11 +710,21 @@ document.addEventListener('DOMContentLoaded', function() {
             groupedByStudent[studentId].loans.push(loan);
         });
 
+        console.log('Grouped by student:', groupedByStudent);
+
         // Build checklist HTML
         let checklistHtml = '';
-        Object.keys(groupedByStudent).forEach(studentId => {
+        const studentIds = Object.keys(groupedByStudent);
+        
+        if (studentIds.length === 0) {
+            $('#checklistPengembalian').html('<p class="text-muted text-center">Tidak ada peminjaman aktif atau data siswa tidak cocok.</p>');
+            console.warn('No students matched with borrowings');
+            return;
+        }
+        
+        studentIds.forEach(studentId => {
             const { student, loans } = groupedByStudent[studentId];
-            const studentName = escapeHtml(student.nama || 'Unknown');
+            const studentName = escapeHtml(student.nama || 'Unknown Student');
             
             checklistHtml += `
             <div class="siswa-group mb-3 p-3" style="background-color: #f8f9fa; border-radius: 4px; border-left: 4px solid #007bff;">
@@ -688,8 +733,13 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             
             loans.forEach(loan => {
-                const bookTitle = escapeHtml(loan.judul || 'Unknown Book');
-                const loanId = escapeHtml(loan.id || '');
+                const loanId = loan.id || '';
+                const bookTitle = escapeHtml(loan.book_title || loan.judul || 'Unknown Book');
+                const borrowDate = escapeHtml(loan.tanggal || '-');
+                
+                if (!loanId) {
+                    console.warn('Loan missing ID:', loan);
+                }
                 
                 checklistHtml += `
                     <div class="form-check mb-2">
@@ -697,7 +747,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                data-loan-id="${loanId}" data-user-id="${studentId}">
                         <label class="form-check-label" for="return_${loanId}" style="cursor: pointer;">
                             <span style="color: #666; font-size: 14px;">${bookTitle}</span>
-                            <span style="color: #999; font-size: 12px; margin-left: 5px;">(${escapeHtml(loan.tanggal || '-')})</span>
+                            <span style="color: #999; font-size: 12px; margin-left: 5px;">(${borrowDate})</span>
                         </label>
                     </div>
                 `;
@@ -710,6 +760,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         $('#checklistPengembalian').html(checklistHtml);
+        console.log('Checklist HTML generated, total students:', studentIds.length);
         attachReturnChecklistListeners();
     }
 
@@ -775,7 +826,6 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#selectedClassId').val(currentClassId);
         
         $('#namaCari, #judulCari').attr('required', 'required');
-        // IGNORE UID
         $('#uidCari').removeAttr('required');
     });
 
@@ -791,8 +841,30 @@ document.addEventListener('DOMContentLoaded', function() {
         transactionForm.dataset.type = 'return';
         $('#selectedClassId').val(currentClassId);
         
-        // Load checklist directly - no need to wait
-        loadPengembalianChecklist();
+        // REMOVE required from peminjaman fields when switching to pengembalian mode
+        $('#namaCari, #judulCari').removeAttr('required');
+        
+        // Fetch active borrowings BEFORE loading checklist
+        console.log('=== PENGEMBALIAN BUTTON CLICKED ===');
+        console.log('Current class ID:', currentClassId);
+        
+        $.get("<?= base_url('peminjaman-kelas/transactions') ?>", {
+            class_id: currentClassId,
+            type: 'borrow'
+        }, function(response) {
+            console.log('Transactions fetch response:', response);
+            if (response.success) {
+                activeBorrowings = response.transactions.filter(t => t.status === 'active');
+                console.log('Active borrowings set to:', activeBorrowings);
+                loadPengembalianChecklist();
+            } else {
+                console.error('Failed to fetch transactions:', response);
+                showToast('Gagal memuat data peminjaman', 'error');
+            }
+        }).fail(function(error) {
+            console.error('AJAX error:', error);
+            showToast('Error: ' + error.statusText, 'error');
+        });
     });
 
     // Form submit handler
@@ -806,8 +878,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const formType = this.dataset.type;
         
         if (formType === 'borrow') {
+            $('#namaCari, #judulCari').attr('required', 'required');
             handlePeminjamanAdd();
         } else {
+            $('#namaCari, #judulCari').removeAttr('required');
             handlePengembalianAdd();
         }
     });
@@ -815,8 +889,20 @@ document.addEventListener('DOMContentLoaded', function() {
     function handlePeminjamanAdd() {
         const formData = new FormData(transactionForm);
         
-        if (!formData.get('namaCari').trim() || !formData.get('judulCari').trim()) {
+        const studentName = formData.get('namaCari').trim();
+        const bookTitle = formData.get('judulCari').trim();
+        const userId = formData.get('user_id').trim();
+        const bookId = formData.get('book_id').trim();
+        
+        // Validasi nama dan judul diisi
+        if (!studentName || !bookTitle) {
             showToast('Nama Siswa dan Judul Buku harus diisi!', 'error');
+            return;
+        }
+        
+        // Validasi bahwa user dan book dipilih dari autocomplete (ID harus ada)
+        if (!userId || !bookId) {
+            showToast('Silakan pilih Siswa dan Buku dari daftar yang muncul', 'error');
             return;
         }
         
@@ -847,6 +933,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Reset form
                     transactionForm.reset();
+                    $('#selectedUserId').val('');
+                    $('#selectedBookId').val('');
                     $('#uidInputSection').hide();
                 } else {
                     showToast(response.message || 'Gagal menambahkan peminjaman', 'error');
@@ -861,22 +949,37 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function handlePengembalianAdd() {
+        console.log('=== HANDLING PENGEMBALIAN (RETURN) ===');
+        
         const selectedLoans = [];
         $('#checklistPengembalian .return-checkbox:checked').each(function() {
+            const loanId = $(this).data('loan-id');
+            const userId = $(this).data('user-id');
+            
+            console.log('Checked loan:', { loanId, userId });
+            
             selectedLoans.push({
-                loanId: $(this).data('loan-id'),
-                userId: $(this).data('user-id')
+                loanId: loanId,
+                userId: userId
             });
         });
 
+        console.log('Total selected loans:', selectedLoans.length);
+        console.log('Selected loans data:', selectedLoans);
+
         if (selectedLoans.length === 0) {
             showToast('Pilih minimal satu buku untuk dikembalikan!', 'error');
+            console.warn('No loans selected for return');
             return;
         }
 
         const formData = new FormData();
         formData.append('class_id', currentClassId);
         formData.append('selectedLoans', JSON.stringify(selectedLoans));
+
+        console.log('FormData to send:');
+        console.log('- class_id:', currentClassId);
+        console.log('- selectedLoans (JSON):', JSON.stringify(selectedLoans));
 
         isFormSubmitting = true;
         
@@ -889,6 +992,8 @@ document.addEventListener('DOMContentLoaded', function() {
             dataType: 'json',
             success: function(response) {
                 isFormSubmitting = false;
+                
+                console.log('Return response:', response);
                 
                 if (response.success) {
                     $(modalElement).modal('hide');
@@ -908,19 +1013,32 @@ document.addEventListener('DOMContentLoaded', function() {
                     transactionForm.reset();
                     $('#searchSiswaReturn').val('');
                 } else {
-                    showToast(response.message || 'Gagal menambahkan pengembalian', 'error');
+                    const errorMsg = response.message || 'Gagal menambahkan pengembalian';
+                    console.error('Return failed:', errorMsg);
+                    showToast(errorMsg, 'error');
                 }
             },
             error: function(xhr) {
                 isFormSubmitting = false;
-                console.error('AJAX Error:', xhr.responseText);
-                showToast('Terjadi kesalahan saat menambah pengembalian', 'error');
+                console.error('AJAX Error Status:', xhr.status);
+                console.error('AJAX Error Text:', xhr.responseText);
+                
+                let errorMsg = 'Terjadi kesalahan saat menambah pengembalian';
+                if (xhr.status === 0) {
+                    errorMsg = 'Koneksi terputus. Periksa jaringan Anda.';
+                } else if (xhr.status === 500) {
+                    errorMsg = 'Server error. Hubungi administrator.';
+                }
+                
+                showToast(errorMsg, 'error');
             }
         });
     }
 
     $(modalElement).on('hidden.bs.modal', function() {
         transactionForm.reset();
+        $('#selectedUserId').val('');
+        $('#selectedBookId').val('');
         $('#uidInputSection').hide();
         $('#searchSiswaReturn').val('');
         isFormSubmitting = false;
