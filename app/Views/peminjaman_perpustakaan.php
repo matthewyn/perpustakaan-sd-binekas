@@ -14,6 +14,17 @@
         padding: 0;
         margin: 0;
     }
+    .flot-chart-content .flot-x-axis .flot-tick-label {
+        display: flex;
+        justify-content: center;
+        transform: rotate(-45deg);
+        transform-origin: center;
+        white-space: nowrap;
+        font-size: 12px;
+    }
+    .flot-chart {
+        min-height: 150px;
+    }
 </style>
 <div class="container mt-4">
     <nav aria-label="breadcrumb">
@@ -24,6 +35,11 @@
         <li class="breadcrumb-item active" aria-current="page">Peminjaman Perpustakaan</li>
     </ol>
     </nav>
+    <div class="mb-3">
+        <small class="text-muted">
+            <i class="bi bi-info-circle"></i> Statistik di bawah ini berdasarkan data bulan ini dibandingkan dengan bulan sebelumnya
+        </small>
+    </div>
     <div class="row g-3">
         <div class="col">
             <div class="card border-light">
@@ -68,9 +84,9 @@
                     <h2><?= esc($totalAvailable) ?></h2>
                     <div class="d-flex align-items-center">
                         <span>Total buku yang bertambah</span>
-                        <span class="ms-auto text-success">
+                        <span class="ms-auto <?= ($totalAvailablePercent < 0 ? 'text-danger' : 'text-success') ?>">
                             <?= ($totalAvailablePercent >= 0 ? '+' : '') . esc($totalAvailablePercent) ?>%
-                            <i class="bi bi-caret-up-fill text-success"></i>
+                            <i class="bi <?= ($totalAvailablePercent < 0 ? 'bi-caret-down-fill text-danger' : 'bi-caret-up-fill text-success') ?>"></i>
                         </span>
                     </div>
                 </div>
@@ -323,7 +339,6 @@ document.addEventListener('DOMContentLoaded', function() {
         fetchTimeout = setTimeout(() => {
             const failed = Object.keys(dataReady).filter(key => !dataReady[key]);
             if (failed.length > 0) {
-                console.warn('Data loading timeout:', failed);
                 showToast(`Gagal memuat beberapa data: ${failed.join(', ')}`);
             }
         }, DATA_LOAD_TIMEOUT);
@@ -380,8 +395,26 @@ document.addEventListener('DOMContentLoaded', function() {
             { label: "Pinjam", data: flotData.borrow, color: "#1ab394", bars: { show: true, align: "center", barWidth: 24*60*60*600, lineWidth:0 } },
             { label: "Kembali", data: flotData.return, yaxis: 2, color: "#1C84C6", lines: { lineWidth:1, show: true, fill: true } }
         ];
+        
+        let tickSize = [1, "day"];
+        const dataPoints = flotData.borrow.length + flotData.return.length;
+        if (dataPoints > 20) {
+            tickSize = [5, "day"];
+        }
+        if (dataPoints > 40) {
+            tickSize = [7, "day"];
+        }
+        
         var options = {
-            xaxis: { mode: "time", tickSize: [1, "day"], tickLength: 0 },
+            xaxis: { 
+                mode: "time", 
+                tickSize: tickSize, 
+                tickLength: 0,
+                tickFormatter: function(val, axis) {
+                    const date = new Date(val);
+                    return (date.getMonth() + 1) + '/' + date.getDate();
+                }
+            },
             yaxes: [{ position: "left" }, { position: "right" }],
             legend: { noColumns: 1, position: "nw" },
             grid: { hoverable: false, borderWidth: 0 }

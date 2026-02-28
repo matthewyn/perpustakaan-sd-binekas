@@ -171,7 +171,7 @@
                                         style="text-decoration: none; color: inherit;">&nbsp;&nbsp;&nbsp;&nbsp;Kelas</a>
                                     </li>
                                     <li class="list-group-item text-bg-dark border-0 text-mobile-md">
-                                        <a href="<?= base_url('peminjaman') ?>"
+                                        <a href="<?= base_url('peminjaman-perpustakaan') ?>"
                                         style="text-decoration: none; color: inherit;">&nbsp;&nbsp;&nbsp;&nbsp;Perpustakaan</a>
                                     </li>
                                 </ul>

@@ -21,10 +21,10 @@ $routes->get('login', 'AuthController::login');
 $routes->post('login', 'AuthController::attemptLogin');
 $routes->get('logout', 'AuthController::logout');
 
-$routes->get('peminjaman', 'TransactionController::peminjaman');
-$routes->post('peminjaman/add', 'TransactionController::addBorrowing');
-$routes->post('peminjaman/return', 'TransactionController::addReturn');
-$routes->post('peminjaman/return-multiple', 'TransactionController::addReturn');
+$routes->get('peminjaman-perpustakaan', 'TransactionController::peminjaman');
+$routes->post('peminjaman-perpustakaan/add', 'TransactionController::addBorrowing');
+$routes->post('peminjaman-perpustakaan/return', 'TransactionController::addReturn');
+$routes->post('peminjaman-perpustakaan/return-multiple', 'TransactionController::addReturn');
 
 $routes->get('api/borrowings', 'TransactionController::apiBorrowings');
 $routes->get('api/borrowings-all', 'TransactionController::apiAllBorrowings');

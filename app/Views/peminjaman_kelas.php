@@ -639,7 +639,6 @@ document.addEventListener('DOMContentLoaded', function() {
         activeLoans.forEach(loan => {
             const studentId = loan.user_id;
             if (!studentId) {
-                console.warn('Loan missing user_id:', loan);
                 return;
             }
             

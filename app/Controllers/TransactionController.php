@@ -357,7 +357,7 @@ class TransactionController extends Controller
         }
 
         // Calculate statistics
-        $totalAvailable = count(array_filter($books, fn($b) => $b['available'] ?? false));
+        $totalAvailable = count($books);
         
         // Chart data (daily, monthly, yearly)
         $borrowingsByDay = [];
@@ -418,7 +418,13 @@ class TransactionController extends Controller
             ? round((($totalReturned - $prevReturned) / $prevReturned) * 100, 1)
             : 0;
 
-        $totalAvailablePercent = 0;
+        // Calculate percentage change based on net books (borrowed - returned)
+        $currentNetBooks = $totalBorrowed - $totalReturned;
+        $prevNetBooks = $prevBorrowed - $prevReturned;
+        
+        $totalAvailablePercent = $prevNetBooks > 0 
+            ? round((($currentNetBooks - $prevNetBooks) / $prevNetBooks) * 100, 1)
+            : ($currentNetBooks > 0 ? 100 : 0);
 
         $data = [
             'borrowings' => $borrowRows,
@@ -432,7 +438,7 @@ class TransactionController extends Controller
             'chartData' => $chartData,
         ];
 
-        return view('peminjaman', $data);
+        return view('peminjaman_perpustakaan', $data);
     }
 
     public function addBorrowing()
