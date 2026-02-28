@@ -97,7 +97,6 @@
     </div>
 </div>
 
-<!-- Modal Tambah Kelas -->
 <div class="modal fade" id="addKelasModal" tabindex="-1">
   <div class="modal-dialog">
     <form id="kelasForm" class="modal-content">
@@ -120,7 +119,6 @@
   </div>
 </div>
 
-<!-- Modal Edit Kelas -->
 <div class="modal fade" id="editKelasModal" tabindex="-1">
   <div class="modal-dialog modal-xl">
     <form id="editKelasForm" class="modal-content">
@@ -160,7 +158,6 @@
   </div>
 </div>
 
-<!-- Modal Detail Kelas -->
 <div class="modal fade" id="detailKelasModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -191,7 +188,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const detailModal = new bootstrap.Modal(document.getElementById('detailKelasModal'));
     let currentClassId = null;
 
-    // Tambah Kelas
     document.getElementById('btnTambahKelas').addEventListener('click', () => {
         document.getElementById('kelasForm').reset();
         addModal.show();
@@ -218,7 +214,6 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(err => showToast('Terjadi kesalahan', 'error'));
     });
 
-    // Edit Kelas
     document.querySelectorAll('.btn-edit-class').forEach(btn => {
         btn.addEventListener('click', function() {
             const row = this.closest('tr');
@@ -346,7 +341,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Detail Kelas
     document.querySelectorAll('.btn-view-class').forEach(btn => {
         btn.addEventListener('click', function() {
             const classId = this.closest('tr').dataset.classId;
@@ -373,7 +367,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Delete Kelas
     document.querySelectorAll('.btn-delete-class').forEach(btn => {
         btn.addEventListener('click', function() {
             if (!confirm('Yakin ingin menghapus kelas ini?')) return;
@@ -393,7 +386,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Search functionality
     ['Students'].forEach(type => {
         ['Available', 'Assigned'].forEach(status => {
             const searchId = `search${status}${type}`;
@@ -409,7 +401,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Table search
     document.getElementById('searchKelas').addEventListener('input', function() {
         const query = this.value.toLowerCase();
         document.querySelectorAll('#kelasTableBody tr').forEach(row => {

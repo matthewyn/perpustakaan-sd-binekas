@@ -27,7 +27,6 @@
         </ol>
     </nav>
 
-    <!-- HEADER KELAS -->
     <div class="card border-light shadow-sm mt-4" id="headerKelasCard" style="<?= session('role') === 'guru' ? 'display: none;' : '' ?>">
         <div class="card-body">
             <div class="row align-items-center">
@@ -49,7 +48,6 @@
         </div>
     </div>
 
-    <!-- GURU CLASS INFO -->
     <div class="alert alert-info mt-4" id="guruClassInfo" style="<?= session('role') === 'guru' ? '' : 'display: none;' ?>">
         <strong>Kelas Anda: <span id="guruClassName">-</span></strong><br>
         <small>Siswa: <span id="guruStudentCount">0</span></small>
@@ -62,7 +60,6 @@
         </button>
     </div>
 
-    <!-- LIST PEMINJAMAN -->
     <div class="card border-light mt-4">
         <div class="card-header d-flex align-items-center justify-content-between">
             List peminjaman
@@ -73,7 +70,6 @@
         </div>
         <div class="card-body">
             <div class="collapse" id="collapsePeminjamanExample">
-                <!-- SEARCH -->
                 <div class="d-flex justify-content-end mb-3">
                     <div class="input-group input-group-sm" style="width: 250px;">
                         <input type="text" id="searchPeminjaman" class="form-control" 
@@ -84,7 +80,6 @@
                     </div>
                 </div>
 
-                <!-- TABLE -->
                 <table class="table table-hover table-striped">
                     <thead>
                         <tr>
@@ -104,7 +99,6 @@
                 </table>
                 <nav aria-label="Pagination untuk peminjaman">
                     <ul class="pagination" id="paginationBorrowings">
-                        <!-- Generated dynamically by JavaScript -->
                     </ul>
                 </nav>
             </div>
@@ -118,7 +112,6 @@
         </button>
     </div>
 
-    <!-- LIST PENGEMBALIAN -->
     <div class="card border-light mt-4">
         <div class="card-header d-flex align-items-center justify-content-between">
             List pengembalian
@@ -129,7 +122,6 @@
         </div>
         <div class="card-body">
             <div class="collapse" id="collapsePengembalianExample">
-                <!-- SEARCH -->
                 <div class="d-flex justify-content-end mb-3">
                     <div class="input-group input-group-sm" style="width: 250px;">
                         <input type="text" id="searchPengembalian" class="form-control" 
@@ -140,7 +132,6 @@
                     </div>
                 </div>
 
-                <!-- TABLE -->
                 <table class="table table-hover table-striped">
                     <thead>
                         <tr>
@@ -160,7 +151,6 @@
                 </table>
                 <nav aria-label="Pagination untuk pengembalian">
                     <ul class="pagination" id="paginationReturns">
-                        <!-- Generated dynamically by JavaScript -->
                     </ul>
                 </nav>
             </div>
@@ -168,7 +158,6 @@
     </div>
 </div>
 
-<!-- Modal -->
 <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -179,11 +168,9 @@
         <form id="transactionForm">
             <div class="modal-body">
                 <input type="hidden" id="selectedClassId" name="class_id">
-                <!-- HIDDEN FIELDS untuk menyimpan ID dari autocomplete -->
                 <input type="hidden" id="selectedUserId" name="user_id">
                 <input type="hidden" id="selectedBookId" name="book_id">
                 
-                <!-- Tambah peminjaman -->
                 <div id="peminjamanSection">
                     <div class="row mb-3">
                         <div class="col siswa-select">
@@ -201,7 +188,6 @@
                     </div>
                 </div>
                 
-                <!-- Tambah pengembalian -->
                 <div id="pengembalianSection" style="display: none;">
                     <div class="mb-3">
                         <label for="searchSiswaReturn" class="form-label">Cari Nama Siswa</label>
@@ -225,14 +211,12 @@
 </div>
 
 <script>
-// Pagination variables (global scope)
 const ITEMS_PER_PAGE = 25;
 let borrowingsData = [];
 let returnsData = [];
 let currentBorrowingsPage = 1;
 let currentReturnsPage = 1;
 
-// Pagination functions (global scope)
 function refreshBorrowingsTable(page) {
     currentBorrowingsPage = page;
     const tbody = $('#tbodyBorrowings');
@@ -275,12 +259,10 @@ function renderBorrowingsPagination() {
     
     let html = '';
     
-    // Previous button
     html += `<li class="page-item ${currentBorrowingsPage === 1 ? 'disabled' : ''}">
         <a class="page-link" href="javascript:void(0)" onclick="refreshBorrowingsTable(${currentBorrowingsPage - 1})">Previous</a>
     </li>`;
     
-    // Page numbers
     const maxVisiblePages = 5;
     let startPage = Math.max(1, currentBorrowingsPage - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
@@ -306,7 +288,6 @@ function renderBorrowingsPagination() {
         html += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="refreshBorrowingsTable(${totalPages})">${totalPages}</a></li>`;
     }
     
-    // Next button
     html += `<li class="page-item ${currentBorrowingsPage === totalPages ? 'disabled' : ''}">
         <a class="page-link" href="javascript:void(0)" onclick="refreshBorrowingsTable(${currentBorrowingsPage + 1})">Next</a>
     </li>`;
@@ -355,12 +336,10 @@ function renderReturnsPagination() {
     
     let html = '';
     
-    // Previous button
     html += `<li class="page-item ${currentReturnsPage === 1 ? 'disabled' : ''}">
         <a class="page-link" href="javascript:void(0)" onclick="refreshReturnsTable(${currentReturnsPage - 1})">Previous</a>
     </li>`;
     
-    // Page numbers
     const maxVisiblePages = 5;
     let startPage = Math.max(1, currentReturnsPage - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
@@ -386,7 +365,6 @@ function renderReturnsPagination() {
         html += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="refreshReturnsTable(${totalPages})">${totalPages}</a></li>`;
     }
     
-    // Next button
     html += `<li class="page-item ${currentReturnsPage === totalPages ? 'disabled' : ''}">
         <a class="page-link" href="javascript:void(0)" onclick="refreshReturnsTable(${currentReturnsPage + 1})">Next</a>
     </li>`;
@@ -394,7 +372,6 @@ function renderReturnsPagination() {
     paginationContainer.html(html);
 }
 
-// Utility function (global scope)
 function escapeHtml(text) {
     const map = {
         '&': '&amp;',
@@ -423,22 +400,18 @@ document.addEventListener('DOMContentLoaded', function() {
     let activeBorrowings = [];
     let allClasses = <?= json_encode($classes) ?>;
     
-    // Get current user info
     const userRole = "<?= session('role') ?>";
     const userClassId = "<?= session('class_id') ?>";
     
     let isFormSubmitting = false;
-    let showClassSelectionToast = true; // Flag to control toast display
+    let showClassSelectionToast = true;
     
-    // Cache for class data
     const classDataCache = {};
-    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+    const CACHE_DURATION = 5 * 60 * 1000;
     
-    // Cache for book searches (local only)
     const bookSearchCache = {};
-    const BOOK_SEARCH_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+    const BOOK_SEARCH_CACHE_DURATION = 10 * 60 * 1000;
 
-    // Collapse icon toggle
     const collapsePeminjaman = document.getElementById('collapsePeminjamanExample');
     const chevronPeminjaman = document.querySelector('[data-bs-target="#collapsePeminjamanExample"]');
     const collapsePengembalian = document.getElementById('collapsePengembalianExample');
@@ -466,7 +439,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Autocomplete for class
     $('#CariKelas').autocomplete({
         source: function(request, response) {
             const results = allClasses
@@ -486,7 +458,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // CACHING
     function loadClassData(classId) {
         currentClassId = classId;
         
@@ -494,12 +465,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const cachedData = classDataCache[classId];
         
         if (cachedData && (now - cachedData.timestamp) < CACHE_DURATION) {
-            console.log('Using cached data for class', classId);
             processClassData(cachedData.data);
             return;
         }
         
-        // Fetch from server
         $.get("<?= base_url('peminjaman-kelas/class-data') ?>", { class_id: classId }, function(response) {
             if (response.success) {
                 classDataCache[classId] = {
@@ -527,7 +496,6 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#bookCount').text(classBooks.length);
         $('#classInfo').removeClass('d-none');
         
-        // Update guru class info
         $('#guruClassName').text(currentClassName);
         $('#guruStudentCount').text(classStudents.length);
         $('#guruBookCount').text(classBooks.length);
@@ -540,14 +508,12 @@ document.addEventListener('DOMContentLoaded', function() {
         loadTransactions('borrow');
         loadTransactions('return');
         
-        // Only show toast if this is a fresh class selection, not a data refresh
         if (showClassSelectionToast) {
             showToast('Kelas ' + currentClassName + ' berhasil dipilih');
         }
-        showClassSelectionToast = true; // Reset flag for next selection
+        showClassSelectionToast = true;
     }
 
-    // Setup autocomplete for student
     function setupStudentAutocomplete() {
         $('#namaCari').autocomplete({
             source: function(request, response) {
@@ -562,7 +528,6 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             minLength: 1,
             select: function(event, ui) {
-                // SAVE USER ID ke hidden field
                 $('#selectedUserId').val(ui.item.id);
                 $('#namaCari').val(ui.item.value);
                 setTimeout(() => $('#judulCari').focus(), 100);
@@ -570,7 +535,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // Clear user_id when input is cleared
         $('#namaCari').on('input', function() {
             if (!$(this).val().trim()) {
                 $('#selectedUserId').val('');
@@ -578,19 +542,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Server-side book search function with client-side caching
     function searchBooksServer(searchTerm, callback) {
         const now = Date.now();
         const cacheKey = 'search_' + searchTerm.toLowerCase();
         
-        // Check cache
         if (bookSearchCache[cacheKey] && (now - bookSearchCache[cacheKey].timestamp) < BOOK_SEARCH_CACHE_DURATION) {
-            console.log('Using cached book search:', cacheKey);
             callback(bookSearchCache[cacheKey].data);
             return;
         }
         
-        // Fetch from server
         $.get("<?= base_url('books/search-autocomplete') ?>", {
             search: searchTerm,
             limit: 50
@@ -598,13 +558,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.success && Array.isArray(response.books)) {
                 const books = response.books;
                 
-                // Cache the results
                 bookSearchCache[cacheKey] = {
                     data: books,
                     timestamp: now
                 };
                 
-                console.log('Books fetched from server:', books.length);
                 callback(books);
             } else {
                 console.error('Invalid search response');
@@ -616,9 +574,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Setup autocomplete for books (SERVER-SIDE)
     function setupBookAutocomplete() {
-        // Store books globally for lookup
         window.allBooksSearchCache = {};
         
         $('#judulCari').autocomplete({
@@ -629,7 +585,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 searchBooksServer(request.term, function(books) {
-                    // Store books in global cache for select handler
                     window.allBooksSearchCache = {};
                     const results = books.map(b => ({
                         label: b.title,
@@ -638,7 +593,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         uid: b.uid
                     }));
                     
-                    // Also cache by ID for quick lookup
                     books.forEach(b => {
                         window.allBooksSearchCache[b.title] = b;
                     });
@@ -648,11 +602,9 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             minLength: 1,
             select: function(event, ui) {
-                // SAVE BOOK ID ke hidden field
                 $('#selectedBookId').val(ui.item.id);
                 $('#judulCari').val(ui.item.value);
 
-                // Check if book has UID requirement
                 const selectedBook = window.allBooksSearchCache[ui.item.value];
                 if (selectedBook && selectedBook.uid && (
                     (Array.isArray(selectedBook.uid) && selectedBook.uid.length > 0) ||
@@ -675,23 +627,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Return checklist functions
     function loadPengembalianChecklist() {
         const activeLoans = activeBorrowings || [];
-        
-        console.log('=== LOADING PENGEMBALIAN CHECKLIST ===');
-        console.log('Total active borrowings:', activeLoans.length);
-        console.log('Class students count:', classStudents.length);
-        console.log('Active borrowings data:', activeLoans);
-        console.log('Class students data:', classStudents);
 
         if (activeLoans.length === 0) {
             $('#checklistPengembalian').html('<p class="text-muted text-center">Tidak ada peminjaman aktif di kelas ini.</p>');
-            console.warn('No active borrowings to display');
             return;
         }
 
-        // Group by student
         const groupedByStudent = {};
         activeLoans.forEach(loan => {
             const studentId = loan.user_id;
@@ -710,15 +653,11 @@ document.addEventListener('DOMContentLoaded', function() {
             groupedByStudent[studentId].loans.push(loan);
         });
 
-        console.log('Grouped by student:', groupedByStudent);
-
-        // Build checklist HTML
         let checklistHtml = '';
         const studentIds = Object.keys(groupedByStudent);
         
         if (studentIds.length === 0) {
             $('#checklistPengembalian').html('<p class="text-muted text-center">Tidak ada peminjaman aktif atau data siswa tidak cocok.</p>');
-            console.warn('No students matched with borrowings');
             return;
         }
         
@@ -736,10 +675,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const loanId = loan.id || '';
                 const bookTitle = escapeHtml(loan.book_title || loan.judul || 'Unknown Book');
                 const borrowDate = escapeHtml(loan.tanggal || '-');
-                
-                if (!loanId) {
-                    console.warn('Loan missing ID:', loan);
-                }
                 
                 checklistHtml += `
                     <div class="form-check mb-2">
@@ -760,7 +695,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         $('#checklistPengembalian').html(checklistHtml);
-        console.log('Checklist HTML generated, total students:', studentIds.length);
         attachReturnChecklistListeners();
     }
 
@@ -780,7 +714,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Load transactions for selected class
     function loadTransactions(type) {
         if (!currentClassId) return;
         
@@ -799,7 +732,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Render borrowings table
     function renderBorrowingsTable(transactions) {
         borrowingsData = transactions || [];
         currentBorrowingsPage = 1;
@@ -812,7 +744,6 @@ document.addEventListener('DOMContentLoaded', function() {
         refreshReturnsTable(1);
     }
 
-    // Modal handlers
     peminjamanBtn.addEventListener('click', function() {
         if (!currentClassId) {
             showToast('Pilih kelas terlebih dahulu', 'error');
@@ -841,21 +772,14 @@ document.addEventListener('DOMContentLoaded', function() {
         transactionForm.dataset.type = 'return';
         $('#selectedClassId').val(currentClassId);
         
-        // REMOVE required from peminjaman fields when switching to pengembalian mode
         $('#namaCari, #judulCari').removeAttr('required');
-        
-        // Fetch active borrowings BEFORE loading checklist
-        console.log('=== PENGEMBALIAN BUTTON CLICKED ===');
-        console.log('Current class ID:', currentClassId);
         
         $.get("<?= base_url('peminjaman-kelas/transactions') ?>", {
             class_id: currentClassId,
             type: 'borrow'
         }, function(response) {
-            console.log('Transactions fetch response:', response);
             if (response.success) {
                 activeBorrowings = response.transactions.filter(t => t.status === 'active');
-                console.log('Active borrowings set to:', activeBorrowings);
                 loadPengembalianChecklist();
             } else {
                 console.error('Failed to fetch transactions:', response);
@@ -867,7 +791,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Form submit handler
     transactionForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -894,13 +817,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const userId = formData.get('user_id').trim();
         const bookId = formData.get('book_id').trim();
         
-        // Validasi nama dan judul diisi
         if (!studentName || !bookTitle) {
             showToast('Nama Siswa dan Judul Buku harus diisi!', 'error');
             return;
         }
         
-        // Validasi bahwa user dan book dipilih dari autocomplete (ID harus ada)
         if (!userId || !bookId) {
             showToast('Silakan pilih Siswa dan Buku dari daftar yang muncul', 'error');
             return;
@@ -922,16 +843,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     $(modalElement).modal('hide');
                     showToast(response.message || 'Peminjaman berhasil ditambahkan!');
                     
-                    // Clear cache for this class
                     delete classDataCache[currentClassId];
                     
-                    // Reload transactions and class data without showing class selection toast
                     showClassSelectionToast = false;
                     loadTransactions('borrow');
                     loadTransactions('return');
                     loadClassData(currentClassId);
                     
-                    // Reset form
                     transactionForm.reset();
                     $('#selectedUserId').val('');
                     $('#selectedBookId').val('');
@@ -949,14 +867,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function handlePengembalianAdd() {
-        console.log('=== HANDLING PENGEMBALIAN (RETURN) ===');
-        
         const selectedLoans = [];
         $('#checklistPengembalian .return-checkbox:checked').each(function() {
             const loanId = $(this).data('loan-id');
             const userId = $(this).data('user-id');
-            
-            console.log('Checked loan:', { loanId, userId });
             
             selectedLoans.push({
                 loanId: loanId,
@@ -964,22 +878,14 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        console.log('Total selected loans:', selectedLoans.length);
-        console.log('Selected loans data:', selectedLoans);
-
         if (selectedLoans.length === 0) {
             showToast('Pilih minimal satu buku untuk dikembalikan!', 'error');
-            console.warn('No loans selected for return');
             return;
         }
 
         const formData = new FormData();
         formData.append('class_id', currentClassId);
         formData.append('selectedLoans', JSON.stringify(selectedLoans));
-
-        console.log('FormData to send:');
-        console.log('- class_id:', currentClassId);
-        console.log('- selectedLoans (JSON):', JSON.stringify(selectedLoans));
 
         isFormSubmitting = true;
         
@@ -992,29 +898,23 @@ document.addEventListener('DOMContentLoaded', function() {
             dataType: 'json',
             success: function(response) {
                 isFormSubmitting = false;
-                
-                console.log('Return response:', response);
-                
+
                 if (response.success) {
                     $(modalElement).modal('hide');
                     showToast(response.message || 'Pengembalian berhasil ditambahkan!');
                     
-                    // Clear cache for this class
                     delete classDataCache[currentClassId];
                     
-                    // Reload transactions and class data without showing class selection toast
                     showClassSelectionToast = false;
                     loadTransactions('borrow');
                     loadTransactions('return');
                     loadClassData(currentClassId);
                     loadPengembalianChecklist();
                     
-                    // Reset form
                     transactionForm.reset();
                     $('#searchSiswaReturn').val('');
                 } else {
                     const errorMsg = response.message || 'Gagal menambahkan pengembalian';
-                    console.error('Return failed:', errorMsg);
                     showToast(errorMsg, 'error');
                 }
             },
@@ -1044,7 +944,6 @@ document.addEventListener('DOMContentLoaded', function() {
         isFormSubmitting = false;
     });
 
-    // Search functionality
     function filterTable(searchId, tbodyId) {
         const query = document.getElementById(searchId).value.toLowerCase();
         const rows = document.querySelectorAll('#' + tbodyId + ' tr');
@@ -1084,15 +983,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Auto-load class for guru
     if (userRole === 'guru' && userClassId) {
         const guruClass = allClasses.find(c => c.id == userClassId);
         if (guruClass) {
-            console.log('Auto-loading class for guru:', guruClass);
-            showClassSelectionToast = false; // Don't show toast for auto-load
+            showClassSelectionToast = false;
             loadClassData(userClassId);
         } else {
-            console.error('Guru class not found:', userClassId, allClasses);
             showToast('Kelas yang Anda ajar tidak ditemukan', 'error');
         }
     }

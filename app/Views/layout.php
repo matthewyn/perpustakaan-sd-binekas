@@ -1,57 +1,39 @@
+<?php $websiteConfig = config('Website'); ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title><?= $title ?? 'Perpustakaan SD Binekas' ?></title>
+    <title><?= $title ?? $websiteConfig->siteName ?></title>
     
-    <!-- ========== PRECONNECT TO CRITICAL ORIGINS ========== -->
-    <!-- Preconnect to CDN for faster resource loading -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://code.jquery.com" crossorigin>
     <link rel="dns-prefetch" href="https://placehold.co">
     
-    <!-- ========== FONT PRELOAD HINTS ========== -->
-    <!-- Preload WOFF2 font (modern browsers) for faster font loading -->
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
-    <!-- Fallback WOFF font for older browsers -->
     <link rel="prefetch" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff" as="font" type="font/woff" crossorigin>
     
-    <!-- ========== LCP IMAGE PRELOAD HINTS ========== -->
-    <!-- Preload hero images to ensure LCP is discoverable from HTML -->
-    <link rel="preload" href="<?= base_url('/pattern.png') ?>" as="image" type="image/png">
-    <link rel="preload" href="<?= base_url('/children.png') ?>" as="image" type="image/png">
+    <link rel="preload" href="<?= base_url($websiteConfig->homepageLogo) ?>" as="image" type="image/png">
+    <link rel="preload" href="<?= base_url($websiteConfig->homepageDecorativeImage) ?>" as="image" type="image/png">
     
-    <!-- ========== CRITICAL CSS - RENDER BLOCKING (necessary to prevent layout shift) ========== -->
-    <!-- Bootstrap - essential for layout grid and base styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     
-    <!-- Bootstrap Icons - essential for icon display -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
     
-    <!-- Local application styles - render-blocking to prevent layout shift -->
     <link href="<?= base_url('css/style.css') ?>" rel="stylesheet">
     
-    <!-- ========== NON-CRITICAL CSS - DEFERRED WITH PRELOAD ========== -->
-    <!-- These styles are non-critical and load after initial render -->
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/css/bootstrap-select.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/css/bootstrap-select.min.css" rel="stylesheet"></noscript>
     
     <link rel="preload" href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css" rel="stylesheet"></noscript>
     
-    <link rel="preload" href="<?= base_url('css/animate.css') ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link href="<?= base_url('css/animate.css') ?>" rel="stylesheet"></noscript>
-    
     <link rel="preload" href="<?= base_url('css/responsive-mobile.css') ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="<?= base_url('css/responsive-mobile.css') ?>" rel="stylesheet"></noscript>
     
-    <link rel="preload" href="<?= base_url('css/welcome-page.css') ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link href="<?= base_url('css/welcome-page.css') ?>" rel="stylesheet"></noscript>
+    <link rel="preload" href="<?= base_url('css/home.css') ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="<?= base_url('css/home.css') ?>" rel="stylesheet"></noscript>
     
     <style>
-        /* ========== FONT DISPLAY OPTIMIZATION ========== */
-        /* Bootstrap Icons - font-display: swap for FOUT (Flash of Unstyled Text) */
-        /* This ensures text is visible while icons load, preventing layout shift */
         @font-face {
             font-family: 'bootstrap-icons';
             src: url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff2') format('woff2'),
@@ -59,19 +41,16 @@
             font-weight: normal;
             font-style: normal;
             font-display: swap;
-            /* Font metric overrides to prevent layout shift (CLS) */
             ascent-override: 110%;
             descent-override: 30%;
             line-gap-override: 0%;
         }
 
-        /* System fonts with font-display fallback */
         @font-face {
             font-family: -apple-system;
             font-display: swap;
         }
 
-        /* Ensure Bootstrap icons are applied with swap behavior */
         .bi::before,
         [class^="bi-"]::before,
         [class*=" bi-"]::before {
@@ -79,7 +58,6 @@
             font-display: swap;
         }
 
-        /* ========== FORM STYLES ========== */
         .form-label.required:after {
             content:"*";
             color:red;
@@ -90,7 +68,7 @@
             color: #fff;
         }
         body.login-page {
-            background-image: url('<?= base_url('/background.webp') ?>');
+            background-image: url('<?= base_url($websiteConfig->loginBackgroundImage) ?>');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -114,21 +92,18 @@
             }
         }
         
-        /* Preload critical images to improve LCP */
         @media (min-width: 992px) {
             body::before {
                 content: '';
-                background-image: url('<?= base_url('/pattern.png') ?>');
+                background-image: url('<?= base_url($websiteConfig->homepageLogo) ?>');
                 display: none;
             }
         }
     </style>
     
-    <!-- ========== RESOURCE HINTS FOR FASTER LOADING ========== -->
-    <!-- Prefetch commonly needed resources -->
-    <link rel="prefetch" href="<?= base_url('/logo.png') ?>" as="image">
-    <link rel="prefetch" href="<?= base_url('/pattern.png') ?>" as="image">
-    <link rel="prefetch" href="<?= base_url('/profile.jpg') ?>" as="image">
+    <link rel="prefetch" href="<?= base_url($websiteConfig->navbarLogo) ?>" as="image">
+    <link rel="prefetch" href="<?= base_url($websiteConfig->homepageLogo) ?>" as="image">
+    <link rel="prefetch" href="<?= base_url($websiteConfig->profileImage) ?>" as="image">
 </head>
 <body class="<?= esc($bodyClass ?? '') ?>">
     <nav class="navbar navbar-expand border-bottom bg-white">
@@ -138,8 +113,8 @@
                     <button class="btn btn-success text-mobile-lg" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasWithBothOptions" aria-controls="offcanvasWithBothOptions"><i class="bi bi-list"></i></button>
                 <?php endif; ?>
                 <div class="d-flex align-items-center ml-3">
-                    <img src="<?= base_url('/logo.png') ?>" alt="Logo" class="d-inline-block align-text-top me-2 img-mobile-md" id="navbarLogo"/>
-                    <a class="navbar-brand text-mobile-md" href="<?= base_url('/') ?>">Perpustakaan SD Binekas</a>
+                    <img src="<?= base_url($websiteConfig->navbarLogo) ?>" alt="Logo" class="d-inline-block align-text-top me-2 img-mobile-md" id="navbarLogo"/>
+                    <a class="navbar-brand text-mobile-md" href="<?= base_url('/') ?>"><?= esc($websiteConfig->siteName) ?></a>
                 </div>
             </div>
             <?php if (session('role')): ?>
@@ -150,7 +125,7 @@
                     <ul class="navbar-nav">
                         <li class="nav-item dropdown">
                             <a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <img src="<?= base_url('/profile.jpg') ?>" alt="User" class="d-inline-block align-text-top rounded-circle img-mobile-sm" id="navbarProfileImg"/>
+                                <img src="<?= base_url($websiteConfig->profileImage) ?>" alt="User" class="d-inline-block align-text-top rounded-circle img-mobile-sm" id="navbarProfileImg"/>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item text-mobile-md" href="<?= base_url('logout') ?>"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
@@ -239,12 +214,11 @@
         <?= $this->renderSection('content') ?>
     </div>
 
-    <!-- Toast -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
         <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-config='{"delay": 5000}'>
             <div class="toast-header">
-            <img src="<?= base_url('/pattern.png') ?>" class="rounded me-2" alt="Logo" style="width: 20px;">
-            <strong class="me-auto">Perpustakaan</strong>
+            <img src="<?= base_url($websiteConfig->homepageLogo) ?>" class="rounded me-2" alt="Logo" style="width: 20px;">
+            <strong class="me-auto"><?= esc($websiteConfig->siteName) ?></strong>
             <small id="toastTime"><?= date('H:i') ?></small>
             <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
@@ -254,17 +228,12 @@
         </div>
     </div>
 
-    <!-- ========== CRITICAL JS - BOOTSTRAP FUNCTIONALITY ========== -->
-    <!-- Load critical scripts synchronously (blocking, but necessary for functionality) -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 
-    <!-- ========== NON-CRITICAL JS - DEFERRED LOADING ========== -->
-    <!-- These scripts load after DOM is parsed, improving FCP/LCP -->
     <script defer src="https://code.jquery.com/ui/1.14.1/jquery-ui.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/js/bootstrap-select.min.js"></script>
     
-    <!-- Flot Charts - Deferred (non-critical charting library) -->
     <script defer src="<?= base_url('js/plugins/flot/jquery.flot.js') ?>"></script>
     <script defer src="<?= base_url('js/plugins/flot/jquery.flot.tooltip.min.js') ?>"></script>
     <script defer src="<?= base_url('js/plugins/flot/jquery.flot.spline.js') ?>"></script>
@@ -274,9 +243,7 @@
     <script defer src="<?= base_url('js/plugins/flot/jquery.flot.time.js') ?>"></script>
     <script defer src="<?= base_url('js/toast.js') ?>"></script>
 
-    <!-- Inline script for critical DOM interactions (runs after DOM ready) -->
     <script>
-    // Defer execution until critical resources are loaded
     document.addEventListener('DOMContentLoaded', function() {
         var collapse = document.getElementById('formExample');
         var listItem = document.getElementById('formListItem');
