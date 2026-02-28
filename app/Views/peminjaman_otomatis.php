@@ -96,7 +96,6 @@
             </div>
         </div>
 
-        <!-- Riwayat Scan -->
         <div class="card border-light shadow-sm mt-3">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <span><i class="bi bi-clock-history"></i> Riwayat Scan Terakhir</span>
@@ -122,21 +121,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const btnScan = document.getElementById('btnScan');
     const btnReset = document.getElementById('btnReset');
 
-    // Auto focus UID setelah input NISN
     nisnInput.addEventListener('blur', function() {
         if (this.value.trim()) {
             uidInput.focus();
         }
     });
 
-    // Reset form
     btnReset.addEventListener('click', function() {
         formScan.reset();
         document.getElementById('result').innerHTML = '';
         nisnInput.focus();
     });
 
-    // Submit form
     formScan.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -148,7 +144,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Disable button
         btnScan.disabled = true;
         btnScan.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Memproses...';
 
@@ -172,10 +167,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
                 showResult('success', message);
                 
-                // Tambah ke history
                 addToHistory(type, data.user, data.book);
                 
-                // Auto clear UID dan focus
                 setTimeout(() => {
                     uidInput.value = '';
                     uidInput.focus();
@@ -194,7 +187,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Auto clear result
     function showResult(type, message) {
         const resultDiv = document.getElementById('result');
         const alertClass = type === 'success' ? 'result-success' : 'result-error';
@@ -220,7 +212,6 @@ document.addEventListener('DOMContentLoaded', function() {
             time: now
         });
 
-        // Batas history maksimal 10
         if (scanHistory.length > 10) {
             scanHistory = scanHistory.slice(0, 10);
         }
@@ -257,10 +248,8 @@ document.addEventListener('DOMContentLoaded', function() {
         historyDiv.innerHTML = html;
     }
 
-    // Focus ke NISN saat load
     nisnInput.focus();
 
-    // Initialize collapse for history
     const collapse = document.querySelector('[data-bs-target="#collapseHistory"]');
     const collapseDiv = document.getElementById('collapseHistory');
     

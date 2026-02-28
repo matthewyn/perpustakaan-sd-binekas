@@ -9,11 +9,10 @@ class SupabaseDB
 
     public function __construct()
     {
-        $this->url = getenv('SUPABASE_URL');  // misal: https://your-project.supabase.co
+        $this->url = getenv('SUPABASE_URL');
         $this->key = getenv('SUPABASE_ANON_KEY');
     }
 
-    // 🔹 GET request
     public function get($table, $params = [])
     {
         $query = http_build_query($params);
@@ -33,7 +32,6 @@ class SupabaseDB
         return json_decode($response, true);
     }
 
-    // 🔹 POST request
     public function post($table, $data)
     {
         $endpoint = "{$this->url}/rest/v1/{$table}";
@@ -43,7 +41,7 @@ class SupabaseDB
             "apikey: {$this->key}",
             "Authorization: Bearer {$this->key}",
             "Content-Type: application/json",
-            "Prefer: return=representation"  // supaya respon berisi data baru
+            "Prefer: return=representation"
         ]);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
@@ -55,7 +53,6 @@ class SupabaseDB
         return json_decode($response, true);
     }
 
-    // 🔹 PATCH/UPDATE
     public function patch($table, $data, $filter)
     {
         $endpoint = "{$this->url}/rest/v1/{$table}?{$filter}";
@@ -77,7 +74,6 @@ class SupabaseDB
         return json_decode($response, true);
     }
 
-    // 🔹 DELETE
     public function delete($table, $filter)
     {
         $endpoint = "{$this->url}/rest/v1/{$table}?{$filter}";

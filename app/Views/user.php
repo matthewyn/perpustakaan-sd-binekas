@@ -17,10 +17,8 @@
   </style>
 
 <div class="container mt-4">
-    <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- Breadcrumb -->
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb mt-3">
             <li class="breadcrumb-item"><a href="<?= base_url() ?>">Katalog</a></li>
@@ -28,7 +26,6 @@
         </ol>
     </nav>
 
-    <!-- SISWA -->
     <div class="d-flex justify-content-between align-items-center mt-4">
         <h4>Data Siswa</h4>
         <div class="gap-2 d-flex">
@@ -98,7 +95,6 @@
         </div>
     </div>
 
-    <!-- SECTION GURU -->
     <div class="d-flex justify-content-between align-items-center mt-5">
         <h4>Data Guru</h4>
         <div class="gap-2 d-flex">
@@ -162,7 +158,6 @@
     </div>
 </div>
 
-<!-- Modal Siswa -->
 <div class="modal fade" id="modalSiswa" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -175,7 +170,6 @@
                     <input type="hidden" id="siswaMode" value="add">
                     <input type="hidden" id="siswaId" value="">
 
-                    <!-- Cari Nama -->
                     <div id="siswaSearchSection" style="display:none;">
                         <div class="mb-3">
                             <label class="form-label required">Cari Nama</label>
@@ -252,7 +246,6 @@
     </div>
 </div>
 
-<!-- Modal Guru -->
 <div class="modal fade" id="modalGuru" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -265,7 +258,6 @@
                     <input type="hidden" id="guruMode" value="add">
                     <input type="hidden" id="guruId" value="">
 
-                    <!-- Search Nama (hanya untuk edit) -->
                     <div id="guruSearchSection" style="display:none;">
                         <div class="mb-3">
                             <label class="form-label required">Cari Nama Guru</label>
@@ -276,7 +268,6 @@
                         <hr>
                     </div>
 
-                    <!-- Form Fields - 2 Kolom -->
                     <div id="guruFormFields">
                         <div class="row">
                             <div class="col-md-6">
@@ -325,7 +316,6 @@
 </div>
 
 <script>
-// Global Variables
 let siswaList = [];
 let guruList = [];
 let classList = [];
@@ -334,23 +324,18 @@ let currentSiswaPage = 1;
 let currentGuruPage = 1;
 const itemsPerPage = 20;
 
-// Sorting variables
 let siswaSortField = null;
-let siswaSortOrder = 'asc'; // 'asc' or 'desc'
+let siswaSortOrder = 'asc';
 
-// Initialize on DOM Load
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Bootstrap Modals
     modalSiswa = new bootstrap.Modal(document.getElementById('modalSiswa'));
     modalGuru = new bootstrap.Modal(document.getElementById('modalGuru'));
     
-    // Load Data dan Automplete
     fetchClassData();
     fetchSiswaData();
     fetchGuruData();
     setupAutocomplete();
     
-    // Setup Search
     const searchSiswaEl = document.getElementById('searchSiswa');
     if (searchSiswaEl) {
         searchSiswaEl.addEventListener('input', filterSiswaTable);
@@ -361,7 +346,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// NOTIFIKASI
 function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
@@ -383,12 +367,10 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-// ================== FETCH DATA ==================
 function fetchClassData() {
     fetch("<?= base_url('management-class/list') ?>")
         .then(response => response.json())
-        .then(data => { // <-- perbaiki di sini
-            console.log('Class Data:', data);
+        .then(data => {
             if (data.success && Array.isArray(data.classes)) {
                 classList = data.classes;
                 populateClassDropdown();
@@ -397,7 +379,6 @@ function fetchClassData() {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
             showToast('Terjadi kesalahan saat memuat data kelas', 'error');
         });
 }
@@ -432,16 +413,13 @@ function getClassNameById(classId) {
 }
 
 function sortSiswaTable(field) {
-    // If clicking the same field, toggle sort order
     if (siswaSortField === field) {
         siswaSortOrder = siswaSortOrder === 'asc' ? 'desc' : 'asc';
     } else {
-        // If clicking a new field, set it to ascending
         siswaSortField = field;
         siswaSortOrder = 'asc';
     }
     
-    // Sort the siswaList
     siswaList.sort((a, b) => {
         let aValue, bValue;
         
@@ -457,7 +435,6 @@ function sortSiswaTable(field) {
         }
     });
     
-    // Reset to first page and re-render
     currentSiswaPage = 1;
     renderSiswaTable(siswaList);
 }
@@ -466,10 +443,9 @@ function fetchSiswaData() {
     fetch("<?= base_url('user/list/murid') ?>")
         .then(response => response.json())
         .then(data => {
-            console.log('Siswa Data:', data);
             if (data.success && Array.isArray(data.users)) {
                 siswaList = data.users;
-                currentSiswaPage = 1; // Reset pagination
+                currentSiswaPage = 1;
                 renderSiswaTable(siswaList);
                 setupAutocomplete();
             } else {
@@ -479,7 +455,6 @@ function fetchSiswaData() {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
             showToast('Terjadi kesalahan saat memuat data siswa', 'error');
         });
 }
@@ -488,10 +463,9 @@ function fetchGuruData() {
     fetch("<?= base_url('user/list/guru') ?>")
         .then(response => response.json())
         .then(data => {
-            console.log('Guru Data:', data);
             if (data.success && Array.isArray(data.users)) {
                 guruList = data.users;
-                currentGuruPage = 1; // Reset pagination
+                currentGuruPage = 1;
                 renderGuruTable(guruList);
                 setupAutocomplete();
             } else {
@@ -501,7 +475,6 @@ function fetchGuruData() {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
             showToast('Terjadi kesalahan saat memuat data guru', 'error');
         });
 }
@@ -518,7 +491,6 @@ function renderSiswaTable(data) {
     
     document.getElementById('totalSiswa').textContent = data.length;
     
-    // Calculate pagination
     const totalPages = Math.ceil(data.length / itemsPerPage);
     const startIndex = (currentSiswaPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
@@ -531,7 +503,6 @@ function renderSiswaTable(data) {
         const maxBorrow = siswa.maxBorrow || siswa.max_borrow || 1;
         const className = getClassNameById(siswa.class_id);
 
-        // Ambil total peminjaman dari field num_borrows
         let totalBorrow = typeof siswa.num_borrows !== 'undefined' ? siswa.num_borrows : '-';
 
         html += `
@@ -565,15 +536,12 @@ function renderSiswaPagination(totalPages) {
     
     if (totalPages <= 1) return;
     
-    // Previous button
     const prevLi = document.createElement('li');
     prevLi.className = `page-item ${currentSiswaPage === 1 ? 'disabled' : ''}`;
     prevLi.innerHTML = `<a class="page-link" href="#" onclick="goToSiswaPage(${currentSiswaPage - 1}); return false;">← Sebelumnya</a>`;
     paginationEl.appendChild(prevLi);
     
-    // Page numbers
     for (let i = 1; i <= totalPages; i++) {
-        // Show first page, last page, and pages around current page
         if (i === 1 || i === totalPages || (i >= currentSiswaPage - 1 && i <= currentSiswaPage + 1)) {
             const li = document.createElement('li');
             li.className = `page-item ${i === currentSiswaPage ? 'active' : ''}`;
@@ -587,7 +555,6 @@ function renderSiswaPagination(totalPages) {
         }
     }
     
-    // Next button
     const nextLi = document.createElement('li');
     nextLi.className = `page-item ${currentSiswaPage === totalPages ? 'disabled' : ''}`;
     nextLi.innerHTML = `<a class="page-link" href="#" onclick="goToSiswaPage(${currentSiswaPage + 1}); return false;">Berikutnya →</a>`;
@@ -615,7 +582,6 @@ function renderGuruTable(data) {
     
     document.getElementById('totalGuru').textContent = data.length;
     
-    // Calculate pagination
     const totalPages = Math.ceil(data.length / itemsPerPage);
     const startIndex = (currentGuruPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
@@ -644,15 +610,12 @@ function renderGuruPagination(totalPages) {
     
     if (totalPages <= 1) return;
     
-    // Previous button
     const prevLi = document.createElement('li');
     prevLi.className = `page-item ${currentGuruPage === 1 ? 'disabled' : ''}`;
     prevLi.innerHTML = `<a class="page-link" href="#" onclick="goToGuruPage(${currentGuruPage - 1}); return false;">← Sebelumnya</a>`;
     paginationEl.appendChild(prevLi);
     
-    // Page numbers
     for (let i = 1; i <= totalPages; i++) {
-        // Show first page, last page, and pages around current page
         if (i === 1 || i === totalPages || (i >= currentGuruPage - 1 && i <= currentGuruPage + 1)) {
             const li = document.createElement('li');
             li.className = `page-item ${i === currentGuruPage ? 'active' : ''}`;
@@ -666,7 +629,6 @@ function renderGuruPagination(totalPages) {
         }
     }
     
-    // Next button
     const nextLi = document.createElement('li');
     nextLi.className = `page-item ${currentGuruPage === totalPages ? 'disabled' : ''}`;
     nextLi.innerHTML = `<a class="page-link" href="#" onclick="goToGuruPage(${currentGuruPage + 1}); return false;">Berikutnya →</a>`;
@@ -682,10 +644,9 @@ function goToGuruPage(page) {
     }
 }
 
-// Filter tabel
 function filterSiswaTable() {
     const query = document.getElementById('searchSiswa').value.toLowerCase();
-    currentSiswaPage = 1; // Reset to first page on search
+    currentSiswaPage = 1;
     
     const filteredData = siswaList.filter(siswa => {
         const nisn = (siswa.nisn || '').toLowerCase();
@@ -698,7 +659,7 @@ function filterSiswaTable() {
 
 function filterGuruTable() {
     const query = document.getElementById('searchGuru').value.toLowerCase();
-    currentGuruPage = 1; // Reset to first page on search
+    currentGuruPage = 1;
     
     const filteredData = guruList.filter(guru => {
         const nip = (guru.nip || '').toLowerCase();
@@ -709,14 +670,12 @@ function filterGuruTable() {
     renderGuruTable(filteredData);
 }
 
-// fungsi modal siswa
 function openAddSiswaModal() {
     document.getElementById('modalSiswaTitle').textContent = 'Tambah Siswa Baru';
     document.getElementById('siswaMode').value = 'add';
     document.getElementById('siswaSearchSection').style.display = 'none';
     document.getElementById('siswaFormFields').style.display = 'block';
     
-    // Reset form
     document.getElementById('formSiswa').reset();
     document.getElementById('siswaId').value = '';
     populateClassDropdown();
@@ -730,7 +689,6 @@ function openEditSiswaModal() {
     document.getElementById('siswaSearchSection').style.display = 'block';
     document.getElementById('siswaFormFields').style.display = 'none';
     
-    // Reset form
     document.getElementById('formSiswa').reset();
     document.getElementById('siswaId').value = '';
     document.getElementById('siswaSearch').value = '';
@@ -738,14 +696,12 @@ function openEditSiswaModal() {
     modalSiswa.show();
 }
 
-// fungsi modal guru
 function openAddGuruModal() {
     document.getElementById('modalGuruTitle').textContent = 'Tambah Guru Baru';
     document.getElementById('guruMode').value = 'add';
     document.getElementById('guruSearchSection').style.display = 'none';
     document.getElementById('guruFormFields').style.display = 'block';
     
-    // Reset form
     document.getElementById('formGuru').reset();
     document.getElementById('guruId').value = '';
     populateGuruClassDropdown();
@@ -759,7 +715,6 @@ function openEditGuruModal() {
     document.getElementById('guruSearchSection').style.display = 'block';
     document.getElementById('guruFormFields').style.display = 'none';
     
-    // Reset form
     document.getElementById('formGuru').reset();
     document.getElementById('guruId').value = '';
     document.getElementById('guruSearch').value = '';
@@ -767,9 +722,7 @@ function openEditGuruModal() {
     modalGuru.show();
 }
 
-    // autocomplete setup
 function setupAutocomplete() {
-    // Autocomplete Nama Siswa
     if (typeof $ !== 'undefined' && $.fn.autocomplete) {
         $('#siswaSearch').autocomplete({
             source: function(request, response) {
@@ -789,7 +742,6 @@ function setupAutocomplete() {
             }
         });
 
-        // Autocomplete Nama Guru
         $('#guruSearch').autocomplete({
             source: function(request, response) {
                 const results = guruList
@@ -846,7 +798,6 @@ function fillGuruForm(guru) {
     document.getElementById('guruKelas').value = guru.class_id || '';
 }
 
-// submit handlers
 function handleSiswaSubmit(event) {
     event.preventDefault();
     
@@ -877,9 +828,6 @@ function handleSiswaSubmit(event) {
         ? "<?= base_url('user/add') ?>"
         : "<?= base_url('user/update') ?>/" + id;
     
-    console.log('Sending data:', data);
-    console.log('To URL:', url);
-    
     fetch(url, {
         method: 'POST',
         headers: {
@@ -889,7 +837,6 @@ function handleSiswaSubmit(event) {
     })
     .then(response => response.json())
     .then(result => {
-        console.log('Response:', result);
         if (result.success) {
             modalSiswa.hide();
             showToast(result.message || (mode === 'add' ? 'Berhasil menambah siswa' : 'Berhasil mengubah siswa'));
@@ -899,7 +846,6 @@ function handleSiswaSubmit(event) {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
         showToast('Terjadi kesalahan: ' + error.message, 'error');
     });
 }
@@ -927,9 +873,6 @@ function handleGuruSubmit(event) {
         ? "<?= base_url('user/add-guru') ?>"
         : "<?= base_url('user/update-guru') ?>/" + id;
     
-    console.log('Sending data:', data);
-    console.log('To URL:', url);
-    
     fetch(url, {
         method: 'POST',
         headers: {
@@ -939,7 +882,6 @@ function handleGuruSubmit(event) {
     })
     .then(response => response.json())
     .then(result => {
-        console.log('Response:', result);
         if (result.success) {
             modalGuru.hide();
             showToast(result.message || (mode === 'add' ? 'Berhasil menambah guru' : 'Berhasil mengubah guru'));
@@ -949,7 +891,6 @@ function handleGuruSubmit(event) {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
         showToast('Terjadi kesalahan: ' + error.message, 'error');
     });
 }

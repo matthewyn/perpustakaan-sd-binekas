@@ -1,6 +1,4 @@
-/* ==================== RESPONSIVE MOBILE (max-width: 991.98px) ==================== */
 @media (max-width: 991.98px) {
-  /* ==================== TYPOGRAPHY - HEADINGS ==================== */
   .h-mobile-xl {
     font-size: 4rem;
   }
@@ -17,7 +15,6 @@
     font-size: 2.2rem;
   }
 
-  /* ==================== TYPOGRAPHY - TEXT ==================== */
   .text-mobile-xl {
     font-size: 2rem;
   }
@@ -38,12 +35,10 @@
     font-size: 1.2rem;
   }
 
-  /* ==================== TYPOGRAPHY - INPUT & LABELS ==================== */
   .text-mobile-input {
     font-size: 1.3rem;
   }
 
-  /* ==================== IMAGE SIZING ==================== */
   .img-mobile-xl {
     width: 250px;
     height: 250px;
@@ -64,7 +59,6 @@
     height: 65px;
   }
 
-  /* ==================== HEIGHT UTILITIES ==================== */
   .height-mobile-xl {
     height: 400px;
   }
@@ -73,7 +67,6 @@
     height: 300px;
   }
 
-  /* ==================== POSITIONING - TOP OFFSET ==================== */
   .top-mobile-xl {
     top: -180px;
   }
@@ -82,7 +75,6 @@
     top: -120px;
   }
 
-  /* ==================== PADDING & SPACING - BUTTONS ==================== */
   .pad-mobile-btn-lg {
     padding: 0.75rem 1.25rem;
     border-radius: 0.5rem;
@@ -93,7 +85,6 @@
     border-radius: 0.25rem;
   }
 
-  /* ==================== PADDING & SPACING - FORMS ==================== */
   .pad-mobile-form-lg {
     padding: 0.875rem 0.75rem;
   }
@@ -103,7 +94,6 @@
     border-radius: 0.5rem;
   }
 
-  /* ==================== BADGE SCALING ==================== */
   .badge-mobile-md {
     font-size: 1.75rem;
     padding: 0.35rem 0.85rem;
@@ -114,7 +104,6 @@
     padding: 0.35rem 0.85rem;
   }
 
-  /* ==================== FORM CONTROLS ==================== */
   .form-control-mobile {
     font-size: 1.25rem;
     padding: 0.5rem 1rem;
@@ -126,7 +115,6 @@
     padding: 0.875rem 0.75rem;
   }
 
-  /* ==================== BUTTONS ==================== */
   .btn-mobile-lg {
     padding: 0.75rem 1.25rem;
     font-size: 1.25rem;
@@ -145,7 +133,6 @@
     border-radius: 0.55rem;
   }
 
-  /* ==================== CARD STYLING ==================== */
   .card-title-mobile {
     font-size: 2.2rem;
   }
@@ -158,14 +145,12 @@
     font-size: 1.2rem;
   }
 
-  /* ==================== NAVIGATION TABS ==================== */
   .nav-tabs-mobile .nav-link,
   .tabs-mobile .nav-link {
     font-size: 1.25rem;
     padding: 0.75rem 1.25rem;
   }
 
-  /* ==================== PAGINATION ==================== */
   .pagination-mobile {
     --bs-pagination-padding-x: 1.5rem;
     --bs-pagination-padding-y: 0.75rem;
@@ -173,7 +158,6 @@
     --bs-pagination-border-radius: 0.5rem;
   }
 
-  /* ==================== OFFCANVAS & NAVIGATION ==================== */
   .offcanvas-title-mobile,
   button[data-bs-toggle="offcanvas"] {
     font-size: 1.85rem;
@@ -185,14 +169,11 @@
     font-size: 1.6rem;
   }
 
-  /* ==================== MODAL DIALOG ==================== */
   .modal-title-mobile {
     font-size: 2.2rem;
   }
 
-  /* ==================== CLOSE BUTTONS ==================== */
   .btn-close-mobile {
     font-size: 1.4rem;
   }
 }
-/* ==================== END RESPONSIVE MOBILE ==================== */

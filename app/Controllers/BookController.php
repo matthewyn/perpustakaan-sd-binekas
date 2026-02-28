@@ -322,7 +322,7 @@ class BookController extends Controller
         $allGenres = $this->getAllGenres();
 
         // Return view for normal page load
-        return view('welcome_message', [
+        return view('home', [
             'booksOnPage' => $books,
             'latestBooks' => $latestBooks,
             'genres' => $allGenres,

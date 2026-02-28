@@ -16,7 +16,6 @@
     }
 </style>
 <div class="container mt-4">
-    <!-- Main -->
     <nav aria-label="breadcrumb">
     <ol class="breadcrumb mt-3">
         <li class="breadcrumb-item"><a href="<?= base_url() ?>">Katalog</a></li>
@@ -183,7 +182,6 @@
                 </table>
                 <nav aria-label="Pagination untuk peminjaman">
                     <ul class="pagination" id="paginationBorrowings">
-                        <!-- Generated dynamically by JavaScript -->
                     </ul>
                 </nav>
             </div>
@@ -230,7 +228,6 @@
                 </table>
                 <nav aria-label="Pagination untuk pengembalian">
                     <ul class="pagination" id="paginationReturns">
-                        <!-- Generated dynamically by JavaScript -->
                     </ul>
                 </nav>
             </div>
@@ -238,7 +235,6 @@
     </div>
 </div>
 
-<!-- Modal -->
 <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -248,7 +244,6 @@
         </div>
         <form>
             <div class="modal-body">
-                <!-- Tambah peminjaman -->
                 <div id="peminjamanSection">
                     <div class="row mb-3">
                         <div class="col siswa-select">
@@ -265,7 +260,6 @@
                         <input type="text" class="form-control" id="uidCari" name="uidCari" placeholder="Ketik/tap UID">
                     </div>
                 </div>
-                <!-- Tambah pengembalian -->
                 <div id="pengembalianSection" style="display: none;">
                     <div class="mb-3">
                         <label for="searchSiswaReturn" class="form-label">Cari Nama Siswa</label>
@@ -308,14 +302,12 @@ document.addEventListener('DOMContentLoaded', function() {
     let fetchTimeout;
     const DATA_LOAD_TIMEOUT = 10000;
 
-    // Pagination state variables
     let currentBorrowingsPage = 1;
     let currentReturnsPage = 1;
     let totalBorrowingsPages = 1;
     let totalReturnsPages = 1;
     const ITEMS_PER_PAGE = 25;
 
-    // Fetch data awal
     function escapeHtml(text) {
         const map = {
             '&': '&amp;',
@@ -341,13 +333,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (dataReady.siswa && dataReady.borrowings) {
             clearTimeout(fetchTimeout);
             enablePengembalianAutocomplete();
-            // Initialize tables with pagination on first load
             refreshBorrowingsTable(1);
             refreshReturnsTable(1);
         }
     }
 
-    // fungsi colapse
     collapse.addEventListener('show.bs.collapse', function () {
         chevronIcon.classList.remove('bi-chevron-down');
         chevronIcon.classList.add('bi-chevron-up');
@@ -357,7 +347,6 @@ document.addEventListener('DOMContentLoaded', function() {
         chevronIcon.classList.add('bi-chevron-down');
     });
 
-    // ===== CHART DATA =====
     const chartData = <?= json_encode($chartData) ?>;
 
     function toTimestamp(dateStr, type) {
@@ -457,7 +446,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // fetch data
     function fetchSiswaData() {
         $.get("<?= base_url('user/list/murid') ?>", function(response) {
             if (response.success && Array.isArray(response.users)) {
@@ -491,10 +479,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function fetchBorrowingsData() {
         $.get("<?= base_url('api/borrowings') ?>", function(response) {
-            console.log('Borrowings API Response:', response);
             if (response.success && Array.isArray(response.borrowings)) {
                 borrowingsList = response.borrowings;
-                console.log('Borrowings List Updated:', borrowingsList);
                 dataReady.borrowings = true;
                 checkAllDataReady();
             } else {
@@ -509,13 +495,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Fetch books by search term (server-side search for performance)
-    // Cache for book searches (local only)
     const bookSearchCache = {};
-    const BOOK_SEARCH_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+    const BOOK_SEARCH_CACHE_DURATION = 10 * 60 * 1000;
 
     function fetchBooksBySearch(searchTerm, callback) {
-        // Only search if term has minimum characters
         if (!searchTerm || searchTerm.trim().length < 1) {
             callback([]);
             return;
@@ -524,9 +507,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const now = Date.now();
         const cacheKey = 'search_' + searchTerm.toLowerCase();
         
-        // Check cache
         if (bookSearchCache[cacheKey] && (now - bookSearchCache[cacheKey].timestamp) < BOOK_SEARCH_CACHE_DURATION) {
-            console.log('Using cached book search:', cacheKey);
             callback(bookSearchCache[cacheKey].data);
             return;
         }
@@ -536,7 +517,6 @@ document.addEventListener('DOMContentLoaded', function() {
             limit: 50
         }, function(response) {
             if (response.success && Array.isArray(response.books)) {
-                // Return formatted autocomplete items with label and value
                 const items = response.books.map(b => ({
                     label: b.title,
                     value: b.title,
@@ -544,13 +524,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     title: b.title
                 }));
                 
-                // Cache the results
                 bookSearchCache[cacheKey] = {
                     data: items,
                     timestamp: now
                 };
                 
-                console.log('Books fetched from server:', items.length);
                 callback(items);
             } else {
                 console.error('Invalid search response');
@@ -577,7 +555,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ===== INITIAL DATA FETCHING =====
     startDataLoadTimeout();
     fetchReturnsData(function() {
         fetchSiswaData();
@@ -585,7 +562,6 @@ document.addEventListener('DOMContentLoaded', function() {
         fetchGuruData();
     });
 
-    // ===== TABLE SEARCH FUNCTIONS =====
     function filterPeminjamanTable() {
         const query = document.getElementById('searchPeminjaman').value.toLowerCase();
         const rows = document.querySelectorAll('#tbodyBorrowings tr');
@@ -618,14 +594,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Attach event listeners to search inputs and buttons
     document.getElementById('searchPeminjaman').addEventListener('input', filterPeminjamanTable);
     document.getElementById('cariPeminjaman').addEventListener('click', filterPeminjamanTable);
     
     document.getElementById('searchPengembalian').addEventListener('input', filterPengembalianTable);
     document.getElementById('cariPengembalian').addEventListener('click', filterPengembalianTable);
 
-    // ===== AUTOCOMPLETE FUNCTIONS =====
     function enablePengembalianAutocomplete() {
         $('#namaCariPengembalian').autocomplete({
             source: function(request, response) {
@@ -685,14 +659,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     $('#judulCari').autocomplete({
         source: function(request, response) {
-            // Use server-side search instead of client-side filtering
             fetchBooksBySearch(request.term, response);
         },
-        minLength: 2,  // Require at least 2 characters to reduce requests
+        minLength: 2,
         select: function(event, ui) {
             $(this).val(ui.item.value);
-            // Note: UID field is no longer available from server-side search
-            // Remove UID input section if it exists
             if ($('#uidInputSection').length) {
                 $('#uidInputSection').hide();
             }
@@ -720,7 +691,6 @@ document.addEventListener('DOMContentLoaded', function() {
             b.status === 'active'
         );
 
-        // Use book_title from the API response (includes joined data)
         const borrowedTitles = userBorrowings.map(b => b.book_title).filter(Boolean);
 
         $('#judulCariPengembalian').autocomplete('option','source', borrowedTitles);
@@ -731,7 +701,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // ===== MODAL HANDLERS =====
     peminjamanBtn.addEventListener('click', function() {
         modalTitle.textContent = 'Form Peminjaman';
         peminjamanSection.style.display = 'block';
@@ -743,7 +712,6 @@ document.addEventListener('DOMContentLoaded', function() {
         peminjamanSection.style.display = 'none';
         pengembalianSection.style.display = 'block';
         
-        // Load checklist directly - no need to wait for all books
         loadPengembalianChecklist();
     });
 
@@ -754,23 +722,14 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#searchSiswaReturn').val('');
     });
 
-    // ===== PENGEMBALIAN CHECKLIST FUNCTIONS =====
     function loadPengembalianChecklist() {
         const activeLoans = borrowingsList.filter(b => b.status === 'active');
-        
-        console.log('Loading checklist with:', {
-            totalBorrowings: borrowingsList.length,
-            activeLoans: activeLoans.length,
-            siswaList: siswaList.length,
-            borrowingsList: borrowingsList
-        });
 
         if (activeLoans.length === 0) {
             $('#checklistPengembalian').html('<p class="text-muted text-center">Tidak ada peminjaman aktif.</p>');
             return;
         }
 
-        // Group by user
         const groupedByUser = {};
         activeLoans.forEach(loan => {
             const userId = loan.user_id;
@@ -784,7 +743,6 @@ document.addEventListener('DOMContentLoaded', function() {
             groupedByUser[userId].loans.push(loan);
         });
 
-        // Build checklist HTML
         let checklistHtml = '';
         Object.keys(groupedByUser).forEach(userId => {
             const { user, loans } = groupedByUser[userId];
@@ -797,7 +755,6 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             
             loans.forEach(loan => {
-                // Use book_title from the API response (includes joined data)
                 const bookTitle = escapeHtml(loan.book_title || 'Unknown Book');
                 const loanId = escapeHtml(loan.id || loan.key || '');
                 
@@ -839,7 +796,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ===== FORM SUBMIT HANDLERS =====
     $('#submitForm').on('click', function(e) {
         e.preventDefault();
         if ($('#peminjamanSection').is(':visible')) handlePeminjamanAdd();
@@ -928,7 +884,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ===== TABLE REFRESH FUNCTIONS =====
     function refreshBorrowingsTable(page = 1) {
         currentBorrowingsPage = page;
         
@@ -1006,7 +961,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 response.classes.forEach(c => {
                     window._classesById[c.id] = c;
                 });
-                console.log('Classes loaded successfully:', response.classes.length, 'classes');
             }
         }).fail(() => {
             console.error('Failed to fetch classes data');
@@ -1022,7 +976,6 @@ document.addEventListener('DOMContentLoaded', function() {
         fetchClassesData();
     });
 
-    // ===== PAGINATION RENDERING FUNCTIONS =====
     function renderBorrowingsPagination() {
         const paginationHtml = generatePaginationHTML(currentBorrowingsPage, totalBorrowingsPages, 'borrowings');
         $('#paginationBorrowings').html(paginationHtml);
@@ -1045,14 +998,12 @@ document.addEventListener('DOMContentLoaded', function() {
             startPage = Math.max(1, endPage - maxPagesToShow + 1);
         }
 
-        // Previous button
         if (currentPage > 1) {
             html += `<li class="page-item"><a href="#" class="page-link text-secondary pagination-prev" data-type="${type}" data-page="${currentPage - 1}">Previous</a></li>`;
         } else {
             html += `<li class="page-item disabled"><a class="page-link text-secondary">Previous</a></li>`;
         }
 
-        // Page numbers
         if (startPage > 1) {
             html += `<li class="page-item"><a href="#" class="page-link text-secondary pagination-page" data-type="${type}" data-page="1">1</a></li>`;
             if (startPage > 2) {
@@ -1075,7 +1026,6 @@ document.addEventListener('DOMContentLoaded', function() {
             html += `<li class="page-item"><a href="#" class="page-link text-secondary pagination-page" data-type="${type}" data-page="${totalPages}">${totalPages}</a></li>`;
         }
 
-        // Next button
         if (currentPage < totalPages) {
             html += `<li class="page-item"><a href="#" class="page-link text-secondary pagination-next" data-type="${type}" data-page="${currentPage + 1}">Next</a></li>`;
         } else {
@@ -1097,7 +1047,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Export statistics function with HTML report including chart
     function exportStatistics() {
         const totalBorrowed = document.querySelector('.card-body h2')?.textContent || '0';
         const totalBorrowedPercent = document.querySelectorAll('.card-body')[0]?.querySelector('.ms-auto')?.textContent.split('%')[0].trim() || '0';
@@ -1109,14 +1058,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
         const chartImageData = document.getElementById('flot-dashboard-chart').innerHTML;
         
-        // Get current chart from DOM
         const chartCanvas = document.querySelector('#flot-dashboard-chart canvas');
         let chartImageBase64 = '';
         if (chartCanvas) {
             chartImageBase64 = chartCanvas.toDataURL('image/png');
         }
 
-        // Build HTML table data for all time ranges
         let tablesHtml = '';
         const timeRanges = ['harian', 'bulanan', 'tahunan'];
         const timeLabels = { 'harian': 'Harian (Per Hari)', 'bulanan': 'Bulanan (Per Bulan)', 'tahunan': 'Tahunan (Per Tahun)' };
@@ -1151,7 +1098,6 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>`;
         });
 
-        // Create comprehensive HTML report
         const htmlContent = `
 <!DOCTYPE html>
 <html lang="id">
@@ -1244,7 +1190,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </body>
 </html>`;
 
-        // Create blob and download
         const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
@@ -1261,7 +1206,6 @@ document.addEventListener('DOMContentLoaded', function() {
         showToast('Laporan statistik berhasil diunduh!');
     }
 
-    // Attach export button listener
     const exportStatsBtn = document.getElementById('exportStats');
     if (exportStatsBtn) {
         exportStatsBtn.addEventListener('click', exportStatistics);

@@ -70,17 +70,14 @@ const resetBtn = document.getElementById('resetBtn');
             const nama = document.getElementById('nama').value.trim();
             const id_number = document.getElementById('id_number').value.trim();
 
-            // Reset background
             ['nama','id_number','new_password','confirm_password'].forEach(id => {
                 document.getElementById(id).style.backgroundColor = '';
             });
 
-            // Reset password field
             document.getElementById('new_password').value = '';
             document.getElementById('confirm_password').value = '';
             resetSection.style.display = 'none';
 
-            // Reset message
             messageDiv.innerHTML = '';
         });
 
@@ -123,7 +120,7 @@ const resetBtn = document.getElementById('resetBtn');
 
             ['new_password','confirm_password'].forEach(id => {
                 const input = document.getElementById(id);
-                input.style.backgroundColor = '#f8cccc'; // merah
+                input.style.backgroundColor = '#f8cccc';
                 setTimeout(() => input.style.backgroundColor = '', 1500);
             });
             return;
@@ -144,7 +141,6 @@ const resetBtn = document.getElementById('resetBtn');
             showToast('Password berhasil diubah!');
             resetSection.style.display = 'none';
 
-            // reset form dan background
             verifyForm.reset();
             ['nama','id_number','new_password','confirm_password'].forEach(id => {
                 document.getElementById(id).style.backgroundColor = '';
