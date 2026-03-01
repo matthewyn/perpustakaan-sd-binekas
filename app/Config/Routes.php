@@ -73,3 +73,6 @@ $routes->post('peminjaman-kelas/add', 'ClassTransactionController::addBorrowing'
 $routes->post('peminjaman-kelas/return', 'ClassTransactionController::addReturn');
 $routes->post('peminjaman-kelas/return-multiple', 'ClassTransactionController::returnMultiple');
 $routes->post('peminjaman-kelas/apply-late-penalties', 'ClassTransactionController::applyLatePenalties');
+
+$routes->get('management-website', 'WebsiteManagementController::index');
+$routes->post('management-website/update', 'WebsiteManagementController::update');

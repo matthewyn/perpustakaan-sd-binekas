@@ -1,4 +1,7 @@
-<?php $websiteConfig = config('Website'); ?>
+<?php 
+use App\Helpers\WebsiteConfigHelper;
+$websiteConfig = WebsiteConfigHelper::getConfig();
+?>
 <?= $this->extend('layout') ?>
 <?= $this->section('content') ?>
 <div class="d-flex justify-content-center align-items-center my-5 my-lg-4">
@@ -305,7 +308,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const modal = document.getElementById('exampleModal');
   const modalTitle = modal.querySelector('.modal-title');
   const tambahSection = document.getElementById('tambahSection');
-  const ubahSection = document.getElementById('ubahSection');
   const bookTitles = <?= json_encode($bookTitles ?? []) ?>;
   const books = <?= json_encode($allBooks ?? []) ?>;
   window.books = books;
@@ -820,7 +822,6 @@ window.analyzeImage = analyzeImage;
   $('#tambah').on('click', function() {
     modalTitle.textContent = 'Tambah Buku';
     tambahSection.style.display = 'block';
-    ubahSection.style.display = 'none';
     clearForm();
     
     setTimeout(() => {

@@ -1,4 +1,7 @@
-<?php $websiteConfig = config('Website'); ?>
+<?php 
+use App\Helpers\WebsiteConfigHelper;
+$websiteConfig = WebsiteConfigHelper::getConfig();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -203,6 +206,14 @@
                         <a href="<?= base_url('management-class') ?>" style="text-decoration: none; color: inherit;">
                             <i class="bi bi-mortarboard"></i>
                             Manajemen Kelas
+                        </a>
+                    </li>
+                <?php endif; ?>
+                <?php if (session('role') === 'admin'): ?>
+                    <li class="list-group-item border-0 text-mobile-md">
+                        <a href="<?= base_url('management-website') ?>" style="text-decoration: none; color: inherit;">
+                            <i class="bi bi-wrench"></i>
+                            Manajemen Website
                         </a>
                     </li>
                 <?php endif; ?>
