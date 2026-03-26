@@ -200,7 +200,7 @@ class AutomateTransactionController extends Controller
 
     public function automateView()
     {
-        return view('peminjaman_automatis');
+        return view('peminjaman_otomatis');
     }
 
     public function automateTransaction()

@@ -161,7 +161,7 @@ class UserController extends Controller
             'nisn'        => $nisn,
             'uid'         => !empty($uid) ? $uid : null,
             'class_id'    => !empty($classId) ? (int)$classId : null,
-            'maxBorrow'   => (int)$maxBorrow,
+            'maxborrow'   => (int)$maxBorrow,
             'role'        => 'murid',
             'trust_score' => !empty($trustScore) ? (float)$trustScore : 100.00,
             'is_freezed'  => (int)$isFreezed,
