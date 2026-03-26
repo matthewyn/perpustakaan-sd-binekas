@@ -12,7 +12,6 @@
   }
 </style>
 
-<!-- Main -->
 <nav aria-label="breadcrumb">
   <ol class="breadcrumb mt-4 mt-lg-3">
     <li class="breadcrumb-item">
@@ -156,11 +155,5 @@
     <i class="bi bi-arrow-left"></i> Kembali ke Katalog
   </a>
 </div>
-
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  // Add any page-specific JavaScript here
-});
-</script>
 
 <?= $this->endSection() ?>

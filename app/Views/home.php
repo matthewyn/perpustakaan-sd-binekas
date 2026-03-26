@@ -1,20 +1,19 @@
+<?php $websiteConfig = config('Website'); ?>
 <?= $this->extend('layout') ?>
 <?= $this->section('content') ?>
-<!-- Main -->
 <div class="d-flex justify-content-center align-items-center my-5 my-lg-4">
-  <img src="<?= base_url('/pattern.png') ?>" alt="Logo" class="d-inline-block align-text-top me-2 img-mobile-lg" id="logoImage" fetchpriority="high"/>
-  <h1 class="h-mobile-xl" id="logoTitle">Katalog</h1>
+  <img src="<?= base_url($websiteConfig->homepageLogo) ?>" alt="Logo" class="d-inline-block align-text-top me-2 img-mobile-lg" id="logoImage" fetchpriority="high"/>
+  <h1 class="h-mobile-xl" id="logoTitle"><?= esc($websiteConfig->homepageTitle) ?></h1>
 </div>
 
 <div class="card relative" style="border-style: dashed;">
-  <img src="<?= base_url('/children.png') ?>" alt="Children" class="position-absolute end-0 z-n1 img-mobile-xl top-mobile-xl" id="childrenImage" fetchpriority="high"/>
+  <img src="<?= base_url($websiteConfig->homepageDecorativeImage) ?>" alt="Children" class="position-absolute end-0 z-n1 img-mobile-xl top-mobile-xl" id="childrenImage" fetchpriority="high"/>
   <div class="card-body">
     <div class="row">
       <div class="col-lg-9">
         <div class="row mb-4 mb-lg-3">
           <nav aria-label="Book pagination" class="col-4">
             <ul class="pagination pagination-mobile mb-2" id="bookPagination" style="flex-wrap: wrap;">
-              <!-- Generated dynamically by JavaScript -->
             </ul>
             <?php if (session('role') === 'admin'): ?>
               <div class="col-auto">
@@ -49,7 +48,7 @@
         <?= $this->include('partials/book_list') ?>
       </div>
       <div class="col-lg-3">
-        <h2 class="h-mobile-lg mb-lg-2 mb-4" id="newBookTitle">Koleksi Buku Terbaru</h2>
+        <h2 class="h-mobile-lg mb-lg-2 mb-4" id="newBookTitle"><?= esc($websiteConfig->latestBooksTitle) ?></h2>
         <div class="row">
           <?php foreach ($latestBooks as $latestIndex => $book): ?>
           <div class="col-6 col-lg-12">
@@ -73,7 +72,6 @@
   </div>
 </div>
 
-<!-- Modal Tambah/Ubah Buku -->
 <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -82,10 +80,7 @@
         <button type="button" class="btn-close text-mobile-sm" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-
-        <!-- TAMBAH BUKU -->
         <div id="tambahSection" style="display: none;">
-          <!-- Kode Sekolah Only (NO RFID HERE) -->
           <div class="row mb-3">
             <div class="col">
               <label for="kode_sekolah" class="form-label required text-mobile-sm">
@@ -102,7 +97,6 @@
             </div>
           </div>
           
-          <!-- Judul & Pengarang -->
           <div class="row mb-3">
             <div class="col">
               <label for="judul" class="form-label required text-mobile-sm">Judul</label>
@@ -114,7 +108,6 @@
             </div>
           </div>
 
-          <!-- Illustrator & Publisher -->
           <div class="row mb-3">
             <div class="col">
               <label for="illustrator" class="form-label required text-mobile-sm">Illustrator</label>
@@ -126,7 +119,6 @@
             </div>
           </div>
 
-          <!-- Series & Category -->
           <div class="row mb-3">
             <div class="col">
               <label for="series" class="form-label required text-mobile-sm">Series</label>
@@ -143,7 +135,6 @@
             </div>
           </div>
 
-          <!-- ISBN & DDC -->
           <div class="row mb-3">
             <div class="col">
               <label for="isbn" class="form-label text-mobile-sm">ISBN</label>
@@ -155,12 +146,9 @@
             </div>
           </div>
 
-          <!-- Image & Quantity with Tabs -->
           <div class="row mb-3">
             <div class="col">
               <label for="gambarLink" class="form-label required text-mobile-sm">Image</label>
-              
-              <!-- Tab Navigation -->
               <ul class="nav nav-tabs nav-tabs-mobile mb-2" id="imageInputTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                   <button class="nav-link active" id="url-tab" data-bs-toggle="tab" data-bs-target="#url-panel" type="button" role="tab">
@@ -179,9 +167,7 @@
                 </li>
               </ul>
 
-              <!-- Tab Content -->
               <div class="tab-content" id="imageInputTabContent">
-                <!-- URL Input -->
                 <div class="tab-pane fade show active" id="url-panel" role="tabpanel">
                   <div class="input-group">
                     <input type="text" class="form-control form-control-mobile" id="gambarLink" placeholder="Paste image URL here">
@@ -190,8 +176,6 @@
                     </button>
                   </div>
                 </div>
-
-                <!-- Camera Capture -->
                 <div class="tab-pane fade" id="camera-panel" role="tabpanel">
                   <div class="camera-container">
                     <video id="cameraPreview" autoplay playsinline style="width: 100%; max-height: 300px; display: none; border-radius: 8px; background: #000;"></video>
@@ -210,8 +194,6 @@
                     </div>
                   </div>
                 </div>
-
-                <!-- File Upload -->
                 <div class="tab-pane fade" id="upload-panel" role="tabpanel">
                   <div class="input-group">
                     <input type="file" class="form-control form-control-mobile" id="fileUpload" accept="image/*">
@@ -223,20 +205,15 @@
                 </div>
               </div>
             </div>
-            
             <div class="col">
               <label for="quantity" class="form-label required text-mobile-sm">Quantity</label>
               <input type="number" class="form-control form-control-mobile" id="quantity" value="1">
             </div>
           </div>
-
-          <!-- Sinopsis -->
           <div class="mb-3">
             <label for="sinopsis" class="form-label required text-mobile-sm">Sinopsis</label>
             <textarea class="form-control form-control-mobile" id="sinopsis" rows="4" placeholder="Tuliskan sinopsis buku di sini..."></textarea>
           </div>
-
-          <!-- Image Preview -->
           <div class="mb-3">
             <img id="previewImage" src="" alt="Preview" style="max-width: 100%; max-height: 300px; display:none; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
           </div>
@@ -250,7 +227,6 @@
   </div>
 </div>
 
-<!-- RFID Confirmation Modal -->
 <div class="modal fade" id="rfidModal" tabindex="-1" aria-labelledby="rfidModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -280,7 +256,6 @@
           </div>
         </div>
 
-        <!-- Book Summary -->
         <div class="card bg-light" id="bookSummaryCard">
           <div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted text-mobile-xs">Ringkasan Buku:</h6>
@@ -290,7 +265,6 @@
           </div>
         </div>
 
-        <!-- Progress Steps -->
         <div id="progressSteps" class="mt-3" style="display: none;">
           <h6 class="mb-2"><i class="bi bi-hourglass-split"></i> Progress:</h6>
           <div class="progress-step" id="step1">
@@ -304,7 +278,6 @@
           </div>
         </div>
 
-        <!-- Cloudinary Result -->
         <div id="cloudinaryResult" class="mt-3" style="display: none;">
           <div class="alert alert-success mb-0">
             <strong><i class="bi bi-check-circle"></i> Cloudinary Upload Successful!</strong>
@@ -340,16 +313,12 @@ document.addEventListener("DOMContentLoaded", () => {
   let cameraStream = null;
   let capturedImageData = null;
 
-  // =============== CLOUDINARY CONFIGURATION ===============
   const CLOUDINARY_CONFIG = {
     cloud_name: 'dqx1ofl8j',
     upload_preset: 'ml_default'
   };
 
-  // =============== CLOUDINARY UPLOAD FUNCTION ===============
   async function uploadToCloudinary(imageData) {
-    console.log('📤 Starting Cloudinary upload...');
-    
     try {
       const formData = new FormData();
       
@@ -369,8 +338,6 @@ document.addEventListener("DOMContentLoaded", () => {
       formData.append('public_id', filename);
       formData.append('folder', 'books');
 
-      console.log('📋 Uploading with filename:', filename);
-
       const uploadResponse = await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloud_name}/image/upload`,
         {
@@ -379,16 +346,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       );
 
-      console.log('📡 Cloudinary response status:', uploadResponse.status);
-
       if (!uploadResponse.ok) {
         const errorData = await uploadResponse.json();
-        console.error('❌ Cloudinary error:', errorData);
         throw new Error(errorData.error?.message || `HTTP ${uploadResponse.status}: ${errorData.message || 'Upload failed'}`);
       }
 
       const data = await uploadResponse.json();
-      console.log('✅ Cloudinary upload successful:', data);
 
       return data.secure_url;
 
@@ -398,7 +361,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // =============== PROGRESS STEP HELPERS ===============
   function updateStep(stepId, status) {
     const step = document.getElementById(stepId);
     if (!step) return;
@@ -429,7 +391,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // =============== RFID MODAL FUNCTIONALITY ===============
   const rfidModal = new bootstrap.Modal(document.getElementById('rfidModal'));
   const rfidInput = document.getElementById('rfid_uid_confirm');
   const confirmRfidBtn = document.getElementById('confirmRfidBtn');
@@ -454,8 +415,7 @@ document.addEventListener("DOMContentLoaded", () => {
     cloudinaryResult.style.display = 'none';
     resetSteps();
     pendingBookData = null;
-
-    // Show the main modal again when RFID modal is closed
+    
     const mainModal = bootstrap.Modal.getInstance(modal);
     if (mainModal) {
       mainModal.show();
@@ -509,8 +469,6 @@ document.addEventListener("DOMContentLoaded", () => {
           pendingBookData.gambar = cloudinaryImageUrl;
           
           updateStep('step2', 'completed');
-          
-          console.log('✅ Cloudinary URL:', cloudinaryImageUrl);
         } catch (error) {
           updateStep('step2', 'failed');
           
@@ -542,12 +500,8 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify(pendingBookData)
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response OK:', response.ok);
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Server error response:', errorText);
         
         if (response.status === 409) {
           throw new Error('Conflict: RFID atau data buku sudah ada di database');
@@ -556,7 +510,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const data = await response.json();
-      console.log('Server response data:', data);
 
       if (data.success) {
         updateStep('step3', 'completed');
@@ -589,7 +542,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // =============== CAMERA FUNCTIONALITY ===============
   const cameraPreview = document.getElementById('cameraPreview');
   const cameraCanvas = document.getElementById('cameraCanvas');
   const startCameraBtn = document.getElementById('startCameraBtn');
@@ -634,8 +586,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Use lower quality (0.7) to further reduce size
     capturedImageData = cameraCanvas.toDataURL('image/jpeg', 0.7);
     
-    console.log('📸 Captured image size:', Math.round(capturedImageData.length / 1024), 'KB');
-    
     previewImage.src = capturedImageData;
     previewImage.style.display = 'block';
     
@@ -658,7 +608,6 @@ document.addEventListener("DOMContentLoaded", () => {
     stopCameraBtn.style.display = 'none';
   }
 
-  // =============== URL ANALYZE ===============
   document.getElementById('analyzeBtn').addEventListener('click', async () => {
     const imageUrl = document.getElementById('gambarLink').value.trim();
     
@@ -673,7 +622,6 @@ document.addEventListener("DOMContentLoaded", () => {
     await analyzeImage(imageUrl, 'url');
   });
 
-  // =============== FILE UPLOAD ANALYZE ===============
   document.getElementById('analyzeUploadBtn').addEventListener('click', async () => {
     const fileInput = document.getElementById('fileUpload');
     const file = fileInput.files[0];
@@ -683,7 +631,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Compress image before analyzing
     const reader = new FileReader();
     reader.onload = async (e) => {
       const img = new Image();
@@ -691,7 +638,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         
-        // Resize to max 1024px width
         const maxWidth = 1024;
         const scale = Math.min(1, maxWidth / img.width);
         
@@ -701,8 +647,6 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         
         const compressedData = canvas.toDataURL('image/jpeg', 0.7);
-        
-        console.log('📦 Compressed image size:', Math.round(compressedData.length / 1024), 'KB');
         
         previewImage.src = compressedData;
         previewImage.style.display = 'block';
@@ -716,7 +660,6 @@ document.addEventListener("DOMContentLoaded", () => {
     reader.readAsDataURL(file);
   });
 
-  // =============== UNIFIED ANALYZE FUNCTION ===============
   async function analyzeImage(imageData, type) {
   const analyzeBtn = document.getElementById('analyzeBtn');
   const analyzeUploadBtn = document.getElementById('analyzeUploadBtn');
@@ -726,24 +669,16 @@ document.addEventListener("DOMContentLoaded", () => {
   analyzeUploadBtn.disabled = true;
   analyzeBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Analyzing...';
 
-  console.log('🔍 Starting analysis...');
-  console.log('📋 Type:', type);
-  console.log('📊 Data length:', imageData ? imageData.length : 0);
-
   try {
     let response;
     const apiUrl = '<?= base_url("api/analyze-image") ?>';
     
     if (type === 'url') {
       const fullUrl = `${apiUrl}?image_url=${encodeURIComponent(imageData)}`;
-      console.log('🌐 Calling API (GET):', fullUrl.substring(0, 100) + '...');
       response = await fetch(fullUrl, {
         method: 'GET'
       });
     } else {
-      console.log('🌐 Calling API (POST):', apiUrl);
-      console.log('📤 Sending base64 data...');
-      
       let base64String = imageData;
       if (imageData.startsWith('data:')) {
         base64String = imageData.split(',')[1];
@@ -761,20 +696,14 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    console.log('📡 Response status:', response.status);
-    console.log('📡 Response ok:', response.ok);
-
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Server error:', errorText);
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('📦 Response data:', data);
 
     if (data.error) {
-      console.error('❌ API Error:', data.error);
       alert('Gagal menganalisis gambar: ' + data.error);
       return data;
     }
@@ -784,9 +713,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return data;
     }
 
-    console.log('✅ Filling form fields...');
-
-    // Fill form fields
     const fields = {
       'judul': data.title,
       'pengarang': data.author,
@@ -803,44 +729,35 @@ document.addEventListener("DOMContentLoaded", () => {
       const element = document.getElementById(fieldId);
       if (element && value && value !== 'NOT FOUND') {
         element.value = value;
-        console.log(`  ✔ Set ${fieldId}: ${value.substring(0, 50)}...`);
       }
     }
 
-    // Auto-fill category dropdown
     const kategoriSelect = document.getElementById('kategori');
     if (kategoriSelect && (data.category || data.genre)) {
       const genreValue = (data.category || data.genre).toLowerCase().trim();
-      console.log(`  🔎 Looking for category: ${genreValue}`);
       
       let found = false;
       
-      // Try exact match first
       for (const option of kategoriSelect.options) {
         if (option.value.toLowerCase() === genreValue) {
           option.selected = true;
           found = true;
-          console.log(`  ✅ Category exact match: ${option.value}`);
           break;
         }
       }
       
-      // Try partial match if exact match not found
       if (!found) {
         for (const option of kategoriSelect.options) {
           const optionLower = option.value.toLowerCase();
           
-          // Check if category contains the genre or vice versa
           if (optionLower.includes(genreValue) || genreValue.includes(optionLower)) {
             option.selected = true;
             found = true;
-            console.log(`  ✅ Category partial match: ${option.value}`);
             break;
           }
         }
       }
       
-      // Try keyword matching as last resort
       if (!found) {
         const keywords = genreValue.split(' ');
         for (const option of kategoriSelect.options) {
@@ -849,48 +766,33 @@ document.addEventListener("DOMContentLoaded", () => {
             if (keyword.length > 3 && optionLower.includes(keyword)) {
               option.selected = true;
               found = true;
-              console.log(`  ✅ Category keyword match: ${option.value} (keyword: ${keyword})`);
               break;
             }
           }
           if (found) break;
         }
       }
-      
-      if (!found) {
-        console.log(`  ⚠️ Category "${genreValue}" not found in options`);
-      }
     }
 
-    // Broadcast to other connected clients
     if (window.formSync && window.formSync.channel) {
-      console.log('📤 Broadcasting AI analysis results...');
       window.formSync.broadcastAIAnalysis(data);
     }
 
     alert('✅ Analisis berhasil! Field telah diisi otomatis.\n\n💡 Gambar akan diupload ke Cloudinary setelah RFID dikonfirmasi.');
-    console.log('✅ Analysis complete!');
     
     return data;
 
   } catch (err) {
-    console.error('❌ Error details:', err);
-    console.error('❌ Error stack:', err.stack);
     alert('Terjadi kesalahan saat menganalisis gambar: ' + err.message);
     throw err;
   } finally {
     analyzeBtn.disabled = false;
     analyzeUploadBtn.disabled = false;
     analyzeBtn.innerHTML = originalText;
-    console.log('🏁 Analysis function finished');
   }
 }
 
-// Make it globally accessible
 window.analyzeImage = analyzeImage;
-
-  
-  // =============== KODE SEKOLAH AUTO-GENERATE ===============
   function loadNextKodeSekolah() {
     $('#kode_sekolah').val('Loading...');
     
@@ -901,15 +803,12 @@ window.analyzeImage = analyzeImage;
       success: function(response) {
         if (response.success) {
           $('#kode_sekolah').val(response.kode_sekolah);
-          console.log('✅ Kode sekolah generated:', response.kode_sekolah);
         } else {
           $('#kode_sekolah').val('Error');
-          console.error('❌ Failed to generate kode:', response.message);
         }
       },
       error: function(xhr, status, error) {
         $('#kode_sekolah').val('Error');
-        console.error('❌ AJAX Error:', error);
       }
     });
   }
@@ -991,7 +890,6 @@ window.analyzeImage = analyzeImage;
     document.getElementById('bookSummaryAuthor').textContent = bookData.pengarang;
     document.getElementById('bookSummaryKode').textContent = bookData.kode_sekolah;
 
-    // Hide the main modal and show RFID modal
     const mainModal = bootstrap.Modal.getInstance(modal);
     if (mainModal) {
       mainModal.hide();
@@ -1026,12 +924,10 @@ window.analyzeImage = analyzeImage;
     }, 500);
   });
 
-  // =============== PAGINATION VARIABLES ===============
   let currentPage = <?= $page ?>;
   let totalPages = <?= $totalPages ?>;
   const ITEMS_PER_PAGE = 10;
 
-  // =============== PAGINATION RENDERING ===============
   function renderBookPagination() {
     const paginationHtml = generateBookPaginationHTML(currentPage, totalPages);
     $('#bookPagination').html(paginationHtml);
@@ -1048,14 +944,12 @@ window.analyzeImage = analyzeImage;
       startPage = Math.max(1, endPage - maxPagesToShow + 1);
     }
 
-    // Previous button
     if (currentPage > 1) {
       html += `<li class="page-item"><a href="#" class="page-link book-pagination-link" data-page="${currentPage - 1}">&laquo;</a></li>`;
     } else {
       html += `<li class="page-item disabled"><a class="page-link">&laquo;</a></li>`;
     }
 
-    // Page numbers
     if (startPage > 1) {
       html += `<li class="page-item"><a href="#" class="page-link book-pagination-link" data-page="1">1</a></li>`;
       if (startPage > 2) {
@@ -1078,7 +972,6 @@ window.analyzeImage = analyzeImage;
       html += `<li class="page-item"><a href="#" class="page-link book-pagination-link" data-page="` + totalPages + `">` + totalPages + `</a></li>`;
     }
 
-    // Next button
     if (currentPage < totalPages) {
       html += `<li class="page-item"><a href="#" class="page-link book-pagination-link" data-page="${currentPage + 1}">&raquo;</a></li>`;
     } else {
@@ -1112,31 +1005,25 @@ window.analyzeImage = analyzeImage;
       data: formData,
       dataType: "json",
       success: function(response) {
-        // Update the books container with the HTML
         $('#booksContainer').html(response.html);
         
-        // Update pagination variables with the correct totals from server
         totalPages = response.totalPages;
         currentPage = response.page;
         
-        // Update genre select picker ONLY if genres data is provided and different from current
         if (response.genres && response.genres.length > 0) {
           const currentGenres = $('#genreSelectpicker option').map(function() {
             return $(this).val();
           }).get();
           
-          // Only update if the genre list has changed (different length or different items)
           if (currentGenres.length !== response.genres.length || 
               !currentGenres.every((v, i) => v === response.genres[i])) {
             updateGenreSelectPicker(response.genres);
           }
         }
         
-        // Render the pagination controls
         renderBookPagination();
       },
       error: function(xhr, status, error) {
-        console.error('Error loading books:', error);
         $('#booksContainer').html('<div class="alert alert-danger">Error loading books. Please try again.</div>');
       }
     });
@@ -1146,15 +1033,12 @@ window.analyzeImage = analyzeImage;
     const genreSelect = $('#genreSelectpicker');
     const currentSelected = genreSelect.val() || [];
     
-    // Destroy the selectpicker if it's initialized
     if (genreSelect.data('selectpicker')) {
       genreSelect.selectpicker('destroy');
     }
     
-    // Clear all options
     genreSelect.empty();
     
-    // Add all genre options
     genres.forEach(function(genre) {
       const isSelected = currentSelected.includes(genre);
       genreSelect.append(
@@ -1165,7 +1049,6 @@ window.analyzeImage = analyzeImage;
       );
     });
     
-    // Reinitialize and refresh the selectpicker UI
     genreSelect.selectpicker({
       liveSearch: true,
       actionsBox: true
@@ -1179,7 +1062,6 @@ window.analyzeImage = analyzeImage;
     loadBooks(1);
   });
 
-  // Initialize pagination on page load
   $(document).ready(function() {
     renderBookPagination();
   });
@@ -1195,23 +1077,15 @@ window.analyzeImage = analyzeImage;
 
 <script src="<?= base_url('js/supabase-config.js') ?>"></script>
 
-<!-- =========================================
-     LIVE FORM SYNC - Add to welcome_message.php
-     Place AFTER the existing real-time code
-     ========================================= -->
-
 <script>
-// ============================================
-// ENHANCED FORM SYNC MANAGER WITH AI ANALYSIS BROADCASTING
-// ============================================
 class FormSyncManager {
   constructor() {
     this.channel = null;
     this.sessionId = this.generateSessionId();
     this.isTyping = false;
     this.typingTimeout = null;
-    this.isSyncing = false; // Prevent infinite loops
-    this.lastBroadcastData = null; // Track last broadcast to avoid duplicates
+    this.isSyncing = false;
+    this.lastBroadcastData = null;
   }
 
   generateSessionId() {
@@ -1219,10 +1093,12 @@ class FormSyncManager {
   }
 
   init() {
-    console.log('🔌 Initializing Enhanced Form Sync...');
-    console.log('🆔 Session ID:', this.sessionId);
-
-    this.channel = supabaseClient.channel('form-sync', {
+    if (!window.supabase_client) {
+      setTimeout(() => this.init(), 100);
+      return;
+    }
+    
+    this.channel = window.supabase_client.channel('form-sync', {
       config: {
         broadcast: { self: false }
       }
@@ -1240,7 +1116,6 @@ class FormSyncManager {
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('✅ Form sync connected!');
           this.showSyncStatus('ready');
           this.attachFormListeners();
           this.interceptAIAnalysis();
@@ -1282,30 +1157,16 @@ class FormSyncManager {
         this.broadcastFormData();
       });
     });
-
-    console.log('👂 Form listeners attached');
   }
 
-  // ============================================
-  // INTERCEPT AI ANALYSIS RESULTS
-  // ============================================
   interceptAIAnalysis() {
-    console.log('🤖 Intercepting AI Analysis function...');
-    
-    // Store original analyzeImage function
     const originalAnalyzeImage = window.analyzeImage;
     
-    // Override the analyzeImage function
     window.analyzeImage = async (imageData, type) => {
-      console.log('🔍 AI Analysis started...');
-      
       try {
-        // Call original function
         const result = await originalAnalyzeImage.call(window, imageData, type);
         
-        // After successful analysis, broadcast the results
         if (result && !result.error) {
-          console.log('✅ AI Analysis complete, broadcasting results...');
           this.broadcastAIAnalysis(result);
         }
         
@@ -1316,7 +1177,6 @@ class FormSyncManager {
       }
     };
     
-    // Also intercept the analyze button clicks
     this.attachAnalyzeButtonListeners();
   }
 
@@ -1329,7 +1189,6 @@ class FormSyncManager {
       analyzeBtn.onclick = async (e) => {
         if (originalClick) await originalClick.call(analyzeBtn, e);
         
-        // Broadcast after analysis completes
         setTimeout(() => {
           this.broadcastFormData('ai-analysis');
         }, 1000);
@@ -1348,30 +1207,20 @@ class FormSyncManager {
     }
   }
 
-  // ============================================
-  // INTERCEPT KODE SEKOLAH GENERATION
-  // ============================================
   interceptKodeGeneration() {
-    console.log('🔢 Intercepting Kode Generation...');
-    
     const generateBtn = document.getElementById('generateKodeBtn');
     if (!generateBtn) return;
     
     generateBtn.addEventListener('click', () => {
-      // Wait for the kode to be generated
       setTimeout(() => {
         const kodeValue = document.getElementById('kode_sekolah')?.value;
         if (kodeValue && kodeValue !== 'Loading...' && kodeValue !== 'Error') {
-          console.log('📤 Broadcasting generated kode:', kodeValue);
           this.broadcastKodeGeneration(kodeValue);
         }
-      }, 1500); // Wait for AJAX to complete
+      }, 1500);
     });
   }
 
-  // ============================================
-  // BROADCAST AI ANALYSIS RESULTS
-  // ============================================
   broadcastAIAnalysis(analysisData) {
     const payload = {
       type: 'ai-analysis',
@@ -1386,25 +1235,18 @@ class FormSyncManager {
       payload: payload
     });
 
-    console.log('📤 AI Analysis broadcasted:', payload);
     this.showSyncStatus('syncing');
   }
 
-  // ============================================
-  // HANDLE AI ANALYSIS UPDATE FROM OTHER CLIENTS
-  // ============================================
   handleAIAnalysisUpdate(payload) {
-    console.log('📥 Received AI Analysis update:', payload);
-    
     if (payload.payload.sessionId === this.sessionId) {
-      return; // Ignore own broadcasts
+      return;
     }
 
     this.isSyncing = true;
     
     const data = payload.payload.data;
     
-    // Fill all form fields with AI analysis results
     this.setFieldValue('judul', data.title || '');
     this.setFieldValue('pengarang', data.author || '');
     this.setFieldValue('illustrator', data.illustrator || '');
@@ -1415,12 +1257,10 @@ class FormSyncManager {
     this.setFieldValue('quantity', data.quantity || '1');
     this.setFieldValue('sinopsis', data.synopsis || '');
     
-    // Handle category/genre
     if (data.category || data.genre) {
       this.setSelectValue('kategori', data.category || data.genre);
     }
     
-    // Handle image
     if (data.image || data.gambar) {
       const imageUrl = data.image || data.gambar;
       this.setFieldValue('gambarLink', imageUrl);
@@ -1440,9 +1280,6 @@ class FormSyncManager {
     }, 100);
   }
 
-  // ============================================
-  // BROADCAST KODE SEKOLAH GENERATION
-  // ============================================
   broadcastKodeGeneration(kode) {
     const payload = {
       type: 'kode-generation',
@@ -1457,16 +1294,10 @@ class FormSyncManager {
       payload: payload
     });
 
-    console.log('📤 Kode generation broadcasted:', payload);
     this.showSyncStatus('syncing');
   }
 
-  // ============================================
-  // HANDLE KODE UPDATE FROM OTHER CLIENTS
-  // ============================================
   handleKodeUpdate(payload) {
-    console.log('📥 Received Kode update:', payload);
-    
     if (payload.payload.sessionId === this.sessionId) {
       return;
     }
@@ -1484,9 +1315,6 @@ class FormSyncManager {
     }, 100);
   }
 
-  // ============================================
-  // BROADCAST REGULAR FORM DATA
-  // ============================================
   broadcastFormData(source = 'manual') {
     const formData = {
       kode_sekolah: document.getElementById('kode_sekolah')?.value || '',
@@ -1506,7 +1334,6 @@ class FormSyncManager {
       source: source
     };
 
-    // Avoid broadcasting identical data
     if (JSON.stringify(formData) === JSON.stringify(this.lastBroadcastData)) {
       return;
     }
@@ -1519,13 +1346,10 @@ class FormSyncManager {
       payload: formData
     });
 
-    console.log('📤 Broadcasting form data:', formData);
     this.showSyncStatus('syncing');
   }
 
   handleFormUpdate(payload) {
-    console.log('📥 Received form update:', payload);
-
     if (payload.payload.sessionId === this.sessionId) {
       return;
     }
@@ -1579,30 +1403,24 @@ class FormSyncManager {
     
     const normalizedValue = value.toLowerCase().trim();
     
-    // Try exact match first
     for (const option of select.options) {
       if (option.value.toLowerCase() === normalizedValue) {
         option.selected = true;
         const event = new Event('change', { bubbles: true });
         select.dispatchEvent(event);
-        console.log(`✅ Category matched: ${option.value}`);
         return;
       }
     }
     
-    // Try partial match
     for (const option of select.options) {
       if (option.value.toLowerCase().includes(normalizedValue) || 
           normalizedValue.includes(option.value.toLowerCase())) {
         option.selected = true;
         const event = new Event('change', { bubbles: true });
         select.dispatchEvent(event);
-        console.log(`✅ Category partial match: ${option.value}`);
         return;
       }
     }
-    
-    console.log(`⚠️ Category "${value}" not found in dropdown`);
   }
 
   flashFormFields(source = 'manual') {
@@ -1733,8 +1551,7 @@ class FormSyncManager {
 
   disconnect() {
     if (this.channel) {
-      supabase.removeChannel(this.channel);
-      console.log('👋 Form sync disconnected');
+      window.supabase_client.removeChannel(this.channel);
     }
   }
 }
@@ -1763,9 +1580,7 @@ window.addEventListener('beforeunload', () => {
 });
 </script>
 
-<!-- Additional CSS for Form Sync -->
 <style>
-  /* Form sync status indicator */
   #formSyncStatus {
     position: fixed;
     bottom: 20px;
@@ -1779,7 +1594,6 @@ window.addEventListener('beforeunload', () => {
     transition: all 0.3s ease;
   }
 
-  /* Mobile adjustments */
   @media (max-width: 768px) {
     #formSyncStatus {
       bottom: 10px;
@@ -1789,7 +1603,6 @@ window.addEventListener('beforeunload', () => {
     }
   }
 
-  /* Form flash animation */
   @keyframes formFlash {
     0%, 100% {
       background-color: transparent;

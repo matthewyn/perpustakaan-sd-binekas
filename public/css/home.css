@@ -1,9 +1,7 @@
-/* ==================== AUTOCOMPLETE ==================== */
 .ui-autocomplete {
   z-index: 2000 !important;
 }
 
-/* ==================== CAMERA CONTAINER ==================== */
 .camera-container {
   background: #f8f9fa;
   padding: 1rem;
@@ -15,7 +13,6 @@
   margin-bottom: 1rem;
 }
 
-/* ==================== NAVIGATION TABS ==================== */
 .nav-tabs .nav-link {
   color: #6c757d;
 }
@@ -25,7 +22,6 @@
   font-weight: 500;
 }
 
-/* ==================== RFID MODAL ==================== */
 #rfid_uid_confirm:focus {
   border-color: #0d6efd;
   box-shadow: 0 0 0 0.25rem rgba(13, 110, 252, 0.25);
@@ -49,7 +45,6 @@
   animation: pulse 2s infinite;
 }
 
-/* ==================== UPLOAD PROGRESS ==================== */
 .upload-progress {
   margin-top: 1rem;
 }
@@ -85,7 +80,6 @@
   background: #f8d7da;
 }
 
-/* ==================== BOOK IMAGES - SIDEBAR (KOLEKSI TERBARU) ==================== */
 .book-card-img {
   width: 100%;
   height: 250px;
@@ -101,13 +95,14 @@
   background: #f8f9fa;
 }
 
-/* ==================== BOOK IMAGES - MAIN LIST (TENGAH) ==================== */
 .book-thumbnail-img {
   width: 100%;
   object-fit: cover;
   border-radius: 8px;
   background: #f8f9fa;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   border: 1px solid #dee2e6;
 }
 
@@ -123,7 +118,6 @@
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
 }
 
-/* ==================== BOOK CARDS - MAIN LIST ==================== */
 #booksContainer .card {
   border: 1px solid #dee2e6;
   transition: all 0.3s ease;
@@ -144,7 +138,6 @@
   background: #f8f9fa;
 }
 
-/* ==================== ROW SPACING ==================== */
 #booksContainer .row.g-3 {
   margin-left: 0;
   margin-right: 0;
@@ -155,7 +148,6 @@
   padding-right: 0.75rem;
 }
 
-/* ==================== FALLBACK IMAGE HANDLING ==================== */
 img[src=""],
 img:not([src]),
 img[src*="placehold"],
@@ -169,7 +161,6 @@ img[onerror] {
   min-height: 100px;
 }
 
-/* ==================== TEXT TRUNCATION ==================== */
 .truncate {
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -179,14 +170,12 @@ img[onerror] {
   line-height: 1.5;
 }
 
-/* ==================== BOOK INFO STYLING ==================== */
 #booksContainer h2 {
   margin-bottom: 0.5rem;
   line-height: 1.3;
   font-weight: 600;
 }
 
-/* ==================== BUTTON STYLING ==================== */
 #booksContainer .btn-secondary {
   transition: all 0.2s ease;
 }
@@ -196,7 +185,6 @@ img[onerror] {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* ==================== RESPONSIVE ADJUSTMENTS ==================== */
 @media (max-width: 768px) {
   .book-thumbnail-img {
     height: 150px;
@@ -228,14 +216,14 @@ img[onerror] {
   }
 }
 
-/* ==================== IMAGE LOADING STATE ==================== */
 img[loading="lazy"] {
   transition: opacity 0.3s ease;
 }
 
-/* ==================== SIDEBAR LATEST BOOKS ==================== */
 .card.border-light.mb-3.shadow-sm {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .card.border-light.mb-3.shadow-sm:hover {
@@ -243,7 +231,6 @@ img[loading="lazy"] {
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15) !important;
 }
 
-/* ==================== PREVIEW IMAGE ==================== */
 #previewImage {
   border: 2px solid #dee2e6;
   transition: border-color 0.3s ease;

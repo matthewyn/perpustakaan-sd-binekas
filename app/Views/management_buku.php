@@ -22,14 +22,12 @@
         cursor: pointer;
     }
 
-    /* ==================== CAMERA CONTAINER ==================== */
     .camera-container {
         background: #f8f9fa;
         padding: 1rem;
         border-radius: 8px;
     }
 
-    /* ==================== NAVIGATION TABS ==================== */
     .nav-tabs .nav-link {
         color: #6c757d;
     }
@@ -39,7 +37,6 @@
         font-weight: 500;
     }
 
-    /* ==================== RFID MODAL ==================== */
     #rfid_uid_confirm:focus {
         border-color: #0d6efd;
         box-shadow: 0 0 0 0.25rem rgba(13, 110, 252, 0.25);
@@ -78,7 +75,6 @@
 </style>
 
 <div class="container mt-4">
-    <!-- Breadcrumb -->
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb mt-3">
             <li class="breadcrumb-item"><a href="<?= base_url() ?>">Katalog</a></li>
@@ -86,7 +82,6 @@
         </ol>
     </nav>
 
-    <!-- Tombol Tambah & Import -->
     <div class="d-flex justify-content-end gap-2 mt-4">
         <button type="button" class="btn btn-primary" id="btnTambahBuku">
             <i class="bi bi-plus"></i> Tambah Buku
@@ -99,7 +94,6 @@
         </a>
     </div>
 
-    <!-- Tabel Buku -->
     <div class="card border-light mt-4">
         <div class="card-header d-flex align-items-center justify-content-between">
             List buku
@@ -155,7 +149,6 @@
     </div>
 </div>
 
-<!-- Modal Tambah/Edit Buku -->
 <div class="modal fade" id="addModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <form id="bukuForm" action="<?= base_url('management-buku/add') ?>" method="post" enctype="multipart/form-data" class="modal-content">
@@ -166,7 +159,6 @@
       <div class="modal-body">
         <input type="hidden" name="editId" id="editId">
         
-        <!-- Kode ONLY (NO UID HERE) -->
         <div class="row mb-3">
             <div class="col">
                 <label for="code" class="form-label required">Kode</label>
@@ -180,7 +172,6 @@
             </div>
         </div>
 
-        <!-- Judul & Penulis -->
         <div class="row mb-3">
             <div class="col">
                 <label for="title" class="form-label required">Judul</label>
@@ -192,7 +183,6 @@
             </div>
         </div>
 
-        <!-- Illustrator & Publisher -->
         <div class="row mb-3">
             <div class="col">
                 <label for="illustrator" class="form-label required">Illustrator</label>
@@ -204,7 +194,6 @@
             </div>
         </div>
 
-        <!-- Series & Genre -->
         <div class="row mb-3">
             <div class="col">
                 <label for="series" class="form-label required">Series</label>
@@ -247,7 +236,6 @@
             </div>
         </div>
 
-        <!-- ISBN, Year, Quantity -->
         <div class="row mb-3">
             <div class="col">
                 <label for="isbn" class="form-label">ISBN</label>
@@ -267,7 +255,6 @@
             </div>
         </div>
 
-        <!-- Image with Tabs -->
         <div class="mb-3">
             <label class="form-label required">Gambar</label>
             
@@ -330,19 +317,16 @@
             </div>
         </div>
 
-        <!-- Image Preview -->
         <div class="mb-3">
             <img id="previewImageMgmt" src="" alt="Preview" style="max-width: 100%; max-height: 300px; display:none; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
             <small class="text-muted" id="currentImageText"></small>
         </div>
 
-        <!-- Synopsis -->
         <div class="mb-3">
             <label for="synopsis" class="form-label required">Sinopsis</label>
             <textarea name="synopsis" class="form-control" id="synopsis" rows="3"></textarea>
         </div>
 
-        <!-- UID Fields (Hidden for Add, Visible for Edit) -->
         <div class="mb-3" id="uidSection" style="display: none;">
             <label class="form-label">UID RFID</label>
             <div class="uid-container" id="uidContainer">
@@ -358,7 +342,6 @@
             </button>
         </div>
 
-        <!-- Available -->
         <div class="mb-3">
             <div class="d-flex gap-4">
                 <div class="form-check form-switch">
@@ -380,7 +363,6 @@
   </div>
 </div>
 
-<!-- RFID Confirmation Modal -->
 <div class="modal fade" id="rfidModal" tabindex="-1" aria-labelledby="rfidModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -396,7 +378,6 @@
           <p class="mt-2 text-muted" id="rfidInstruction">Silakan scan kartu RFID sekarang</p>
         </div>
         
-        <!-- UID Input -->
         <div class="mb-3">
           <label for="rfid_uid_confirm" class="form-label fw-bold">RFID UID <span class="text-danger">*</span></label>
           <input 
@@ -408,7 +389,6 @@
             style="letter-spacing: 2px; font-family: monospace;">
         </div>
 
-        <!-- Book Summary -->
         <div class="card bg-light" id="bookSummaryCard">
           <div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted">Ringkasan Buku:</h6>
@@ -418,7 +398,6 @@
           </div>
         </div>
 
-        <!-- Progress Steps -->
         <div id="progressSteps" class="mt-3" style="display: none;">
           <h6 class="mb-2"><i class="bi bi-hourglass-split"></i> Progress:</h6>
           <div class="progress-step" id="step1">
@@ -432,7 +411,6 @@
           </div>
         </div>
 
-        <!-- Cloudinary Result -->
         <div id="cloudinaryResult" class="mt-3" style="display: none;">
           <div class="alert alert-success mb-0">
             <strong><i class="bi bi-check-circle"></i> Cloudinary Upload Successful!</strong>
@@ -455,7 +433,6 @@
   </div>
 </div>
 
-<!-- Modal Detail Buku -->
 <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -480,7 +457,6 @@
   </div>
 </div>
 
-<!-- Modal Import JSON -->
 <div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <form action="<?= base_url('management-buku/importJson') ?>" method="post" enctype="multipart/form-data" class="modal-content">
@@ -510,13 +486,11 @@ document.addEventListener("DOMContentLoaded", function() {
     const bukuForm = document.getElementById('bukuForm');
     const addModal = new bootstrap.Modal(document.getElementById('addModal'));
     
-    // =============== SORTING STATE ===============
     let sortState = {
         column: null,
-        direction: 'asc' // 'asc' or 'desc'
+        direction: 'asc'
     };
 
-    // =============== SETUP COLUMN HEADERS FOR SORTING ===============
     const columnHeaders = {
         'kode': 1,
         'judul': 2,
@@ -527,7 +501,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     Object.entries(columnHeaders).forEach(([colName, colIndex]) => {
         const th = document.querySelector(`thead tr th:nth-child(${colIndex + 1})`);
-        if (th && colIndex > 0) { // Skip # column
+        if (th && colIndex > 0) {
             th.style.cursor = 'pointer';
             th.style.userSelect = 'none';
             th.innerHTML += ' <i class="bi bi-arrow-down-up" style="font-size: 0.8rem; opacity: 0.5;"></i>';
@@ -535,7 +509,6 @@ document.addEventListener("DOMContentLoaded", function() {
             th.addEventListener('click', function() {
                 const icon = th.querySelector('i');
                 
-                // Reset other columns
                 document.querySelectorAll('thead tr th').forEach(header => {
                     const i = header.querySelector('i');
                     if (i && header !== th) {
@@ -544,7 +517,6 @@ document.addEventListener("DOMContentLoaded", function() {
                     }
                 });
                 
-                // Toggle sort direction
                 if (sortState.column === colName) {
                     sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
                 } else {
@@ -552,7 +524,6 @@ document.addEventListener("DOMContentLoaded", function() {
                     sortState.direction = 'asc';
                 }
                 
-                // Update icon
                 if (sortState.column === colName) {
                     icon.className = sortState.direction === 'asc' ? 'bi bi-sort-up' : 'bi bi-sort-down';
                     icon.style.opacity = '1';
@@ -564,7 +535,6 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    // =============== SORTING FUNCTION ===============
     function sortRows(rows, column, direction) {
         const columnIndex = columnHeaders[column];
         
@@ -572,11 +542,9 @@ document.addEventListener("DOMContentLoaded", function() {
             let valueA = rowA.children[columnIndex]?.textContent.trim() || '';
             let valueB = rowB.children[columnIndex]?.textContent.trim() || '';
             
-            // Try to convert to number if all digits
             if (!isNaN(valueA) && valueA !== '') valueA = parseFloat(valueA);
             if (!isNaN(valueB) && valueB !== '') valueB = parseFloat(valueB);
             
-            // Convert to lowercase for string comparison
             if (typeof valueA === 'string') valueA = valueA.toLowerCase();
             if (typeof valueB === 'string') valueB = valueB.toLowerCase();
             
@@ -588,7 +556,6 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // =============== CAMERA & IMAGE HANDLING ===============
     let cameraStreamMgmt = null;
     let capturedImageDataMgmt = null;
 
@@ -656,7 +623,6 @@ document.addEventListener("DOMContentLoaded", function() {
         stopCameraBtnMgmt.style.display = 'none';
     }
 
-    // =============== URL ANALYZE ===============
     document.getElementById('analyzeBtnMgmt').addEventListener('click', async () => {
         const imageUrl = document.getElementById('imageLink').value.trim();
         
@@ -671,7 +637,6 @@ document.addEventListener("DOMContentLoaded", function() {
         await analyzeImageMgmt(imageUrl, 'url');
     });
 
-    // =============== FILE UPLOAD ANALYZE ===============
     document.getElementById('analyzeUploadBtnMgmt').addEventListener('click', async () => {
         const fileInput = document.getElementById('fileUploadMgmt');
         const file = fileInput.files[0];
@@ -710,7 +675,6 @@ document.addEventListener("DOMContentLoaded", function() {
         reader.readAsDataURL(file);
     });
 
-    // =============== UNIFIED ANALYZE FUNCTION ===============
     async function analyzeImageMgmt(imageData, type) {
         const analyzeBtn = document.getElementById('analyzeBtnMgmt');
         const analyzeUploadBtn = document.getElementById('analyzeUploadBtnMgmt');
@@ -720,24 +684,16 @@ document.addEventListener("DOMContentLoaded", function() {
         analyzeUploadBtn.disabled = true;
         analyzeBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Analyzing...';
 
-        console.log('🔍 Starting analysis...');
-        console.log('📋 Type:', type);
-        console.log('📊 Data length:', imageData ? imageData.length : 0);
-
         try {
             let response;
             const apiUrl = '<?= base_url("api/analyze-image") ?>';
             
             if (type === 'url') {
                 const fullUrl = `${apiUrl}?image_url=${encodeURIComponent(imageData)}`;
-                console.log('🌐 Calling API (GET):', fullUrl.substring(0, 100) + '...');
                 response = await fetch(fullUrl, {
                     method: 'GET'
                 });
             } else {
-                console.log('🌐 Calling API (POST):', apiUrl);
-                console.log('📤 Sending base64 data...');
-                
                 let base64String = imageData;
                 if (imageData.startsWith('data:')) {
                     base64String = imageData.split(',')[1];
@@ -755,20 +711,14 @@ document.addEventListener("DOMContentLoaded", function() {
                 });
             }
 
-            console.log('📡 Response status:', response.status);
-            console.log('📡 Response ok:', response.ok);
-
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('❌ Server error:', errorText);
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
             const data = await response.json();
-            console.log('📦 Response data:', data);
 
             if (data.error) {
-                console.error('❌ API Error:', data.error);
                 showToast('Gagal menganalisis gambar: ' + data.error, 'error');
                 return data;
             }
@@ -777,10 +727,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 showToast('Gambar bukan sampul buku atau tidak dapat dianalisis', 'error');
                 return data;
             }
-
-            console.log('✅ Filling form fields...');
-
-            // Fill form fields
+            
             const fields = {
                 'title': data.title,
                 'author': data.author,
@@ -797,22 +744,18 @@ document.addEventListener("DOMContentLoaded", function() {
                 const element = bukuForm.querySelector(`[name="${fieldName}"]`);
                 if (element && value && value !== 'NOT FOUND') {
                     element.value = value;
-                    console.log(`  ✔ Set ${fieldName}: ${value.substring(0, 50)}...`);
                 }
             }
 
-            // Auto-fill genre dropdown
             const genreSelect = bukuForm.querySelector('[name="genre"]');
             if (genreSelect && (data.category || data.genre)) {
                 const genreValue = (data.category || data.genre).toLowerCase().trim();
-                console.log(`  🔎 Looking for genre: ${genreValue}`);
                 
                 let found = false;
                 for (const option of genreSelect.options) {
                     if (option.value.toLowerCase() === genreValue) {
                         option.selected = true;
                         found = true;
-                        console.log(`  ✅ Genre exact match: ${option.value}`);
                         break;
                     }
                 }
@@ -823,36 +766,26 @@ document.addEventListener("DOMContentLoaded", function() {
                         if (optionLower.includes(genreValue) || genreValue.includes(optionLower)) {
                             option.selected = true;
                             found = true;
-                            console.log(`  ✅ Genre partial match: ${option.value}`);
                             break;
                         }
                     }
                 }
-                
-                if (!found) {
-                    console.log(`  ⚠️ Genre "${genreValue}" not found in options`);
-                }
             }
 
             showToast('Analisis berhasil! Field telah diisi otomatis.', 'success');
-            console.log('✅ Analysis complete!');
             
             return data;
 
         } catch (err) {
-            console.error('❌ Error details:', err);
-            console.error('❌ Error stack:', err.stack);
             showToast('Terjadi kesalahan saat menganalisis gambar: ' + err.message, 'error');
             throw err;
         } finally {
             analyzeBtn.disabled = false;
             analyzeUploadBtn.disabled = false;
             analyzeBtn.innerHTML = originalText;
-            console.log('🏁 Analysis function finished');
         }
     }
 
-    // =============== CLOUDINARY CONFIGURATION ===============
     const CLOUDINARY_CONFIG = {
         cloud_name: 'dqx1ofl8j',
         upload_preset: 'ml_default'
@@ -900,7 +833,6 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
-    // =============== PROGRESS STEP HELPERS ===============
     function updateStep(stepId, status) {
         const step = document.getElementById(stepId);
         if (!step) return;
@@ -1056,7 +988,6 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    // =============== SUBMIT BOOK FOR EDIT ===============
     async function submitBookEdit(bookData) {
         try {
             const editId = document.getElementById('editId').value;
@@ -1068,7 +999,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
             let cloudinaryImageUrl = null;
             
-            // Upload image to Cloudinary if there's a new captured image
             if (capturedImageDataMgmt) {
                 try {
                     cloudinaryImageUrl = await uploadToCloudinary(capturedImageDataMgmt);
@@ -1104,12 +1034,10 @@ document.addEventListener("DOMContentLoaded", function() {
             }
 
         } catch (error) {
-            console.error('❌ Edit error:', error);
             showToast('Terjadi kesalahan saat mengupdate buku: ' + error.message, 'error');
         }
     }
 
-    // =============== UID MANAGEMENT ===============
     document.getElementById('btnAddUid').addEventListener('click', () => {
         const container = document.getElementById('uidContainer');
         const inputGroup = document.createElement('div');
@@ -1123,7 +1051,6 @@ document.addEventListener("DOMContentLoaded", function() {
         container.appendChild(inputGroup);
     });
 
-    // Generate Kode Button
     document.getElementById('generateKodeBtn').addEventListener('click', function() {
         const kodeInput = document.getElementById('code');
         kodeInput.value = 'Loading...';
@@ -1151,7 +1078,6 @@ document.addEventListener("DOMContentLoaded", function() {
         bukuForm.action = "<?= base_url('management-buku/add') ?>";
         document.getElementById('code').value = '';
         
-        // Hide UID section for Add mode
         document.getElementById('uidSection').style.display = 'none';
         
         setTimeout(() => {
@@ -1171,7 +1097,6 @@ document.addEventListener("DOMContentLoaded", function() {
         previewImageMgmt.style.display = 'none';
         capturedImageDataMgmt = null;
         
-        // Reset UID container with one empty input
         const uidContainer = document.getElementById('uidContainer');
         uidContainer.innerHTML = `
             <div class="input-group mb-2">
@@ -1188,18 +1113,12 @@ document.addEventListener("DOMContentLoaded", function() {
             e.stopPropagation();
             const tr = btn.closest('tr');
             const book = JSON.parse(tr.getAttribute('data-book'));
-            
-            console.log('Book data:', book);
-            console.log('DDC value:', book.ddc);
-            
             resetForm();
             document.getElementById('modalBukuTitle').textContent = 'Edit Buku';
             bukuForm.action = "<?= base_url('management-buku/edit/') ?>" + book.id;
             
-            // Show UID section for Edit mode
             document.getElementById('uidSection').style.display = 'block';
             
-            // Fill all form fields
             bukuForm.querySelector('[name="code"]').value = book.code || '';
             bukuForm.querySelector('[name="title"]').value = book.title || '';
             bukuForm.querySelector('[name="author"]').value = book.author || '';
@@ -1207,12 +1126,8 @@ document.addEventListener("DOMContentLoaded", function() {
             bukuForm.querySelector('[name="genre"]').value = book.genre || '';
             bukuForm.querySelector('[name="isbn"]').value = book.isbn || '';
             
-            // Set DDC Number with debugging
             const ddcInput = bukuForm.querySelector('[name="ddcNumber"]');
-            console.log('DDC Input element:', ddcInput);
-            console.log('Setting DDC value to:', book.ddc_number || '');
             ddcInput.value = book.ddc_number || '';
-            console.log('DDC Input value after setting:', ddcInput.value);
             
             bukuForm.querySelector('[name="year"]').value = book.year || '';
             bukuForm.querySelector('[name="illustrator"]').value = book.illustrator || '';
@@ -1227,7 +1142,6 @@ document.addEventListener("DOMContentLoaded", function() {
                 document.getElementById('currentImageText').textContent = 'Gambar saat ini: ' + book.image;
             }
             
-            // Clear and populate UIDs
             const uidContainer = document.getElementById('uidContainer');
             uidContainer.innerHTML = '';
             
@@ -1246,7 +1160,6 @@ document.addEventListener("DOMContentLoaded", function() {
                     }
                 });
             } else {
-                // Add one empty UID field if no UIDs exist
                 const inputGroup = document.createElement('div');
                 inputGroup.className = 'input-group mb-2';
                 inputGroup.innerHTML = `
@@ -1309,10 +1222,8 @@ document.addEventListener("DOMContentLoaded", function() {
         }
 
         if (isEditMode) {
-            // For edit mode, submit directly without RFID modal
             submitBookEdit(bookData);
         } else {
-            // For add mode, show RFID modal
             pendingBookData = bookData;
             document.getElementById('bookSummaryTitle').textContent = bookData.title;
             document.getElementById('bookSummaryAuthor').textContent = bookData.author;
@@ -1322,7 +1233,6 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    // =============== PAGINATION & TABLE FUNCTIONS ===============
     function renderPagination(totalRows) {
         const pages = Math.ceil(totalRows / rowsPerPage);
         const paginationContainer = document.querySelector('.pagination');
@@ -1390,22 +1300,18 @@ document.addEventListener("DOMContentLoaded", function() {
         const query = searchInput.value.toLowerCase();
         let rows = Array.from(tableBody.querySelectorAll('tr'));
         
-        // Apply filter
         const filtered = rows.filter(row => {
             const code = row.children[1]?.textContent.toLowerCase() || '';
             const title = row.children[2]?.textContent.toLowerCase() || '';
             return code.includes(query) || title.includes(query);
         });
 
-        // Apply sorting
         if (sortState.column) {
             sortRows(filtered, sortState.column, sortState.direction);
         }
 
-        // Hide all rows
         rows.forEach(row => row.style.display = 'none');
 
-        // Show paginated rows
         const start = (currentPage - 1) * rowsPerPage;
         const end = start + rowsPerPage;
         filtered.slice(start, end).forEach(row => row.style.display = '');
@@ -1413,7 +1319,6 @@ document.addEventListener("DOMContentLoaded", function() {
         renderPagination(filtered.length);
     }
 
-    // Double click for detail
     document.querySelectorAll('#bukuTableBody tr').forEach(function(row) {
         row.addEventListener('dblclick', function() {
             const book = JSON.parse(row.getAttribute('data-book'));

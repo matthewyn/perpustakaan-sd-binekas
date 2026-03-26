@@ -12,10 +12,8 @@
             <div class="card shadow-sm h-100">
               <div class="card-body p-2">
                 <?php
-                  // Handle empty or invalid image URLs
                   $imageUrl = !empty($book['image']) ? $book['image'] : 'https://placehold.co/400x600/e9ecef/6c757d?text=No+Image';
                   
-                  // Check if it's a relative URL and add base_url
                   if (!filter_var($imageUrl, FILTER_VALIDATE_URL)) {
                     $imageUrl = base_url($imageUrl);
                   }

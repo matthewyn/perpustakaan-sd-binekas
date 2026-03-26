@@ -17,10 +17,8 @@
   </style>
 
 <div class="container mt-4">
-    <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- Breadcrumb -->
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb mt-3">
             <li class="breadcrumb-item"><a href="<?= base_url() ?>">Katalog</a></li>
@@ -28,7 +26,6 @@
         </ol>
     </nav>
 
-    <!-- SISWA -->
     <div class="d-flex justify-content-between align-items-center mt-4">
         <h4>Data Siswa</h4>
         <div class="gap-2 d-flex">
@@ -99,7 +96,6 @@
         </div>
     </div>
 
-    <!-- SECTION GURU -->
     <div class="d-flex justify-content-between align-items-center mt-5">
         <h4>Data Guru</h4>
         <div class="gap-2 d-flex">
@@ -164,7 +160,6 @@
     </div>
 </div>
 
-<!-- Modal Siswa -->
 <div class="modal fade" id="modalSiswa" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -177,7 +172,6 @@
                     <input type="hidden" id="siswaMode" value="add">
                     <input type="hidden" id="siswaId" value="">
 
-                    <!-- Cari Nama -->
                     <div id="siswaSearchSection" style="display:none;">
                         <div class="mb-3">
                             <label class="form-label required">Cari Nama</label>
@@ -265,7 +259,6 @@
     </div>
 </div>
 
-<!-- Modal Guru -->
 <div class="modal fade" id="modalGuru" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -278,7 +271,6 @@
                     <input type="hidden" id="guruMode" value="add">
                     <input type="hidden" id="guruId" value="">
 
-                    <!-- Search Nama (hanya untuk edit) -->
                     <div id="guruSearchSection" style="display:none;">
                         <div class="mb-3">
                             <label class="form-label required">Cari Nama Guru</label>
@@ -289,7 +281,6 @@
                         <hr>
                     </div>
 
-                    <!-- Form Fields - 2 Kolom -->
                     <div id="guruFormFields">
                         <div class="row">
                             <div class="col-md-6">
@@ -351,7 +342,6 @@
 </div>
 
 <script>
-// Global Variables
 let siswaList = [];
 let guruList = [];
 let classList = [];
@@ -360,11 +350,9 @@ let currentSiswaPage = 1;
 let currentGuruPage = 1;
 const itemsPerPage = 20;
 
-// Sorting variables
 let siswaSortField = null;
 let siswaSortOrder = 'asc';
 
-// Initialize on DOM Load
 document.addEventListener('DOMContentLoaded', function() {
     modalSiswa = new bootstrap.Modal(document.getElementById('modalSiswa'));
     modalGuru  = new bootstrap.Modal(document.getElementById('modalGuru'));
@@ -381,7 +369,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (searchGuruEl) searchGuruEl.addEventListener('input', filterGuruTable);
 });
 
-// NOTIFIKASI
 function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
@@ -400,7 +387,6 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-// ================== FETCH DATA ==================
 function fetchClassData() {
     fetch("<?= base_url('management-class/list') ?>")
         .then(response => response.json())
@@ -413,7 +399,6 @@ function fetchClassData() {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
             showToast('Terjadi kesalahan saat memuat data kelas', 'error');
         });
 }
@@ -482,7 +467,6 @@ function fetchSiswaData() {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
             showToast('Terjadi kesalahan saat memuat data siswa', 'error');
         });
 }
@@ -503,7 +487,6 @@ function fetchGuruData() {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
             showToast('Terjadi kesalahan saat memuat data guru', 'error');
         });
 }
@@ -520,20 +503,25 @@ function renderSiswaTable(data) {
     
     document.getElementById('totalSiswa').textContent = data.length;
     
+<<<<<<< HEAD
     const totalPages  = Math.ceil(data.length / itemsPerPage);
     const startIndex  = (currentSiswaPage - 1) * itemsPerPage;
     const paginatedData = data.slice(startIndex, startIndex + itemsPerPage);
+=======
+    const totalPages = Math.ceil(data.length / itemsPerPage);
+    const startIndex = (currentSiswaPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedData = data.slice(startIndex, endIndex);
+>>>>>>> 5bad965974b94ce965a1a609f2595608699080c1
     
     let html = '';
     paginatedData.forEach((siswa, index) => {
         const actualIndex = startIndex + index + 1;
-        const trustScore  = parseInt(siswa.trust_score ?? 0);
-        const maxBorrow   = siswa.maxBorrow || siswa.max_borrow || 1;
-        const className   = getClassNameById(siswa.class_id);
-        const totalBorrow = typeof siswa.num_borrows !== 'undefined' ? siswa.num_borrows : '-';
-        const uidBadge    = siswa.uid
-            ? `<span class="badge bg-secondary"><i class="bi bi-upc-scan"></i> ${siswa.uid}</span>`
-            : `<span class="text-muted">-</span>`;
+        const trustScore = parseInt(siswa.trust_score ?? 0);
+        const maxBorrow = siswa.maxBorrow || siswa.max_borrow || 1;
+        const className = getClassNameById(siswa.class_id);
+
+        let totalBorrow = typeof siswa.num_borrows !== 'undefined' ? siswa.num_borrows : '-';
 
         html += `
             <tr>
@@ -612,9 +600,10 @@ function renderGuruTable(data) {
     
     document.getElementById('totalGuru').textContent = data.length;
     
-    const totalPages   = Math.ceil(data.length / itemsPerPage);
-    const startIndex   = (currentGuruPage - 1) * itemsPerPage;
-    const paginatedData = data.slice(startIndex, startIndex + itemsPerPage);
+    const totalPages = Math.ceil(data.length / itemsPerPage);
+    const startIndex = (currentGuruPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedData = data.slice(startIndex, endIndex);
     
     let html = '';
     paginatedData.forEach((guru, index) => {
@@ -677,10 +666,10 @@ function goToGuruPage(page) {
     }
 }
 
-// Filter tabel
 function filterSiswaTable() {
     const query = document.getElementById('searchSiswa').value.toLowerCase();
     currentSiswaPage = 1;
+    
     const filteredData = siswaList.filter(siswa => {
         return (siswa.nisn || '').toLowerCase().includes(query) ||
                (siswa.nama || '').toLowerCase().includes(query);
@@ -691,6 +680,7 @@ function filterSiswaTable() {
 function filterGuruTable() {
     const query = document.getElementById('searchGuru').value.toLowerCase();
     currentGuruPage = 1;
+    
     const filteredData = guruList.filter(guru => {
         return (guru.nip || '').toLowerCase().includes(query) ||
                (guru.nama || '').toLowerCase().includes(query);
@@ -698,12 +688,12 @@ function filterGuruTable() {
     renderGuruTable(filteredData);
 }
 
-// fungsi modal siswa
 function openAddSiswaModal() {
     document.getElementById('modalSiswaTitle').textContent = 'Tambah Siswa Baru';
     document.getElementById('siswaMode').value = 'add';
     document.getElementById('siswaSearchSection').style.display = 'none';
     document.getElementById('siswaFormFields').style.display = 'block';
+    
     document.getElementById('formSiswa').reset();
     document.getElementById('siswaId').value = '';
     populateClassDropdown();
@@ -715,18 +705,19 @@ function openEditSiswaModal() {
     document.getElementById('siswaMode').value = 'edit';
     document.getElementById('siswaSearchSection').style.display = 'block';
     document.getElementById('siswaFormFields').style.display = 'none';
+    
     document.getElementById('formSiswa').reset();
     document.getElementById('siswaId').value = '';
     document.getElementById('siswaSearch').value = '';
     modalSiswa.show();
 }
 
-// fungsi modal guru
 function openAddGuruModal() {
     document.getElementById('modalGuruTitle').textContent = 'Tambah Guru Baru';
     document.getElementById('guruMode').value = 'add';
     document.getElementById('guruSearchSection').style.display = 'none';
     document.getElementById('guruFormFields').style.display = 'block';
+    
     document.getElementById('formGuru').reset();
     document.getElementById('guruId').value = '';
     populateGuruClassDropdown();
@@ -738,13 +729,13 @@ function openEditGuruModal() {
     document.getElementById('guruMode').value = 'edit';
     document.getElementById('guruSearchSection').style.display = 'block';
     document.getElementById('guruFormFields').style.display = 'none';
+    
     document.getElementById('formGuru').reset();
     document.getElementById('guruId').value = '';
     document.getElementById('guruSearch').value = '';
     modalGuru.show();
 }
 
-// autocomplete setup
 function setupAutocomplete() {
     if (typeof $ !== 'undefined' && $.fn.autocomplete) {
         $('#siswaSearch').autocomplete({
@@ -817,7 +808,6 @@ function fillGuruForm(guru) {
     document.getElementById('guruKelas').value = guru.class_id || '';
 }
 
-// submit handlers
 function handleSiswaSubmit(event) {
     event.preventDefault();
     
@@ -866,7 +856,6 @@ function handleSiswaSubmit(event) {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
         showToast('Terjadi kesalahan: ' + error.message, 'error');
     });
 }
@@ -911,7 +900,6 @@ function handleGuruSubmit(event) {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
         showToast('Terjadi kesalahan: ' + error.message, 'error');
     });
 }

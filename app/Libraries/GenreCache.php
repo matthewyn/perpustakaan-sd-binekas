@@ -8,16 +8,13 @@ class GenreCache
 {
     private $cache;
     private $cacheName = 'book_genres';
-    private $cacheTimeout = 3600; // 1 hour
+    private $cacheTimeout = 3600;
 
     public function __construct()
     {
         $this->cache = \Config\Services::cache();
     }
 
-    /**
-     * Get genres from cache or fetch if expired
-     */
     public function getGenres($refreshCallback)
     {
         $cached = $this->cache->get($this->cacheName);
@@ -26,7 +23,6 @@ class GenreCache
             return $cached;
         }
 
-        // Cache miss - call refresh function
         $genres = call_user_func($refreshCallback);
         
         if (!empty($genres)) {
@@ -36,17 +32,11 @@ class GenreCache
         return $genres;
     }
 
-    /**
-     * Invalidate genre cache
-     */
     public function invalidate()
     {
         $this->cache->delete($this->cacheName);
     }
 
-    /**
-     * Set cache timeout
-     */
     public function setTimeout($timeout)
     {
         $this->cacheTimeout = $timeout;

@@ -126,7 +126,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Toggle password
     const togglePassword = document.getElementById('togglePassword');
     const passwordInput = document.getElementById('password');
     const eyeIcon = document.getElementById('eyeIcon');
@@ -144,7 +143,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Form validation
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', function(e) {
@@ -157,14 +155,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 return false;
             }
             
-            // Show loading state
             const submitBtn = loginForm.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Loading...';
         });
     }
     
-    // TIMEOUT ALERTS
     const alerts = document.querySelectorAll('.alert-dismissible');
     alerts.forEach(function(alert) {
         setTimeout(function() {
