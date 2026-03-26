@@ -70,8 +70,7 @@ class AutomateTransactionController extends Controller
 
     private function fetchAllBooks($queryParams = [])
     {
-        // Try cache first
-        $cacheKey = 'all_books_automate_' . md5(json_encode($queryParams));
+        $cacheKey    = 'all_books_automate_' . md5(json_encode($queryParams));
         $cachedBooks = $this->cache->get($cacheKey);
 
         if ($cachedBooks !== null) {
@@ -80,15 +79,15 @@ class AutomateTransactionController extends Controller
         }
 
         $allBooks = [];
-        $limit = 1000;
-        $offset = 0;
-        $hasMore = true;
+        $limit    = 1000;
+        $offset   = 0;
+        $hasMore  = true;
 
         log_message('info', 'Starting fetchAllBooks with pagination');
 
         while ($hasMore) {
             $params = array_merge($queryParams, [
-                'limit' => $limit,
+                'limit'  => $limit,
                 'offset' => $offset
             ]);
 
@@ -104,8 +103,8 @@ class AutomateTransactionController extends Controller
 
             if ($count > 0) {
                 $allBooks = array_merge($allBooks, $books);
-                $offset += $limit;
-                
+                $offset  += $limit;
+
                 if ($count < $limit) {
                     $hasMore = false;
                 }
@@ -115,25 +114,23 @@ class AutomateTransactionController extends Controller
         }
 
         log_message('info', 'Total books fetched: ' . count($allBooks));
-        
-        // Cache for 5 minutes
         $this->cache->save($cacheKey, $allBooks, 300);
-        
+
         return $allBooks;
     }
 
     private function fetchAllTransactions($queryParams = [])
     {
         $allTransactions = [];
-        $limit = 1000;
-        $offset = 0;
+        $limit   = 1000;
+        $offset  = 0;
         $hasMore = true;
 
         log_message('info', 'Starting fetchAllTransactions with pagination');
 
         while ($hasMore) {
             $params = array_merge($queryParams, [
-                'limit' => $limit,
+                'limit'  => $limit,
                 'offset' => $offset
             ]);
 
@@ -150,7 +147,7 @@ class AutomateTransactionController extends Controller
             if ($count > 0) {
                 $allTransactions = array_merge($allTransactions, $transactions);
                 $offset += $limit;
-                
+
                 if ($count < $limit) {
                     $hasMore = false;
                 }
@@ -163,14 +160,12 @@ class AutomateTransactionController extends Controller
         return $allTransactions;
     }
 
-    // Update trust score
     private function updateTrustScore($userId, $borrowDate, $dueDate)
     {
-        // Get user data
         $user = $this->supabaseRequest('GET', 'users', null, [
-            'id' => 'eq.' . $userId,
+            'id'     => 'eq.' . $userId,
             'select' => 'trust_score',
-            'limit' => 1
+            'limit'  => 1
         ]);
 
         if (isset($user['error']) || empty($user)) {
@@ -179,27 +174,23 @@ class AutomateTransactionController extends Controller
         }
 
         $currentScore = (float)($user[0]['trust_score'] ?? 100);
-        $returnDate = strtotime(date('Y-m-d'));
+        $returnDate   = strtotime(date('Y-m-d'));
         $dueTimestamp = strtotime($dueDate);
 
-        // Calculate new score
         if ($returnDate <= $dueTimestamp) {
-            $newScore = $currentScore + 1; //tepat waktu
-            $status = 'ontime';
+            $newScore = $currentScore + 1;
+            $status   = 'ontime';
         } else {
-            $newScore = $currentScore; //telat, tidak ada perubahan
-            $status = 'late';
+            $newScore = $currentScore;
+            $status   = 'late';
         }
 
-        // Keep score with no upper limit, only ensure non-negative
         $newScore = max(0, $newScore);
 
-        // Update user
         $updateResult = $this->supabaseRequest('PATCH', 'users?id=eq.' . $userId, [
             'trust_score' => $newScore
         ]);
 
-        // Clear cache
         $this->cache->delete('all_users_automate_' . md5(json_encode(['select' => '*'])));
 
         log_message('info', "Trust score updated for user $userId: $currentScore -> $newScore ($status)");
@@ -214,20 +205,23 @@ class AutomateTransactionController extends Controller
 
     public function automateTransaction()
     {
-        $uidScan = trim($this->request->getPost('uid'));
-        $nisn = trim($this->request->getPost('nisn') ?? '');
+        // uidScan  = UID kartu RFID buku
+        // userUid  = UID kartu RFID user (sebelumnya NISN/NIP)
+        $uidScan = trim($this->request->getPost('uid') ?? '');
+        $userUid = trim($this->request->getPost('user_uid') ?? '');
 
         if (empty($uidScan)) {
-            return $this->response->setJSON(['success' => false, 'message' => 'UID wajib diisi']);
+            return $this->response->setJSON(['success' => false, 'message' => 'UID buku wajib diisi']);
         }
 
-        if (empty($nisn)) {
-            return $this->response->setJSON(['success' => false, 'message' => 'NISN/NIP wajib diisi']);
+        if (empty($userUid)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'UID user wajib diisi']);
         }
 
         try {
+            // ── 1. Cari buku berdasarkan UID RFID buku ──────────────────────────
             $allBooks = $this->fetchAllBooks();
-            
+
             if (empty($allBooks)) {
                 log_message('error', 'Failed to fetch books');
                 return $this->response->setJSON(['success' => false, 'message' => 'Gagal mengambil data buku']);
@@ -239,9 +233,9 @@ class AutomateTransactionController extends Controller
                 if (!is_array($bookUids)) {
                     $bookUids = [$bookUids];
                 }
-                
+
                 foreach ($bookUids as $bookUid) {
-                    if (strcasecmp(trim($bookUid), $uidScan) === 0) {
+                    if (strcasecmp(trim((string)$bookUid), $uidScan) === 0) {
                         $bookData = $book;
                         break 2;
                     }
@@ -252,207 +246,181 @@ class AutomateTransactionController extends Controller
                 return $this->response->setJSON(['success' => false, 'message' => 'UID buku tidak ditemukan']);
             }
 
-            // Cari dari nisn/nip
-            $userData = null;
-            
-            $userByNisn = $this->supabaseRequest('GET', 'users', null, [
-                'nisn' => 'eq.' . $nisn,
+            // ── 2. Cari user berdasarkan UID RFID user ──────────────────────────
+            $userResult = $this->supabaseRequest('GET', 'users', null, [
+                'uid'   => 'eq.' . $userUid,
                 'limit' => 1
             ]);
-            
-            if (!isset($userByNisn['error']) && !empty($userByNisn)) {
-                $userData = $userByNisn[0];
-            }
-            
-            if (!$userData) {
-                $userByNip = $this->supabaseRequest('GET', 'users', null, [
-                    'nip' => 'eq.' . $nisn,
-                    'limit' => 1
-                ]);
-                
-                if (!isset($userByNip['error']) && !empty($userByNip)) {
-                    $userData = $userByNip[0];
-                }
-            }
-            
-            if (!$userData) {
-                return $this->response->setJSON(['success' => false, 'message' => 'User tidak ditemukan']);
+
+            if (isset($userResult['error']) || empty($userResult)) {
+                return $this->response->setJSON(['success' => false, 'message' => 'UID user tidak ditemukan']);
             }
 
-            // Validasi histori transaksi dengan pagination
+            $userData = $userResult[0];
+
+            // ── 3. Deteksi tipe transaksi (borrow / return) ─────────────────────
             $activeTx = $this->fetchAllTransactions([
-                'uid' => 'eq.' . $uidScan,
+                'uid'    => 'eq.' . $uidScan,
                 'status' => 'eq.active',
-                'type' => 'eq.borrow'
+                'type'   => 'eq.borrow'
             ]);
-            
+
             $type = (!empty($activeTx)) ? 'return' : 'borrow';
 
-            // Get PIC info from session
-            $picName = session()->get('name') ?? 'Admin';
+            $picName     = session()->get('name') ?? 'Admin';
             $picUsername = session()->get('username') ?? 'admin';
-            $picId = session()->get('user_id') ?? null;
+            $picId       = session()->get('user_id') ?? null;
 
+            // ── 4a. Peminjaman ──────────────────────────────────────────────────
             if ($type === 'borrow') {
 
-                // Peminjaman
                 $currentQty = (int)($bookData['quantity'] ?? 0);
                 if ($currentQty < 1) {
                     return $this->response->setJSON(['success' => false, 'message' => 'Stok buku habis']);
                 }
 
                 $trustScore = (float)($userData['trust_score'] ?? 100);
-                $maxBorrow = (int)($userData['maxBorrow'] ?? 1);
-                
-                // Count active borrows with pagination
+                $maxBorrow  = (int)($userData['maxBorrow'] ?? 1);
+
                 $userActiveBorrows = $this->fetchAllTransactions([
                     'user_id' => 'eq.' . $userData['id'],
-                    'type' => 'eq.borrow',
-                    'status' => 'eq.active'
+                    'type'    => 'eq.borrow',
+                    'status'  => 'eq.active'
                 ]);
-                
+
                 $activeBorrowCount = count($userActiveBorrows);
 
                 if ($activeBorrowCount >= $maxBorrow) {
                     return $this->response->setJSON([
-                        'success' => false, 
+                        'success' => false,
                         'message' => "Batas maksimal peminjaman ($maxBorrow buku) telah tercapai. Trust Score: " . number_format($trustScore, 1)
                     ]);
                 }
 
-                // Calculate due date (default 7 hari)
                 $isOneDayBook = $bookData['is_one_day_book'] ?? false;
-                $dueDays = $isOneDayBook ? 1 : 7;
-                $dueDate = date('Y-m-d', strtotime("+$dueDays days"));
+                $dueDays      = $isOneDayBook ? 1 : 7;
+                $dueDate      = date('Y-m-d', strtotime("+$dueDays days"));
 
                 $transactionData = [
-                    'user_id' => $userData['id'],
-                    'book_id' => $bookData['id'],
-                    'uid' => $uidScan,
-                    'type' => 'borrow',
-                    'tanggal' => date('Y-m-d'),
-                    'due_date' => $dueDate,
-                    'status' => 'active',
-                    'pic_name' => $picName,
-                    'pic_username' => $picUsername,
-                    'pic_id' => $picId,
-                    'transaction_location' => 'perpustakaan',
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'completed_at' => null,
-                    'completed_by_name' => null,
-                    'completed_by_username' => null
+                    'user_id'                => $userData['id'],
+                    'book_id'                => $bookData['id'],
+                    'uid'                    => $uidScan,
+                    'type'                   => 'borrow',
+                    'tanggal'                => date('Y-m-d'),
+                    'due_date'               => $dueDate,
+                    'status'                 => 'active',
+                    'pic_name'               => $picName,
+                    'pic_username'           => $picUsername,
+                    'pic_id'                 => $picId,
+                    'transaction_location'   => 'perpustakaan',
+                    'created_at'             => date('Y-m-d H:i:s'),
+                    'completed_at'           => null,
+                    'completed_by_name'      => null,
+                    'completed_by_username'  => null
                 ];
 
                 $insertTx = $this->supabaseRequest('POST', 'transactions', $transactionData);
-                
+
                 if (isset($insertTx['error'])) {
                     return $this->response->setJSON(['success' => false, 'message' => 'Gagal menyimpan transaksi peminjaman']);
                 }
 
-                // Update book quantity
                 $newQuantity = $currentQty - 1;
                 $this->supabaseRequest('PATCH', 'books?id=eq.' . $bookData['id'], [
-                    'quantity' => $newQuantity,
+                    'quantity'  => $newQuantity,
                     'available' => $newQuantity > 0
                 ]);
 
-                // Clear cache
                 $this->cache->delete('all_books_automate_' . md5(json_encode([])));
 
                 log_message('info', 'Borrowing success: User=' . $userData['nama'] . ', Book=' . $bookData['title']);
 
                 return $this->response->setJSON([
-                    'success' => true,
-                    'message' => 'Peminjaman berhasil',
-                    'book' => $bookData['title'] ?? '-',
-                    'type' => 'borrow',
-                    'user' => $userData['nama'] ?? '-',
-                    'due_date' => $dueDate,
+                    'success'    => true,
+                    'message'    => 'Peminjaman berhasil',
+                    'book'       => $bookData['title'] ?? '-',
+                    'type'       => 'borrow',
+                    'user'       => $userData['nama'] ?? '-',
+                    'due_date'   => $dueDate,
                     'trust_score' => number_format($trustScore, 1),
                     'max_borrow' => $maxBorrow
                 ]);
 
+            // ── 4b. Pengembalian ────────────────────────────────────────────────
             } else {
 
-                // RETURN
-                $borrowTx = $activeTx[0];
+                $borrowTx  = $activeTx[0];
                 $borrowDate = $borrowTx['tanggal'];
-                $dueDate = $borrowTx['due_date'] ?? date('Y-m-d', strtotime($borrowDate . ' +7 days'));
+                $dueDate    = $borrowTx['due_date'] ?? date('Y-m-d', strtotime($borrowDate . ' +7 days'));
+
                 $transactionData = [
-                    'user_id' => $userData['id'],
-                    'book_id' => $bookData['id'],
-                    'uid' => $uidScan,
-                    'type' => 'return',
-                    'tanggal' => date('Y-m-d'),
-                    'status' => 'completed',
-                    'pic_name' => $picName,
-                    'pic_username' => $picUsername,
-                    'pic_id' => $picId,
-                    'transaction_location' => 'perpustakaan',
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'completed_at' => date('Y-m-d H:i:s'),
-                    'completed_by_name' => $picName,
+                    'user_id'               => $userData['id'],
+                    'book_id'               => $bookData['id'],
+                    'uid'                   => $uidScan,
+                    'type'                  => 'return',
+                    'tanggal'               => date('Y-m-d'),
+                    'status'                => 'completed',
+                    'pic_name'              => $picName,
+                    'pic_username'          => $picUsername,
+                    'pic_id'                => $picId,
+                    'transaction_location'  => 'perpustakaan',
+                    'created_at'            => date('Y-m-d H:i:s'),
+                    'completed_at'          => date('Y-m-d H:i:s'),
+                    'completed_by_name'     => $picName,
                     'completed_by_username' => $picUsername,
-                    'due_date' => $dueDate
+                    'due_date'              => $dueDate
                 ];
 
                 $insertReturn = $this->supabaseRequest('POST', 'transactions', $transactionData);
-                
+
                 if (isset($insertReturn['error'])) {
                     return $this->response->setJSON(['success' => false, 'message' => 'Gagal menyimpan transaksi pengembalian']);
                 }
 
-                // Update borrow transaction status
-                $activeTxId = $borrowTx['id'];
-                $this->supabaseRequest('PATCH', 'transactions?id=eq.' . $activeTxId, [
-                    'status' => 'completed',
-                    'completed_at' => date('Y-m-d H:i:s'),
-                    'completed_by_name' => $picName,
-                    'completed_by_username' => $picUsername
+                $this->supabaseRequest('PATCH', 'transactions?id=eq.' . $borrowTx['id'], [
+                    'status'                 => 'completed',
+                    'completed_at'           => date('Y-m-d H:i:s'),
+                    'completed_by_name'      => $picName,
+                    'completed_by_username'  => $picUsername
                 ]);
 
-                // Update book quantity
-                $currentQty = (int)($bookData['quantity'] ?? 0);
+                $currentQty  = (int)($bookData['quantity'] ?? 0);
                 $newQuantity = $currentQty + 1;
                 $this->supabaseRequest('PATCH', 'books?id=eq.' . $bookData['id'], [
-                    'quantity' => $newQuantity,
+                    'quantity'  => $newQuantity,
                     'available' => true
                 ]);
 
-                // Clear cache
                 $this->cache->delete('all_books_automate_' . md5(json_encode([])));
 
-                // Update trust score
                 $this->updateTrustScore($userData['id'], $borrowDate, $dueDate);
 
-                // Get updated user data
                 $updatedUser = $this->supabaseRequest('GET', 'users', null, [
-                    'id' => 'eq.' . $userData['id'],
-                    'select' => 'trust_score',
-                    'limit' => 1
+                    'id'     => 'eq.' . $userData['id'],
+                    'select' => 'trust_score,maxBorrow',
+                    'limit'  => 1
                 ]);
 
-                $newTrustScore = !isset($updatedUser['error']) && !empty($updatedUser) 
-                    ? (float)$updatedUser[0]['trust_score'] 
+                $newTrustScore = !isset($updatedUser['error']) && !empty($updatedUser)
+                    ? (float)$updatedUser[0]['trust_score']
                     : (float)($userData['trust_score'] ?? 100);
 
                 $newMaxBorrow = (int)($updatedUser[0]['maxBorrow'] ?? $userData['maxBorrow'] ?? 1);
 
-                // Check if late
-                $isLate = strtotime(date('Y-m-d')) > strtotime($dueDate);
-                $lateMessage = $isLate ? ' (TERLAMBAT: -2 poin)' : ' (TEPAT WAKTU: +0.5 poin)';
+                $isLate      = strtotime(date('Y-m-d')) > strtotime($dueDate);
+                $lateMessage = $isLate ? ' (TERLAMBAT)' : ' (TEPAT WAKTU: +1 poin)';
 
                 log_message('info', 'Return success: User=' . $userData['nama'] . ', Book=' . $bookData['title']);
 
                 return $this->response->setJSON([
-                    'success' => true,
-                    'message' => 'Pengembalian berhasil' . $lateMessage,
-                    'book' => $bookData['title'] ?? '-',
-                    'type' => 'return',
-                    'user' => $userData['nama'] ?? '-',
+                    'success'    => true,
+                    'message'    => 'Pengembalian berhasil' . $lateMessage,
+                    'book'       => $bookData['title'] ?? '-',
+                    'type'       => 'return',
+                    'user'       => $userData['nama'] ?? '-',
                     'trust_score' => number_format($newTrustScore, 1),
                     'max_borrow' => $newMaxBorrow,
-                    'was_late' => $isLate
+                    'was_late'   => $isLate
                 ]);
             }
 

@@ -218,7 +218,7 @@
                     <option value="Bedah Soal Dan Materi">Bedah Soal Dan Materi</option>
                     <option value="Biografi">Biografi</option>
                     <option value="Buku Agama">Buku Agama</option>
-                    <option value="Buku Math">Buku Math</option>
+                    <option value="Buku Pelajaran">Buku Pelajaran</option>
                     <option value="Buku Orang Tua">Buku Orang Tua</option>
                     <option value="Buku Paket Guru">Buku Paket Guru</option>
                     <option value="Buku Panduan">Buku Panduan</option>

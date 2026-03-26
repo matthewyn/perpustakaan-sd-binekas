@@ -481,6 +481,8 @@ document.addEventListener('DOMContentLoaded', function() {
         $.get("<?= base_url('user/list/guru') ?>", function(response) {
             if (response.success && Array.isArray(response.users)) {
                 guruList = response.users.map(u => ({ ...u, key: u.key ?? u.id ?? null }));
+                // Masukkan guru ke usersByKey agar nama & kelas tampil di tabel
+                guruList.forEach(u => { if (u.key) usersByKey[u.key] = u; });
                 dataReady.guru = true;
             }
         }).fail(() => {

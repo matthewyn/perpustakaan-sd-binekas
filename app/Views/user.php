@@ -74,11 +74,12 @@
                                 </th>
                                 <th>Total Peminjaman</th>
                                 <th>Maks Pinjam</th>
+                                <th>UID Kartu</th>
                             </tr>
                         </thead>
                         <tbody id="tbodySiswa">
                             <tr>
-                                <td colspan="6" class="text-center">
+                                <td colspan="8" class="text-center">
                                     <div class="spinner-border spinner-border-sm" role="status">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
@@ -137,11 +138,12 @@
                                 <th>NIP</th>
                                 <th>Nama</th>
                                 <th>Jabatan</th>
+                                <th>UID Kartu</th>
                             </tr>
                         </thead>
                         <tbody id="tbodyGuru">
                             <tr>
-                                <td colspan="4" class="text-center">
+                                <td colspan="5" class="text-center">
                                     <div class="spinner-border spinner-border-sm" role="status">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
@@ -228,6 +230,17 @@
                                     <small class="text-muted">Nilai kepercayaan siswa (0-100)</small>
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="siswaUid" class="form-label">
+                                        <i class="bi bi-upc-scan"></i> UID Kartu RFID
+                                    </label>
+                                    <input type="text" class="form-control" id="siswaUid"
+                                           name="uid" placeholder="Scan atau ketik UID kartu"
+                                           autocomplete="off">
+                                    <small class="text-muted">Kosongkan jika belum memiliki kartu RFID</small>
+                                </div>
+                            </div>
                         </div>
                         <div class="row">
                             <div class="mb-3">
@@ -311,6 +324,19 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="guruUid" class="form-label">
+                                        <i class="bi bi-upc-scan"></i> UID Kartu RFID
+                                    </label>
+                                    <input type="text" class="form-control" id="guruUid"
+                                           name="uid" placeholder="Scan atau ketik UID kartu"
+                                           autocomplete="off">
+                                    <small class="text-muted">Kosongkan jika belum memiliki kartu RFID</small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -336,29 +362,23 @@ const itemsPerPage = 20;
 
 // Sorting variables
 let siswaSortField = null;
-let siswaSortOrder = 'asc'; // 'asc' or 'desc'
+let siswaSortOrder = 'asc';
 
 // Initialize on DOM Load
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Bootstrap Modals
     modalSiswa = new bootstrap.Modal(document.getElementById('modalSiswa'));
-    modalGuru = new bootstrap.Modal(document.getElementById('modalGuru'));
+    modalGuru  = new bootstrap.Modal(document.getElementById('modalGuru'));
     
-    // Load Data dan Automplete
     fetchClassData();
     fetchSiswaData();
     fetchGuruData();
     setupAutocomplete();
     
-    // Setup Search
     const searchSiswaEl = document.getElementById('searchSiswa');
-    if (searchSiswaEl) {
-        searchSiswaEl.addEventListener('input', filterSiswaTable);
-    }
+    if (searchSiswaEl) searchSiswaEl.addEventListener('input', filterSiswaTable);
+
     const searchGuruEl = document.getElementById('searchGuru');
-    if (searchGuruEl) {
-        searchGuruEl.addEventListener('input', filterGuruTable);
-    }
+    if (searchGuruEl) searchGuruEl.addEventListener('input', filterGuruTable);
 });
 
 // NOTIFIKASI
@@ -369,14 +389,11 @@ function showToast(message, type = 'success') {
     
     const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : '!';
     toast.innerHTML = `
-        <div style="margin-right: 12px; font-size: 20px; font-weight: bold;">
-            ${icon}
-        </div>
+        <div style="margin-right: 12px; font-size: 20px; font-weight: bold;">${icon}</div>
         <div style="flex: 1;">${message}</div>
     `;
     
     container.appendChild(toast);
-    
     setTimeout(() => {
         toast.style.animation = 'slideIn 0.3s ease-out reverse';
         setTimeout(() => toast.remove(), 300);
@@ -387,8 +404,7 @@ function showToast(message, type = 'success') {
 function fetchClassData() {
     fetch("<?= base_url('management-class/list') ?>")
         .then(response => response.json())
-        .then(data => { // <-- perbaiki di sini
-            console.log('Class Data:', data);
+        .then(data => {
             if (data.success && Array.isArray(data.classes)) {
                 classList = data.classes;
                 populateClassDropdown();
@@ -405,7 +421,6 @@ function fetchClassData() {
 function populateClassDropdown() {
     const selectElement = document.getElementById('siswaKelas');
     selectElement.innerHTML = '<option value="">-- Pilih Kelas --</option>';
-    
     classList.forEach(cls => {
         const option = document.createElement('option');
         option.value = cls.id;
@@ -417,7 +432,6 @@ function populateClassDropdown() {
 function populateGuruClassDropdown() {
     const selectElement = document.getElementById('guruKelas');
     selectElement.innerHTML = '<option value="">-- Pilih Kelas --</option>';
-    
     classList.forEach(cls => {
         const option = document.createElement('option');
         option.value = cls.id;
@@ -432,32 +446,22 @@ function getClassNameById(classId) {
 }
 
 function sortSiswaTable(field) {
-    // If clicking the same field, toggle sort order
     if (siswaSortField === field) {
         siswaSortOrder = siswaSortOrder === 'asc' ? 'desc' : 'asc';
     } else {
-        // If clicking a new field, set it to ascending
         siswaSortField = field;
         siswaSortOrder = 'asc';
     }
     
-    // Sort the siswaList
     siswaList.sort((a, b) => {
         let aValue, bValue;
-        
         if (field === 'trust_score') {
             aValue = parseFloat(a.trust_score || 0);
             bValue = parseFloat(b.trust_score || 0);
         }
-        
-        if (siswaSortOrder === 'asc') {
-            return aValue - bValue;
-        } else {
-            return bValue - aValue;
-        }
+        return siswaSortOrder === 'asc' ? aValue - bValue : bValue - aValue;
     });
     
-    // Reset to first page and re-render
     currentSiswaPage = 1;
     renderSiswaTable(siswaList);
 }
@@ -466,16 +470,15 @@ function fetchSiswaData() {
     fetch("<?= base_url('user/list/murid') ?>")
         .then(response => response.json())
         .then(data => {
-            console.log('Siswa Data:', data);
             if (data.success && Array.isArray(data.users)) {
                 siswaList = data.users;
-                currentSiswaPage = 1; // Reset pagination
+                currentSiswaPage = 1;
                 renderSiswaTable(siswaList);
                 setupAutocomplete();
             } else {
                 showToast('Gagal memuat data siswa', 'error');
                 document.getElementById('tbodySiswa').innerHTML = 
-                    '<tr><td colspan="6" class="text-center text-danger">Gagal memuat data</td></tr>';
+                    '<tr><td colspan="8" class="text-center text-danger">Gagal memuat data</td></tr>';
             }
         })
         .catch(error => {
@@ -488,16 +491,15 @@ function fetchGuruData() {
     fetch("<?= base_url('user/list/guru') ?>")
         .then(response => response.json())
         .then(data => {
-            console.log('Guru Data:', data);
             if (data.success && Array.isArray(data.users)) {
                 guruList = data.users;
-                currentGuruPage = 1; // Reset pagination
+                currentGuruPage = 1;
                 renderGuruTable(guruList);
                 setupAutocomplete();
             } else {
                 showToast('Gagal memuat data guru', 'error');
                 document.getElementById('tbodyGuru').innerHTML = 
-                    '<tr><td colspan="4" class="text-center text-danger">Gagal memuat data</td></tr>';
+                    '<tr><td colspan="5" class="text-center text-danger">Gagal memuat data</td></tr>';
             }
         })
         .catch(error => {
@@ -510,7 +512,7 @@ function renderSiswaTable(data) {
     const tbody = document.getElementById('tbodySiswa');
     
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Belum ada data siswa</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Belum ada data siswa</td></tr>';
         document.getElementById('totalSiswa').textContent = '0';
         document.getElementById('paginationSiswa').innerHTML = '';
         return;
@@ -518,21 +520,20 @@ function renderSiswaTable(data) {
     
     document.getElementById('totalSiswa').textContent = data.length;
     
-    // Calculate pagination
-    const totalPages = Math.ceil(data.length / itemsPerPage);
-    const startIndex = (currentSiswaPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const paginatedData = data.slice(startIndex, endIndex);
+    const totalPages  = Math.ceil(data.length / itemsPerPage);
+    const startIndex  = (currentSiswaPage - 1) * itemsPerPage;
+    const paginatedData = data.slice(startIndex, startIndex + itemsPerPage);
     
     let html = '';
     paginatedData.forEach((siswa, index) => {
         const actualIndex = startIndex + index + 1;
-        const trustScore = parseInt(siswa.trust_score ?? 0);
-        const maxBorrow = siswa.maxBorrow || siswa.max_borrow || 1;
-        const className = getClassNameById(siswa.class_id);
-
-        // Ambil total peminjaman dari field num_borrows
-        let totalBorrow = typeof siswa.num_borrows !== 'undefined' ? siswa.num_borrows : '-';
+        const trustScore  = parseInt(siswa.trust_score ?? 0);
+        const maxBorrow   = siswa.maxBorrow || siswa.max_borrow || 1;
+        const className   = getClassNameById(siswa.class_id);
+        const totalBorrow = typeof siswa.num_borrows !== 'undefined' ? siswa.num_borrows : '-';
+        const uidBadge    = siswa.uid
+            ? `<span class="badge bg-secondary"><i class="bi bi-upc-scan"></i> ${siswa.uid}</span>`
+            : `<span class="text-muted">-</span>`;
 
         html += `
             <tr>
@@ -551,6 +552,7 @@ function renderSiswaTable(data) {
                     </span>
                 </td>
                 <td>${maxBorrow} buku</td>
+                <td>${uidBadge}</td>
             </tr>
         `;
     });
@@ -562,18 +564,14 @@ function renderSiswaTable(data) {
 function renderSiswaPagination(totalPages) {
     const paginationEl = document.getElementById('paginationSiswa');
     paginationEl.innerHTML = '';
-    
     if (totalPages <= 1) return;
     
-    // Previous button
     const prevLi = document.createElement('li');
     prevLi.className = `page-item ${currentSiswaPage === 1 ? 'disabled' : ''}`;
     prevLi.innerHTML = `<a class="page-link" href="#" onclick="goToSiswaPage(${currentSiswaPage - 1}); return false;">← Sebelumnya</a>`;
     paginationEl.appendChild(prevLi);
     
-    // Page numbers
     for (let i = 1; i <= totalPages; i++) {
-        // Show first page, last page, and pages around current page
         if (i === 1 || i === totalPages || (i >= currentSiswaPage - 1 && i <= currentSiswaPage + 1)) {
             const li = document.createElement('li');
             li.className = `page-item ${i === currentSiswaPage ? 'active' : ''}`;
@@ -587,7 +585,6 @@ function renderSiswaPagination(totalPages) {
         }
     }
     
-    // Next button
     const nextLi = document.createElement('li');
     nextLi.className = `page-item ${currentSiswaPage === totalPages ? 'disabled' : ''}`;
     nextLi.innerHTML = `<a class="page-link" href="#" onclick="goToSiswaPage(${currentSiswaPage + 1}); return false;">Berikutnya →</a>`;
@@ -607,7 +604,7 @@ function renderGuruTable(data) {
     const tbody = document.getElementById('tbodyGuru');
     
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Belum ada data guru</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Belum ada data guru</td></tr>';
         document.getElementById('totalGuru').textContent = '0';
         document.getElementById('paginationGuru').innerHTML = '';
         return;
@@ -615,21 +612,24 @@ function renderGuruTable(data) {
     
     document.getElementById('totalGuru').textContent = data.length;
     
-    // Calculate pagination
-    const totalPages = Math.ceil(data.length / itemsPerPage);
-    const startIndex = (currentGuruPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const paginatedData = data.slice(startIndex, endIndex);
+    const totalPages   = Math.ceil(data.length / itemsPerPage);
+    const startIndex   = (currentGuruPage - 1) * itemsPerPage;
+    const paginatedData = data.slice(startIndex, startIndex + itemsPerPage);
     
     let html = '';
     paginatedData.forEach((guru, index) => {
         const actualIndex = startIndex + index + 1;
+        const uidBadge    = guru.uid
+            ? `<span class="badge bg-secondary"><i class="bi bi-upc-scan"></i> ${guru.uid}</span>`
+            : `<span class="text-muted">-</span>`;
+
         html += `
             <tr>
                 <td>${actualIndex}</td>
                 <td>${guru.nip || '-'}</td>
                 <td>${guru.nama || '-'}</td>
                 <td>${guru.jabatan || '-'}</td>
+                <td>${uidBadge}</td>
             </tr>
         `;
     });
@@ -641,18 +641,14 @@ function renderGuruTable(data) {
 function renderGuruPagination(totalPages) {
     const paginationEl = document.getElementById('paginationGuru');
     paginationEl.innerHTML = '';
-    
     if (totalPages <= 1) return;
     
-    // Previous button
     const prevLi = document.createElement('li');
     prevLi.className = `page-item ${currentGuruPage === 1 ? 'disabled' : ''}`;
     prevLi.innerHTML = `<a class="page-link" href="#" onclick="goToGuruPage(${currentGuruPage - 1}); return false;">← Sebelumnya</a>`;
     paginationEl.appendChild(prevLi);
     
-    // Page numbers
     for (let i = 1; i <= totalPages; i++) {
-        // Show first page, last page, and pages around current page
         if (i === 1 || i === totalPages || (i >= currentGuruPage - 1 && i <= currentGuruPage + 1)) {
             const li = document.createElement('li');
             li.className = `page-item ${i === currentGuruPage ? 'active' : ''}`;
@@ -666,7 +662,6 @@ function renderGuruPagination(totalPages) {
         }
     }
     
-    // Next button
     const nextLi = document.createElement('li');
     nextLi.className = `page-item ${currentGuruPage === totalPages ? 'disabled' : ''}`;
     nextLi.innerHTML = `<a class="page-link" href="#" onclick="goToGuruPage(${currentGuruPage + 1}); return false;">Berikutnya →</a>`;
@@ -685,27 +680,21 @@ function goToGuruPage(page) {
 // Filter tabel
 function filterSiswaTable() {
     const query = document.getElementById('searchSiswa').value.toLowerCase();
-    currentSiswaPage = 1; // Reset to first page on search
-    
+    currentSiswaPage = 1;
     const filteredData = siswaList.filter(siswa => {
-        const nisn = (siswa.nisn || '').toLowerCase();
-        const nama = (siswa.nama || '').toLowerCase();
-        return nisn.includes(query) || nama.includes(query);
+        return (siswa.nisn || '').toLowerCase().includes(query) ||
+               (siswa.nama || '').toLowerCase().includes(query);
     });
-    
     renderSiswaTable(filteredData);
 }
 
 function filterGuruTable() {
     const query = document.getElementById('searchGuru').value.toLowerCase();
-    currentGuruPage = 1; // Reset to first page on search
-    
+    currentGuruPage = 1;
     const filteredData = guruList.filter(guru => {
-        const nip = (guru.nip || '').toLowerCase();
-        const nama = (guru.nama || '').toLowerCase();
-        return nip.includes(query) || nama.includes(query);
+        return (guru.nip || '').toLowerCase().includes(query) ||
+               (guru.nama || '').toLowerCase().includes(query);
     });
-    
     renderGuruTable(filteredData);
 }
 
@@ -715,12 +704,9 @@ function openAddSiswaModal() {
     document.getElementById('siswaMode').value = 'add';
     document.getElementById('siswaSearchSection').style.display = 'none';
     document.getElementById('siswaFormFields').style.display = 'block';
-    
-    // Reset form
     document.getElementById('formSiswa').reset();
     document.getElementById('siswaId').value = '';
     populateClassDropdown();
-    
     modalSiswa.show();
 }
 
@@ -729,12 +715,9 @@ function openEditSiswaModal() {
     document.getElementById('siswaMode').value = 'edit';
     document.getElementById('siswaSearchSection').style.display = 'block';
     document.getElementById('siswaFormFields').style.display = 'none';
-    
-    // Reset form
     document.getElementById('formSiswa').reset();
     document.getElementById('siswaId').value = '';
     document.getElementById('siswaSearch').value = '';
-    
     modalSiswa.show();
 }
 
@@ -744,12 +727,9 @@ function openAddGuruModal() {
     document.getElementById('guruMode').value = 'add';
     document.getElementById('guruSearchSection').style.display = 'none';
     document.getElementById('guruFormFields').style.display = 'block';
-    
-    // Reset form
     document.getElementById('formGuru').reset();
     document.getElementById('guruId').value = '';
     populateGuruClassDropdown();
-    
     modalGuru.show();
 }
 
@@ -758,18 +738,14 @@ function openEditGuruModal() {
     document.getElementById('guruMode').value = 'edit';
     document.getElementById('guruSearchSection').style.display = 'block';
     document.getElementById('guruFormFields').style.display = 'none';
-    
-    // Reset form
     document.getElementById('formGuru').reset();
     document.getElementById('guruId').value = '';
     document.getElementById('guruSearch').value = '';
-    
     modalGuru.show();
 }
 
-    // autocomplete setup
+// autocomplete setup
 function setupAutocomplete() {
-    // Autocomplete Nama Siswa
     if (typeof $ !== 'undefined' && $.fn.autocomplete) {
         $('#siswaSearch').autocomplete({
             source: function(request, response) {
@@ -789,7 +765,6 @@ function setupAutocomplete() {
             }
         });
 
-        // Autocomplete Nama Guru
         $('#guruSearch').autocomplete({
             source: function(request, response) {
                 const results = guruList
@@ -812,36 +787,32 @@ function setupAutocomplete() {
 
 function fillSiswaForm(siswa) {
     document.getElementById('siswaFormFields').style.display = 'block';
-    document.getElementById('siswaId').value = siswa.id;
-    document.getElementById('siswaNisn').value = siswa.nisn || '';
-    document.getElementById('siswaNama').value = siswa.nama || '';
-    
+    document.getElementById('siswaId').value    = siswa.id;
+    document.getElementById('siswaNisn').value  = siswa.nisn || '';
+    document.getElementById('siswaNama').value  = siswa.nama || '';
+    document.getElementById('siswaUid').value   = siswa.uid  || '';
+
     populateClassDropdown();
     document.getElementById('siswaKelas').value = siswa.class_id || '';
-    
+
     const maxBorrowEl = document.getElementById('siswaMaxBorrow');
-    if (maxBorrowEl) {
-        maxBorrowEl.value = siswa.maxBorrow || siswa.max_borrow || 1;
-    }
-    
+    if (maxBorrowEl) maxBorrowEl.value = siswa.maxBorrow || siswa.max_borrow || 1;
+
     const trustScoreEl = document.getElementById('siswaTrustScore');
-    if (trustScoreEl) {
-        trustScoreEl.value = siswa.trust_score || '';
-    }
-    
+    if (trustScoreEl) trustScoreEl.value = siswa.trust_score || '';
+
     const isFreezedEl = document.getElementById('isFreezed');
-    if (isFreezedEl) {
-        isFreezedEl.checked = siswa.is_freezed == 1 || siswa.is_freezed === true;
-    }
+    if (isFreezedEl) isFreezedEl.checked = siswa.is_freezed == 1 || siswa.is_freezed === true;
 }
 
 function fillGuruForm(guru) {
     document.getElementById('guruFormFields').style.display = 'block';
-    document.getElementById('guruId').value = guru.id;
-    document.getElementById('guruNip').value = guru.nip || '';
-    document.getElementById('guruNama').value = guru.nama || '';
+    document.getElementById('guruId').value      = guru.id;
+    document.getElementById('guruNip').value     = guru.nip     || '';
+    document.getElementById('guruNama').value    = guru.nama    || '';
     document.getElementById('guruJabatan').value = guru.jabatan || '';
-    
+    document.getElementById('guruUid').value     = guru.uid     || '';
+
     populateGuruClassDropdown();
     document.getElementById('guruKelas').value = guru.class_id || '';
 }
@@ -850,14 +821,15 @@ function fillGuruForm(guru) {
 function handleSiswaSubmit(event) {
     event.preventDefault();
     
-    const mode = document.getElementById('siswaMode').value;
-    const id = document.getElementById('siswaId').value;
-    const nisn = document.getElementById('siswaNisn').value.trim();
-    const nama = document.getElementById('siswaNama').value.trim();
-    const classId = document.getElementById('siswaKelas').value;
-    const maxBorrow = document.getElementById('siswaMaxBorrow').value.trim();
+    const mode       = document.getElementById('siswaMode').value;
+    const id         = document.getElementById('siswaId').value;
+    const nisn       = document.getElementById('siswaNisn').value.trim();
+    const nama       = document.getElementById('siswaNama').value.trim();
+    const classId    = document.getElementById('siswaKelas').value;
+    const maxBorrow  = document.getElementById('siswaMaxBorrow').value.trim();
     const trustScore = document.getElementById('siswaTrustScore').value.trim();
-    const isFreezed = document.getElementById('isFreezed').checked ? 1 : 0;
+    const isFreezed  = document.getElementById('isFreezed').checked ? 1 : 0;
+    const uid        = document.getElementById('siswaUid').value.trim();
     
     if (!nisn || !nama || !classId || !maxBorrow) {
         showToast('Semua field wajib diisi!', 'warning');
@@ -865,31 +837,26 @@ function handleSiswaSubmit(event) {
     }
     
     const data = {
-        nisn: nisn,
-        nama: nama,
-        class_id: classId,
-        maxBorrow: maxBorrow,
+        nisn:        nisn,
+        nama:        nama,
+        class_id:    classId,
+        maxBorrow:   maxBorrow,
         trust_score: trustScore ? parseFloat(trustScore) : null,
-        isFreezed: isFreezed
+        isFreezed:   isFreezed,
+        uid:         uid
     };
     
     const url = mode === 'add' 
         ? "<?= base_url('user/add') ?>"
         : "<?= base_url('user/update') ?>/" + id;
     
-    console.log('Sending data:', data);
-    console.log('To URL:', url);
-    
     fetch(url, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams(data)
     })
     .then(response => response.json())
     .then(result => {
-        console.log('Response:', result);
         if (result.success) {
             modalSiswa.hide();
             showToast(result.message || (mode === 'add' ? 'Berhasil menambah siswa' : 'Berhasil mengubah siswa'));
@@ -907,12 +874,13 @@ function handleSiswaSubmit(event) {
 function handleGuruSubmit(event) {
     event.preventDefault();
     
-    const mode = document.getElementById('guruMode').value;
-    const id = document.getElementById('guruId').value;
-    const nip = document.getElementById('guruNip').value.trim();
-    const nama = document.getElementById('guruNama').value.trim();
+    const mode    = document.getElementById('guruMode').value;
+    const id      = document.getElementById('guruId').value;
+    const nip     = document.getElementById('guruNip').value.trim();
+    const nama    = document.getElementById('guruNama').value.trim();
     const jabatan = document.getElementById('guruJabatan').value.trim();
     const classId = document.getElementById('guruKelas').value;
+    const uid     = document.getElementById('guruUid').value.trim();
     
     if (!nip || !nama || !jabatan || !classId) {
         showToast('Semua field wajib diisi!', 'warning');
@@ -920,26 +888,20 @@ function handleGuruSubmit(event) {
     }
     
     const data = mode === 'add' 
-        ? { namaGuru: nama, nip: nip, jabatan: jabatan, class_id: classId }
-        : { namaGuruUbah: nama, nipUbah: nip, jabatanUbah: jabatan, classIdUbah: classId };
+        ? { namaGuru: nama, nip: nip, jabatan: jabatan, class_id: classId, uid: uid }
+        : { namaGuruUbah: nama, nipUbah: nip, jabatanUbah: jabatan, classIdUbah: classId, uid: uid };
     
     const url = mode === 'add' 
         ? "<?= base_url('user/add-guru') ?>"
         : "<?= base_url('user/update-guru') ?>/" + id;
     
-    console.log('Sending data:', data);
-    console.log('To URL:', url);
-    
     fetch(url, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams(data)
     })
     .then(response => response.json())
     .then(result => {
-        console.log('Response:', result);
         if (result.success) {
             modalGuru.hide();
             showToast(result.message || (mode === 'add' ? 'Berhasil menambah guru' : 'Berhasil mengubah guru'));

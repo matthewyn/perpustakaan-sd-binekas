@@ -86,11 +86,9 @@ class UserController extends Controller
 
     private function getNextUserId()
     {
-        // Get the maximum ID from users table
         $result = $this->supabaseRequest('GET', $this->table . '?select=id&order=id.desc&limit=1');
         
         if (isset($result['error']) || empty($result)) {
-            // If no users exist, start from 1
             return 1;
         }
         
@@ -99,7 +97,6 @@ class UserController extends Controller
 
     public function index()
     {
-        // Fetch all classes for dropdown
         $classes = $this->supabaseRequest('GET', 'classes?order=nama_kelas.asc');
         
         return view('user', [
@@ -128,34 +125,47 @@ class UserController extends Controller
     {
         log_message('info', 'Add User - All POST: ' . json_encode($this->request->getPost()));
         
-        $nama = $this->request->getPost('nama');
-        $nisn = $this->request->getPost('nisn');
-        $classId = $this->request->getPost('class_id');
-        $maxBorrow = $this->request->getPost('maxBorrow');
+        $nama       = $this->request->getPost('nama');
+        $nisn       = $this->request->getPost('nisn');
+        $classId    = $this->request->getPost('class_id');
+        $maxBorrow  = $this->request->getPost('maxBorrow');
         $trustScore = $this->request->getPost('trust_score');
-        $isFreezed = $this->request->getPost('isFreezed');
+        $isFreezed  = $this->request->getPost('isFreezed');
+        $uid        = trim($this->request->getPost('uid') ?? '');
         
         if (empty($nama) || empty($nisn) || empty($maxBorrow)) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Data tidak lengkap. Nama, NISN, dan Maksimal Peminjaman wajib diisi.',
-                'data' => null
+                'data'    => null
             ]);
         }
 
-        // Generate next ID
+        // Validasi UID unik jika diisi
+        if (!empty($uid)) {
+            $existing = $this->supabaseRequest('GET', $this->table . '?uid=eq.' . urlencode($uid) . '&limit=1');
+            if (!isset($existing['error']) && !empty($existing)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'UID sudah digunakan oleh user lain.',
+                    'data'    => null
+                ]);
+            }
+        }
+
         $nextId = $this->getNextUserId();
 
         $data = [
-            'id' => $nextId,
-            'nama' => $nama,
-            'nisn' => $nisn,
-            'class_id' => !empty($classId) ? (int)$classId : null,
-            'maxBorrow' => (int)$maxBorrow,
-            'role' => 'murid',
+            'id'          => $nextId,
+            'nama'        => $nama,
+            'nisn'        => $nisn,
+            'uid'         => !empty($uid) ? $uid : null,
+            'class_id'    => !empty($classId) ? (int)$classId : null,
+            'maxBorrow'   => (int)$maxBorrow,
+            'role'        => 'murid',
             'trust_score' => !empty($trustScore) ? (float)$trustScore : 100.00,
-            'is_freezed' => (int)$isFreezed,
-            'password' => PasswordHelper::hashPassword($nisn),
+            'is_freezed'  => (int)$isFreezed,
+            'password'    => PasswordHelper::hashPassword($nisn),
         ];
 
         log_message('info', 'Add User - Data to insert: ' . json_encode($data));
@@ -177,38 +187,52 @@ class UserController extends Controller
     {
         log_message('info', 'Update User ID: ' . $id . ' POST Data: ' . json_encode($this->request->getPost()));
 
-        $classId = $this->request->getPost('class_id');
+        $classId    = $this->request->getPost('class_id');
         $trustScore = $this->request->getPost('trust_score');
-        $isFreezed = $this->request->getPost('isFreezed');
-        
+        $isFreezed  = $this->request->getPost('isFreezed');
+        $uid        = trim($this->request->getPost('uid') ?? '');
+
+        // Validasi UID unik jika diisi (kecuali milik user yang sedang diedit)
+        if (!empty($uid)) {
+            $existing = $this->supabaseRequest('GET', $this->table . '?uid=eq.' . urlencode($uid) . '&id=neq.' . $id . '&limit=1');
+            if (!isset($existing['error']) && !empty($existing)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'UID sudah digunakan oleh user lain.',
+                    'data'    => null
+                ]);
+            }
+        }
+
         $data = [
-            'nama' => $this->request->getPost('nama'),
-            'nisn' => $this->request->getPost('nisn'),
-            'class_id' => !empty($classId) ? (int)$classId : null,
-            'maxBorrow' => (int)$this->request->getPost('maxBorrow'),
+            'nama'        => $this->request->getPost('nama'),
+            'nisn'        => $this->request->getPost('nisn'),
+            'uid'         => !empty($uid) ? $uid : null,
+            'class_id'    => !empty($classId) ? (int)$classId : null,
+            'maxBorrow'   => (int)$this->request->getPost('maxBorrow'),
             'trust_score' => !empty($trustScore) ? (float)$trustScore : null,
-            'is_freezed' => (int)$isFreezed,
-            'password' => PasswordHelper::hashPassword($this->request->getPost('nisn')),
-            'updated_at' => date('Y-m-d H:i:s')
+            'is_freezed'  => (int)$isFreezed,
+            'password'    => PasswordHelper::hashPassword($this->request->getPost('nisn')),
+            'updated_at'  => date('Y-m-d H:i:s')
         ];
 
         if (empty($data['nama']) || empty($data['nisn']) || empty($data['maxBorrow'])) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Data tidak lengkap',
-                'data' => null
+                'data'    => null
             ]);
         }
 
         $endpoint = $this->table . '?id=eq.' . $id;
-        $result = $this->supabaseRequest('PATCH', $endpoint, $data);
+        $result   = $this->supabaseRequest('PATCH', $endpoint, $data);
 
         log_message('info', 'Update User Response: ' . json_encode($result));
 
         return $this->response->setJSON([
             'success' => !isset($result['error']),
             'message' => isset($result['error']) ? 'Gagal mengubah siswa' : 'Berhasil mengubah siswa',
-            'data' => $result
+            'data'    => $result
         ]);
     }
 
@@ -216,18 +240,31 @@ class UserController extends Controller
     {
         log_message('info', 'Add Guru POST Data: ' . json_encode($this->request->getPost()));
 
-        // Generate next ID
-        $nextId = $this->getNextUserId();
-
+        $uid     = trim($this->request->getPost('uid') ?? '');
         $classId = $this->request->getPost('class_id');
+
+        // Validasi UID unik jika diisi
+        if (!empty($uid)) {
+            $existing = $this->supabaseRequest('GET', $this->table . '?uid=eq.' . urlencode($uid) . '&limit=1');
+            if (!isset($existing['error']) && !empty($existing)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'UID sudah digunakan oleh user lain.',
+                    'data'    => null
+                ]);
+            }
+        }
+
+        $nextId = $this->getNextUserId();
         
         $data = [
-            'id' => $nextId,
-            'nama' => $this->request->getPost('namaGuru'),
-            'nip' => $this->request->getPost('nip'),
-            'jabatan' => $this->request->getPost('jabatan'),
+            'id'       => $nextId,
+            'nama'     => $this->request->getPost('namaGuru'),
+            'nip'      => $this->request->getPost('nip'),
+            'jabatan'  => $this->request->getPost('jabatan'),
+            'uid'      => !empty($uid) ? $uid : null,
             'class_id' => !empty($classId) ? (int)$classId : null,
-            'role' => 'guru',
+            'role'     => 'guru',
             'password' => PasswordHelper::hashPassword($this->request->getPost('nip')),
         ];
 
@@ -235,7 +272,7 @@ class UserController extends Controller
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Data tidak lengkap',
-                'data' => null
+                'data'    => null
             ]);
         }
 
@@ -257,13 +294,27 @@ class UserController extends Controller
         log_message('info', 'Update Guru ID: ' . $id . ' POST Data: ' . json_encode($this->request->getPost()));
 
         $classIdUbah = $this->request->getPost('classIdUbah');
+        $uid         = trim($this->request->getPost('uid') ?? '');
+
+        // Validasi UID unik jika diisi (kecuali milik guru yang sedang diedit)
+        if (!empty($uid)) {
+            $existing = $this->supabaseRequest('GET', $this->table . '?uid=eq.' . urlencode($uid) . '&id=neq.' . $id . '&limit=1');
+            if (!isset($existing['error']) && !empty($existing)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'UID sudah digunakan oleh user lain.',
+                    'data'    => null
+                ]);
+            }
+        }
         
         $data = [
-            'nama' => $this->request->getPost('namaGuruUbah'),
-            'nip' => $this->request->getPost('nipUbah'),
-            'jabatan' => $this->request->getPost('jabatanUbah'),
-            'class_id' => !empty($classIdUbah) ? (int)$classIdUbah : null,
-            'password' => PasswordHelper::hashPassword($this->request->getPost('nipUbah')),
+            'nama'       => $this->request->getPost('namaGuruUbah'),
+            'nip'        => $this->request->getPost('nipUbah'),
+            'jabatan'    => $this->request->getPost('jabatanUbah'),
+            'uid'        => !empty($uid) ? $uid : null,
+            'class_id'   => !empty($classIdUbah) ? (int)$classIdUbah : null,
+            'password'   => PasswordHelper::hashPassword($this->request->getPost('nipUbah')),
             'updated_at' => date('Y-m-d H:i:s')
         ];
 
@@ -271,19 +322,19 @@ class UserController extends Controller
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Data tidak lengkap',
-                'data' => null
+                'data'    => null
             ]);
         }
 
         $endpoint = $this->table . '?id=eq.' . $id;
-        $result = $this->supabaseRequest('PATCH', $endpoint, $data);
+        $result   = $this->supabaseRequest('PATCH', $endpoint, $data);
 
         log_message('info', 'Update Guru Response: ' . json_encode($result));
 
         return $this->response->setJSON([
             'success' => !isset($result['error']),
             'message' => isset($result['error']) ? 'Gagal mengubah guru' : 'Berhasil mengubah guru',
-            'data' => $result
+            'data'    => $result
         ]);
     }   
 }

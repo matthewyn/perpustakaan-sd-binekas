@@ -2,6 +2,11 @@
 <?= $this->section('content') ?>
 
 <style>
+.page-item.active .page-link {
+    background-color: #f4f4f4;
+    border-color: #dee2e6;
+    color: white;
+}
 .result-success {
     background: #d4edda;
     border-left: 4px solid #28a745;
@@ -19,167 +24,398 @@
     animation: slideIn 0.3s ease;
 }
 @keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-.scan-history {
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-.list-group-item {
-    transition: background-color 0.2s ease;
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 </style>
 
 <div class="container mt-4">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb mt-3">
-            <li class="breadcrumb-item">
-                <a href="<?= base_url() ?>">Katalog</a>
-            </li>
+            <li class="breadcrumb-item"><a href="<?= base_url() ?>">Katalog</a></li>
             <li class="breadcrumb-item"><a href="#">Form</a></li>
             <li class="breadcrumb-item active" aria-current="page">Peminjaman Otomatis</li>
         </ol>
     </nav>
 
-    <div class="scan-card">
-        <div class="card border-light shadow-sm">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="bi bi-upc-scan"></i> Peminjaman / Pengembalian Otomatis</h5>
+    <!-- Form Scan -->
+    <div class="card border-light shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-upc-scan"></i> Peminjaman / Pengembalian Otomatis</h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info" role="alert">
+                <i class="bi bi-info-circle"></i> <strong>Cara Pakai:</strong><br>
+                1. Scan kartu RFID <strong>user</strong> (siswa / guru)<br>
+                2. Scan kartu RFID <strong>buku</strong><br>
+                3. Sistem otomatis mendeteksi peminjaman atau pengembalian
             </div>
-            <div class="card-body">
-                <div class="alert alert-info" role="alert">
-                    <i class="bi bi-info-circle"></i> <strong>Cara Pakai:</strong><br>
-                    1. Masukkan NISN/NIP user<br>
-                    2. Scan kartu RFID buku<br>
-                    3. Sistem otomatis mendeteksi peminjaman atau pengembalian
+
+            <form id="formScan">
+                <div class="mb-3">
+                    <label for="user_uid" class="form-label required">
+                        <i class="bi bi-person-badge"></i> UID Kartu User
+                    </label>
+                    <input type="text" id="user_uid" class="form-control"
+                           placeholder="Tap kartu RFID user di sini"
+                           autocomplete="off" required>
+                    <small class="text-muted">Scan kartu RFID milik siswa atau guru</small>
                 </div>
 
-                <form id="formScan">
-                    <div class="mb-3">
-                        <label for="nisn" class="form-label required">
-                            <i class="bi bi-person-badge"></i> NISN / NIP
-                        </label>
-                        <input type="text" id="nisn" class="form-control" 
-                               placeholder="Ketik atau scan NISN/NIP user"
-                               autocomplete="off" required>
-                    </div>
+                <div class="mb-3">
+                    <label for="uid" class="form-label required">
+                        <i class="bi bi-upc-scan"></i> UID Kartu Buku
+                    </label>
+                    <input type="text" id="uid" class="form-control uid-input"
+                           placeholder="Tap kartu RFID buku di sini"
+                           autocomplete="off" required>
+                    <small class="text-muted">Focus akan otomatis kembali ke field ini setelah scan</small>
+                </div>
 
-                    <div class="mb-3">
-                        <label for="uid" class="form-label required">
-                            <i class="bi bi-upc-scan"></i> Scan UID Buku
-                        </label>
-                        <input type="text" id="uid" class="form-control uid-input" 
-                               placeholder="Tap buku di sini"
-                               autocomplete="off" required>
-                        <small class="text-muted">Focus akan otomatis kembali ke field ini setelah scan</small>
-                    </div>
+                <div class="d-grid gap-2">
+                    <button type="submit" id="btnScan" class="btn btn-primary btn-lg">
+                        <i class="bi bi-check-circle"></i> Proses Scan
+                    </button>
+                    <button type="button" id="btnReset" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-clockwise"></i> Reset Form
+                    </button>
+                </div>
+            </form>
 
-                    <div class="d-grid gap-2">
-                        <button type="submit" id="btnScan" class="btn btn-primary btn-lg">
-                            <i class="bi bi-check-circle"></i> Proses Scan
+            <div id="result"></div>
+        </div>
+    </div>
+
+    <!-- List Peminjaman -->
+    <div class="card border-light mt-4">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            List peminjaman
+            <i class="bi bi-chevron-down" id="chevronPeminjaman" type="button"
+               data-bs-toggle="collapse" data-bs-target="#collapsePeminjaman"
+               aria-expanded="false"></i>
+        </div>
+        <div class="card-body">
+            <div class="collapse" id="collapsePeminjaman">
+                <div class="d-flex justify-content-end mb-3">
+                    <div class="input-group input-group-sm" style="width: 250px;">
+                        <input type="text" id="searchPeminjaman" class="form-control" placeholder="Cari Nama/Buku...">
+                        <button class="btn btn-outline-success" type="button" id="cariPeminjaman">
+                            <i class="bi bi-search"></i>
                         </button>
-                        <button type="button" id="btnReset" class="btn btn-outline-secondary">
-                            <i class="bi bi-arrow-clockwise"></i> Reset Form
-                        </button>
                     </div>
-                </form>
-
-                <div id="result"></div>
+                </div>
+                <table class="table table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">Nama</th>
+                            <th scope="col">Buku</th>
+                            <th scope="col">Kelas</th>
+                            <th scope="col">Tanggal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyBorrowings">
+                        <tr><td colspan="5" class="text-center">Memuat data...</td></tr>
+                    </tbody>
+                </table>
+                <nav aria-label="Pagination untuk peminjaman">
+                    <ul class="pagination" id="paginationBorrowings"></ul>
+                </nav>
             </div>
         </div>
+    </div>
 
-        <!-- Riwayat Scan -->
-        <div class="card border-light shadow-sm mt-3">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <span><i class="bi bi-clock-history"></i> Riwayat Scan Terakhir</span>
-                <i class="bi bi-chevron-down" type="button" data-bs-toggle="collapse" 
-                   data-bs-target="#collapseHistory" aria-expanded="true"></i>
-            </div>
-            <div class="collapse show" id="collapseHistory">
-                <div class="card-body scan-history" id="scanHistory">
-                    <p class="text-muted text-center">Belum ada riwayat scan</p>
+    <!-- List Pengembalian -->
+    <div class="card border-light mt-4">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            List pengembalian
+            <i class="bi bi-chevron-down" id="chevronPengembalian" type="button"
+               data-bs-toggle="collapse" data-bs-target="#collapsePengembalian"
+               aria-expanded="false"></i>
+        </div>
+        <div class="card-body">
+            <div class="collapse" id="collapsePengembalian">
+                <div class="d-flex justify-content-end mb-3">
+                    <div class="input-group input-group-sm" style="width: 250px;">
+                        <input type="text" id="searchPengembalian" class="form-control" placeholder="Cari Nama/Buku...">
+                        <button class="btn btn-outline-success" type="button" id="cariPengembalian">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
                 </div>
+                <table class="table table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">Nama</th>
+                            <th scope="col">Buku</th>
+                            <th scope="col">Kelas</th>
+                            <th scope="col">Tanggal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyReturns">
+                        <tr><td colspan="5" class="text-center">Memuat data...</td></tr>
+                    </tbody>
+                </table>
+                <nav aria-label="Pagination untuk pengembalian">
+                    <ul class="pagination" id="paginationReturns"></ul>
+                </nav>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-let scanHistory = [];
+document.addEventListener('DOMContentLoaded', function () {
 
-document.addEventListener('DOMContentLoaded', function() {
-    const formScan = document.getElementById('formScan');
-    const uidInput = document.getElementById('uid');
-    const nisnInput = document.getElementById('nisn');
-    const btnScan = document.getElementById('btnScan');
-    const btnReset = document.getElementById('btnReset');
+    // ── State ────────────────────────────────────────────────────────────────
+    let usersByKey            = {};
+    let currentBorrowingsPage = 1;
+    let currentReturnsPage    = 1;
+    let totalBorrowingsPages  = 1;
+    let totalReturnsPages     = 1;
+    const ITEMS_PER_PAGE      = 25;
 
-    // Auto focus UID setelah input NISN
-    nisnInput.addEventListener('blur', function() {
-        if (this.value.trim()) {
-            uidInput.focus();
-        }
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function escapeHtml(text) {
+        const map = { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' };
+        return String(text || '').replace(/[&<>"']/g, m => map[m]);
+    }
+
+    // ── Chevron collapse toggles ──────────────────────────────────────────────
+    document.getElementById('collapsePeminjaman').addEventListener('show.bs.collapse', function () {
+        document.getElementById('chevronPeminjaman').classList.replace('bi-chevron-down', 'bi-chevron-up');
+    });
+    document.getElementById('collapsePeminjaman').addEventListener('hide.bs.collapse', function () {
+        document.getElementById('chevronPeminjaman').classList.replace('bi-chevron-up', 'bi-chevron-down');
+    });
+    document.getElementById('collapsePengembalian').addEventListener('show.bs.collapse', function () {
+        document.getElementById('chevronPengembalian').classList.replace('bi-chevron-down', 'bi-chevron-up');
+    });
+    document.getElementById('collapsePengembalian').addEventListener('hide.bs.collapse', function () {
+        document.getElementById('chevronPengembalian').classList.replace('bi-chevron-up', 'bi-chevron-down');
     });
 
-    // Reset form
-    btnReset.addEventListener('click', function() {
+    // ── Load supporting data ──────────────────────────────────────────────────
+    function fetchClassesData() {
+        $.get("<?= base_url('management-class/list') ?>", function (response) {
+            if (response.success && Array.isArray(response.classes)) {
+                window._classesById = {};
+                response.classes.forEach(c => { window._classesById[c.id] = c; });
+            }
+        }).fail(() => { window._classesById = {}; });
+    }
+
+    function fetchUsersData() {
+        $.get("<?= base_url('user/list/murid') ?>", function (response) {
+            if (response.success && Array.isArray(response.users)) {
+                response.users.forEach(u => { usersByKey[u.id] = u; });
+            }
+        });
+        $.get("<?= base_url('user/list/guru') ?>", function (response) {
+            if (response.success && Array.isArray(response.users)) {
+                response.users.forEach(u => { usersByKey[u.id] = u; });
+            }
+        });
+    }
+
+    fetchClassesData();
+    fetchUsersData();
+
+    // ── Table refresh functions ───────────────────────────────────────────────
+    function refreshBorrowingsTable(page = 1) {
+        currentBorrowingsPage = page;
+        $.get("<?= base_url('api/borrowings-all') ?>", { page, limit: ITEMS_PER_PAGE }, function (response) {
+            if (response.success && Array.isArray(response.borrowings)) {
+                let rows = '';
+                let no   = (page - 1) * ITEMS_PER_PAGE + 1;
+                response.borrowings.forEach(b => {
+                    const user        = usersByKey[b.user_id] || {};
+                    const bookTitle   = b.book_title || '-';
+                    const classId     = user.class_id || null;
+                    const className   = classId && window._classesById && window._classesById[classId]
+                                        ? window._classesById[classId].nama_kelas : '-';
+                    const statusClass = b.status === 'active' ? 'table-danger' : '';
+                    rows += `<tr class="${statusClass}">
+                        <th scope="row">${no++}</th>
+                        <td>${escapeHtml(user.nama || '-')}</td>
+                        <td>${escapeHtml(bookTitle)}</td>
+                        <td>${escapeHtml(className)}</td>
+                        <td>${escapeHtml(b.tanggal || '-')}</td>
+                    </tr>`;
+                });
+                if (!rows) rows = `<tr><td colspan="5" class="text-center">Belum ada data peminjaman.</td></tr>`;
+                $('#tbodyBorrowings').html(rows);
+                totalBorrowingsPages = Math.ceil(response.totalCount / ITEMS_PER_PAGE);
+                renderBorrowingsPagination();
+            }
+        });
+    }
+
+    function refreshReturnsTable(page = 1) {
+        currentReturnsPage = page;
+        $.get("<?= base_url('api/returns-all') ?>", { page, limit: ITEMS_PER_PAGE }, function (response) {
+            if (response.success && Array.isArray(response.returns)) {
+                let rows = '';
+                let no   = (page - 1) * ITEMS_PER_PAGE + 1;
+                response.returns.forEach(r => {
+                    const user      = usersByKey[r.user_id] || {};
+                    const bookTitle = r.book_title || '-';
+                    const classId   = user.class_id || null;
+                    const className = classId && window._classesById && window._classesById[classId]
+                                      ? window._classesById[classId].nama_kelas : '-';
+                    rows += `<tr>
+                        <th scope="row">${no++}</th>
+                        <td>${escapeHtml(user.nama || '-')}</td>
+                        <td>${escapeHtml(bookTitle)}</td>
+                        <td>${escapeHtml(className)}</td>
+                        <td>${escapeHtml(r.tanggal || '-')}</td>
+                    </tr>`;
+                });
+                if (!rows) rows = `<tr><td colspan="5" class="text-center">Belum ada data pengembalian.</td></tr>`;
+                $('#tbodyReturns').html(rows);
+                totalReturnsPages = Math.ceil(response.totalCount / ITEMS_PER_PAGE);
+                renderReturnsPagination();
+            }
+        });
+    }
+
+    // ── Pagination ────────────────────────────────────────────────────────────
+    function renderBorrowingsPagination() {
+        $('#paginationBorrowings').html(generatePaginationHTML(currentBorrowingsPage, totalBorrowingsPages, 'borrowings'));
+        attachPaginationListeners('borrowings');
+    }
+
+    function renderReturnsPagination() {
+        $('#paginationReturns').html(generatePaginationHTML(currentReturnsPage, totalReturnsPages, 'returns'));
+        attachPaginationListeners('returns');
+    }
+
+    function generatePaginationHTML(currentPage, totalPages, type) {
+        const maxPagesToShow = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+        let endPage   = Math.min(totalPages, startPage + maxPagesToShow - 1);
+        if (endPage - startPage < maxPagesToShow - 1) startPage = Math.max(1, endPage - maxPagesToShow + 1);
+
+        let html = '';
+
+        html += currentPage > 1
+            ? `<li class="page-item"><a href="#" class="page-link text-secondary pagination-prev" data-type="${type}" data-page="${currentPage - 1}">Previous</a></li>`
+            : `<li class="page-item disabled"><a class="page-link text-secondary">Previous</a></li>`;
+
+        if (startPage > 1) {
+            html += `<li class="page-item"><a href="#" class="page-link text-secondary pagination-page" data-type="${type}" data-page="1">1</a></li>`;
+            if (startPage > 2) html += `<li class="page-item disabled"><a class="page-link">...</a></li>`;
+        }
+        for (let i = startPage; i <= endPage; i++) {
+            html += i === currentPage
+                ? `<li class="page-item active"><a class="page-link text-secondary" href="#" aria-current="page">${i}</a></li>`
+                : `<li class="page-item"><a href="#" class="page-link text-secondary pagination-page" data-type="${type}" data-page="${i}">${i}</a></li>`;
+        }
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) html += `<li class="page-item disabled"><a class="page-link">...</a></li>`;
+            html += `<li class="page-item"><a href="#" class="page-link text-secondary pagination-page" data-type="${type}" data-page="${totalPages}">${totalPages}</a></li>`;
+        }
+
+        html += currentPage < totalPages
+            ? `<li class="page-item"><a href="#" class="page-link text-secondary pagination-next" data-type="${type}" data-page="${currentPage + 1}">Next</a></li>`
+            : `<li class="page-item disabled"><a class="page-link text-secondary">Next</a></li>`;
+
+        return html;
+    }
+
+    function attachPaginationListeners(type) {
+        const cap = type.charAt(0).toUpperCase() + type.slice(1);
+        $(`#pagination${cap} .pagination-page, #pagination${cap} .pagination-prev, #pagination${cap} .pagination-next`)
+            .on('click', function (e) {
+                e.preventDefault();
+                const page = parseInt($(this).data('page'));
+                if (type === 'borrowings') refreshBorrowingsTable(page);
+                else if (type === 'returns') refreshReturnsTable(page);
+            });
+    }
+
+    // ── Table search ──────────────────────────────────────────────────────────
+    function filterTable(tbodyId, searchValue) {
+        document.querySelectorAll(`#${tbodyId} tr`).forEach(row => {
+            const nama = row.cells[1]?.textContent.toLowerCase() || '';
+            const buku = row.cells[2]?.textContent.toLowerCase() || '';
+            row.style.display = (nama.includes(searchValue) || buku.includes(searchValue)) ? '' : 'none';
+        });
+    }
+
+    document.getElementById('searchPeminjaman').addEventListener('input', function () {
+        filterTable('tbodyBorrowings', this.value.toLowerCase());
+    });
+    document.getElementById('cariPeminjaman').addEventListener('click', function () {
+        filterTable('tbodyBorrowings', document.getElementById('searchPeminjaman').value.toLowerCase());
+    });
+    document.getElementById('searchPengembalian').addEventListener('input', function () {
+        filterTable('tbodyReturns', this.value.toLowerCase());
+    });
+    document.getElementById('cariPengembalian').addEventListener('click', function () {
+        filterTable('tbodyReturns', document.getElementById('searchPengembalian').value.toLowerCase());
+    });
+
+    // ── Initial table load ────────────────────────────────────────────────────
+    refreshBorrowingsTable(1);
+    refreshReturnsTable(1);
+
+    // ── Scan form ─────────────────────────────────────────────────────────────
+    const formScan     = document.getElementById('formScan');
+    const uidInput     = document.getElementById('uid');
+    const userUidInput = document.getElementById('user_uid');
+    const btnScan      = document.getElementById('btnScan');
+    const btnReset     = document.getElementById('btnReset');
+
+    userUidInput.addEventListener('blur', function () {
+        if (this.value.trim()) uidInput.focus();
+    });
+
+    btnReset.addEventListener('click', function () {
         formScan.reset();
         document.getElementById('result').innerHTML = '';
-        nisnInput.focus();
+        userUidInput.focus();
     });
 
-    // Submit form
-    formScan.addEventListener('submit', function(e) {
+    formScan.addEventListener('submit', function (e) {
         e.preventDefault();
-        
-        const uid = uidInput.value.trim();
-        const nisn = nisnInput.value.trim();
 
-        if (!uid || !nisn) {
-            showResult('error', 'UID dan NISN/NIP wajib diisi!');
+        const uid     = uidInput.value.trim();
+        const userUid = userUidInput.value.trim();
+
+        if (!uid || !userUid) {
+            showResult('error', 'UID buku dan UID user wajib diisi!');
             return;
         }
 
-        // Disable button
         btnScan.disabled = true;
         btnScan.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Memproses...';
 
         fetch('<?= base_url("automate/process") ?>', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: `uid=${encodeURIComponent(uid)}&nisn=${encodeURIComponent(nisn)}`
+            method:  'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body:    `uid=${encodeURIComponent(uid)}&user_uid=${encodeURIComponent(userUid)}`
         })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                const type = data.type === 'return' ? 'Pengembalian' : 'Peminjaman';
-                const trustInfo = data.trust_score ? `<br><i class="bi bi-award"></i> Trust Score: ${data.trust_score}` : '';
-                const maxBorrowInfo = data.max_borrow ? ` (Max: ${data.max_borrow} buku)` : '';
-                const dueDateInfo = data.due_date ? `<br><i class="bi bi-calendar"></i> Jatuh Tempo: ${data.due_date}` : '';
-                
-                const message = `
+                const type          = data.type === 'return' ? 'Pengembalian' : 'Peminjaman';
+                const trustInfo     = data.trust_score ? `<br><i class="bi bi-award"></i> Trust Score: ${data.trust_score}` : '';
+                const maxBorrowInfo = data.max_borrow  ? ` (Max: ${data.max_borrow} buku)` : '';
+                const dueDateInfo   = data.due_date    ? `<br><i class="bi bi-calendar"></i> Jatuh Tempo: ${data.due_date}` : '';
+
+                showResult('success', `
                     <strong>${type} Berhasil!</strong><br>
                     <i class="bi bi-person"></i> User: ${data.user || '-'}${trustInfo}${maxBorrowInfo}<br>
                     <i class="bi bi-book"></i> Buku: ${data.book || '-'}${dueDateInfo}
-                `;
-                showResult('success', message);
-                
-                // Tambah ke history
-                addToHistory(type, data.user, data.book);
-                
-                // Auto clear UID dan focus
-                setTimeout(() => {
-                    uidInput.value = '';
-                    uidInput.focus();
-                }, 1500);
+                `);
+
+                // Refresh kedua tabel agar langsung update
+                refreshBorrowingsTable(currentBorrowingsPage);
+                refreshReturnsTable(currentReturnsPage);
+
+                setTimeout(() => { uidInput.value = ''; uidInput.focus(); }, 1500);
             } else {
                 showResult('error', data.message || 'Terjadi kesalahan');
             }
@@ -194,85 +430,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Auto clear result
     function showResult(type, message) {
-        const resultDiv = document.getElementById('result');
         const alertClass = type === 'success' ? 'result-success' : 'result-error';
-        const icon = type === 'success' ? 'bi-check-circle' : 'bi-x-circle';
-        
-        resultDiv.innerHTML = `
-            <div class="${alertClass}">
-                <i class="bi ${icon}"></i> ${message}
-            </div>
-        `;
-
-        setTimeout(() => {
-            resultDiv.innerHTML = '';
-        }, 5000);
+        const icon       = type === 'success' ? 'bi-check-circle' : 'bi-x-circle';
+        document.getElementById('result').innerHTML = `
+            <div class="${alertClass}"><i class="bi ${icon}"></i> ${message}</div>`;
+        setTimeout(() => { document.getElementById('result').innerHTML = ''; }, 5000);
     }
 
-    function addToHistory(type, user, book) {
-        const now = new Date().toLocaleString('id-ID');
-        scanHistory.unshift({
-            type: type,
-            user: user,
-            book: book,
-            time: now
-        });
-
-        // Batas history maksimal 10
-        if (scanHistory.length > 10) {
-            scanHistory = scanHistory.slice(0, 10);
-        }
-
-        renderHistory();
-    }
-
-    function renderHistory() {
-        const historyDiv = document.getElementById('scanHistory');
-        
-        if (scanHistory.length === 0) {
-            historyDiv.innerHTML = '<p class="text-muted text-center">Belum ada riwayat scan</p>';
-            return;
-        }
-
-        let html = '<div class="list-group list-group-flush">';
-        scanHistory.forEach((item, index) => {
-            const badgeClass = item.type === 'Peminjaman' ? 'bg-primary' : 'bg-success';
-            html += `
-                <div class="list-group-item">
-                    <div class="d-flex justify-content-between">
-                        <span class="badge ${badgeClass}">${item.type}</span>
-                        <small class="text-muted">${item.time}</small>
-                    </div>
-                    <div class="mt-1">
-                        <small><i class="bi bi-person"></i> ${item.user}</small><br>
-                        <small><i class="bi bi-book"></i> ${item.book}</small>
-                    </div>
-                </div>
-            `;
-        });
-        html += '</div>';
-        
-        historyDiv.innerHTML = html;
-    }
-
-    // Focus ke NISN saat load
-    nisnInput.focus();
-
-    // Initialize collapse for history
-    const collapse = document.querySelector('[data-bs-target="#collapseHistory"]');
-    const collapseDiv = document.getElementById('collapseHistory');
-    
-    collapseDiv.addEventListener('show.bs.collapse', function () {
-        collapse.classList.remove('bi-chevron-down');
-        collapse.classList.add('bi-chevron-up');
-    });
-    
-    collapseDiv.addEventListener('hide.bs.collapse', function () {
-        collapse.classList.remove('bi-chevron-up');
-        collapse.classList.add('bi-chevron-down');
-    });
+    // Focus saat load
+    userUidInput.focus();
 });
 </script>
 
