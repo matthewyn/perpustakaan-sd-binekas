@@ -261,6 +261,7 @@ class AutomateTransactionController extends Controller
             // ── 3. Deteksi tipe transaksi (borrow / return) ─────────────────────
             $activeTx = $this->fetchAllTransactions([
                 'uid'    => 'eq.' . $uidScan,
+                'user_id' => 'eq.' . $userData['id'],
                 'status' => 'eq.active',
                 'type'   => 'eq.borrow'
             ]);
@@ -273,6 +274,29 @@ class AutomateTransactionController extends Controller
 
             // ── 4a. Peminjaman ──────────────────────────────────────────────────
             if ($type === 'borrow') {
+
+                // Cek apakah buku sedang dipinjam user lain (ownership validation)
+                $anyActiveBorrow = $this->fetchAllTransactions([
+                    'uid'    => 'eq.' . $uidScan,
+                    'status' => 'eq.active',
+                    'type'   => 'eq.borrow'
+                ]);
+
+                if (!empty($anyActiveBorrow)) {
+                    $activeOwner = $anyActiveBorrow[0];
+                    if ($activeOwner['user_id'] != $userData['id']) {
+                        $ownerUser = $this->supabaseRequest('GET', 'users', null, [
+                            'id'     => 'eq.' . $activeOwner['user_id'],
+                            'select' => 'nama',
+                            'limit'  => 1
+                        ]);
+                        $ownerName = (!isset($ownerUser['error']) && !empty($ownerUser)) ? $ownerUser[0]['nama'] : 'Tidak terbaca';
+                        return $this->response->setJSON([
+                            'success' => false,
+                            'message' => 'Buku sedang dipinjam oleh: ' . $ownerName . '. Tidak bisa dipinjam oleh user lain.'
+                        ]);
+                    }
+                }
 
                 $currentQty = (int)($bookData['quantity'] ?? 0);
                 if ($currentQty < 1) {

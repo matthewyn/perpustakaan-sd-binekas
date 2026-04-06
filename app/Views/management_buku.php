@@ -328,17 +328,22 @@
         </div>
 
         <div class="mb-3" id="uidSection" style="display: none;">
-            <label class="form-label">UID RFID</label>
+            <label class="form-label fw-bold">
+                <i class="bi bi-credit-card"></i> UID RFID 
+                <span class="text-danger">*</span>
+                <small class="text-muted">(Masukkan <span id="quantityRequiredLabel">1</span> RFID)</small>
+            </label>
+            <small class="d-block text-muted mb-2">Setiap exemplar buku harus punya 1 RFID UID unik</small>
             <div class="uid-container" id="uidContainer">
                 <div class="input-group mb-2">
-                    <input type="text" name="uid[]" class="form-control" placeholder="Masukkan UID">
+                    <input type="text" name="uid[]" class="form-control" placeholder="RFID UID #1">
                     <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()">
                         <i class="bi bi-trash"></i>
                     </button>
                 </div>
             </div>
             <button class="btn btn-sm btn-primary" type="button" id="btnAddUid">
-                <i class="bi bi-plus"></i> Tambah UID
+                <i class="bi bi-plus"></i> Tambah UID Manual
             </button>
         </div>
 
@@ -1339,6 +1344,83 @@ document.addEventListener("DOMContentLoaded", function() {
 
     searchInput.addEventListener('input', () => { currentPage = 1; filterTable(); });
     document.getElementById('cariBuku').addEventListener('click', () => { currentPage = 1; filterTable(); });
+
+    // ===== DYNAMIC RFID INPUT BASED ON QUANTITY =====
+    const quantityInput = document.getElementById('quantity');
+    const uidSection = document.getElementById('uidSection');
+    const uidContainer = document.getElementById('uidContainer');
+    const btnAddUid = document.getElementById('btnAddUid');
+    const quantityLabel = document.getElementById('quantityRequiredLabel');
+    
+    // Function untuk generate RFID input fields sesuai quantity
+    function updateRfidInputs() {
+        const quantity = parseInt(quantityInput.value) || 1;
+        const currentInputs = uidContainer.querySelectorAll('input[name="uid[]"]').length;
+        
+        // Update label
+        quantityLabel.textContent = quantity;
+        
+        if (quantity > currentInputs) {
+            // Add more inputs
+            for (let i = currentInputs; i < quantity; i++) {
+                const inputGroup = document.createElement('div');
+                inputGroup.className = 'input-group mb-2';
+                inputGroup.innerHTML = `
+                    <input type="text" name="uid[]" class="form-control" placeholder="RFID UID #${i + 1}">
+                    <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                `;
+                uidContainer.appendChild(inputGroup);
+            }
+        } else if (quantity < currentInputs) {
+            // Remove extra inputs
+            const inputsToRemove = currentInputs - quantity;
+            const allInputs = uidContainer.querySelectorAll('.input-group');
+            for (let i = 0; i < inputsToRemove; i++) {
+                allInputs[allInputs.length - 1 - i].remove();
+            }
+        }
+    }
+    
+    // Event listener untuk quantity change
+    quantityInput.addEventListener('change', function() {
+        updateRfidInputs();
+    });
+    
+    // Event listener untuk quantity input (real-time)
+    quantityInput.addEventListener('input', function() {
+        const quantity = parseInt(this.value) || 1;
+        if (quantity > 0) {
+            updateRfidInputs();
+            // Show UID section when quantity > 0
+            if (quantity > 0 && uidSection.style.display === 'none') {
+                uidSection.style.display = 'block';
+            }
+        }
+    });
+    
+    // Button untuk manual add UID
+    btnAddUid.addEventListener('click', function() {
+        const allInputs = uidContainer.querySelectorAll('.input-group');
+        const inputGroup = document.createElement('div');
+        inputGroup.className = 'input-group mb-2';
+        inputGroup.innerHTML = `
+            <input type="text" name="uid[]" class="form-control" placeholder="RFID UID #${allInputs.length + 1}">
+            <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()">
+                <i class="bi bi-trash"></i>
+            </button>
+        `;
+        uidContainer.appendChild(inputGroup);
+    });
+    
+    // Initialize pada load form tambah
+    document.getElementById('bukuForm').addEventListener('reset', function() {
+        setTimeout(() => {
+            quantityInput.value = 1;
+            updateRfidInputs();
+        }, 100);
+    });
 
     filterTable();
 });

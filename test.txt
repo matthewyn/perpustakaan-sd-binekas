@@ -1,0 +1,209 @@
+SKENARIO TEST PEMINJAMAN OTOMATIS RFID
+Perpustakaan SD Binekas
+
+=== 1. HAPPY PATH SCENARIOS ===
+
+1.1 Peminjaman Buku Berhasil (First Time)
+- User scan kartu RFID (uid: USER001)
+- Scan kartu buku (uid: BOOK001)
+- Expected: Transaksi berhasil, qty berkurang, status 'active'
+- Response: "Peminjaman berhasil" + judul buku + due date (7 hari)
+
+1.2 Peminjaman One-Day-Book
+- Scan kartu user
+- Scan kartu buku with is_one_day_book = true
+- Expected: Due date = 1 hari (bukan 7 hari)
+
+1.3 Pengembalian Buku Tepat Waktu
+- Scan user yang same bukunya
+- Sistem deteksi: return (ada active transaction)
+- Expected: Response "(TEPAT WAKTU: +1 poin)", trust_score += 1
+
+1.4 Pengembalian Buku Terlambat
+- Return date > due date
+- Expected: Response "(TERLAMBAT)", trust_score tetap, was_late = true
+- Buku tetap dikembalikan (no penalty block)
+
+1.5 Multiple Books Peminjaman Berturut-turut
+- User with maxBorrow=3
+- Scan 3 buku berbeda
+- Expected: Semua transaksi active, qty berkurang
+
+=== 2. ERROR SCENARIOS - INPUT VALIDATION ===
+
+2.1 User UID Kosong
+- Submit form tanpa scan kartu user
+- Expected: "UID user wajib diisi"
+
+2.2 Buku UID Kosong
+- Submit form tanpa scan kartu buku
+- Expected: "UID buku wajib diisi"
+
+2.3 User UID Tidak Ditemukan
+- Scan UID: INVALID_USER_12345
+- Expected: "UID user tidak ditemukan"
+
+2.4 Buku UID Tidak Ditemukan
+- Scan UID: INVALID_BOOK_999
+- Expected: "UID buku tidak ditemukan"
+
+2.5 UID Case Sensitivity & Whitespace
+- Buku UID: "Book_001"
+- Scan dengan: "book_001" atau "  Book_001  "
+- Expected: Tetap match (case-insensitive, trim whitespace)
+
+=== 3. BUSINESS LOGIC SCENARIOS ===
+
+3.1 Stok Buku Habis (qty = 0)
+- Scan user + buku dengan quantity = 0
+- Expected: "Stok buku habis"
+
+3.2 User Sudah Max Borrow Limit
+- User maxBorrow=2, sudah pinjam 2 buku, mau pinjam 3
+- Expected: "Batas maksimal peminjaman (2 buku) telah tercapai"
+
+3.3 User Status Freezed/Blocked (is_freezed = 1)
+- Scan user yang diblokir
+- Expected: Reject kenapa? (perlu cek logic)
+
+3.4 Multiple Buku dengan UID Array
+- Buku punya uid: ["B001", "B002", "B003"]
+- Scan dengan uid: "B002"
+- Expected: Match found, transaksi berhasil
+
+=== 4. DATA CONSISTENCY ===
+
+4.1 Double Submit (Rapid Scanning)
+- Scan 2x book sama dalam <1 detik
+- Expected: Hanya 1 transaksi dibuat (bukan 2)
+- Risk: Double-borrow atau race condition
+
+4.2 Transaction Quantity Mismatch
+- DB corruption: qty=0 tapi ada 5 transaksi active
+- Expected: Reject peminjaman, log warning
+
+=== 5. TRUST SCORE MECHANICS ===
+
+5.1 Trust Score +1 (On-Time Return)
+- Initial: 100, Return date <= due date
+- Expected: trust_score = 101
+
+5.2 Trust Score No Change (Late Return)
+- Initial: 100, Return date > due date
+- Expected: trust_score = 100 (tetap, no penalty)
+
+5.3 Trust Score Floor (Min = 0)
+- Expected: Tidak pernah negatif
+
+=== 6. CACHE PERFORMANCE ===
+
+6.1 Cache Hit on Repeated Scan
+- First fetch: ~50ms (from API)
+- Repeated within 300s: ~5ms (from cache)
+- Expected: Log message "Cache HIT"
+
+6.2 Cache Invalidation
+- Borrow action: cache di-delete
+- Next fetch hit API (not cache)
+- Expected: Quantity akurat
+
+=== 7. CONCURRENT/RACE CONDITIONS ===
+
+7.1 Two Users Borrow Same Book (qty=1)
+- User A & B scan buku dengan qty=1 simultaneously
+- Expected: Hanya 1 berhasil, satunya fail
+- Risk: qty jadi -1 if no database constraint
+
+7.2 User Return & Borrow Same Book
+- Return dan borrow dalam 1 milidetik
+- Expected: Proper transaction isolation
+
+=== 8. EDGE CASES ===
+
+8.1 Null/Missing Trust Score
+- DB User punya trust_score = NULL
+- Expected: Default ke 100
+
+8.2 Null/Missing Max Borrow
+- DB User punya maxBorrow = NULL
+- Expected: Default ke 1
+
+8.3 Date/Time Boundary (Midnight)
+- Due date: 2026-04-06, Return: 2026-04-07 00:00:05
+- Expected: Correctly detected as late/on-time
+
+8.4 Leap Year / Year Boundary
+- Borrow: 2024-02-28, Due: 2024-03-06, Return: 2024-02-29
+- Expected: strtotime handle correctly
+
+=== 9. API ERROR HANDLING ===
+
+9.1 API Timeout (Supabase Down)
+- Network slow, timeout 30s
+- Expected: Error message, log timeout
+
+9.2 401 Unauthorized (Invalid API Key)
+- Expected: Log "HTTP Error 401"
+
+9.3 500 Server Error
+- Expected: Graceful error handling
+
+=== 10. SECURITY ===
+
+10.1 SQL Injection via UID
+- Malicious UID: "; DROP TABLE transactions; --"
+- Expected: No injection (Supabase REST API safe)
+
+10.2 XSS via Response Display
+- User name: <script>alert('XSS')</script>
+- Expected: Response escaped, esc() used in view
+
+10.3 CSRF Token
+- Expected: Form punya CSRF token
+
+=== 11. USER EXPERIENCE ===
+
+11.1 Form Auto-Focus
+- After scan user, focus move ke buku field
+- Expected: Smooth workflow
+
+11.2 Result Message Display
+- Success (green), Error (red)
+- Expected: Auto-disappear after 5s, smooth animation
+
+11.3 Quick Reset Button
+- Expected: Clear fields, focus ke user field
+
+=== TEST DATA SETUP ===
+
+Users:
+- ID 1: USER001, Adi Pratama (murid, maxBorrow=1, trust_score=100)
+- ID 2: USER002, Budi Santoso (murid, maxBorrow=2, trust_score=95)
+- ID 3: USER_FROZEN, Citra Dewi (murid, is_freezed=1)
+
+Books:
+- ID 1: B001, "Matematika Dasar" (qty=3, is_one_day_book=false)
+- ID 2: B002, "Cerita Rakyat" (qty=2)
+- ID 3: B003, "IPA Terpadu" (qty=4, uid: ["B003","B004"])
+- ID 4: B005, "One Day Book" (qty=1, is_one_day_book=true)
+- ID 5: B_EMPTY, "Buku Habis" (qty=0)
+
+=== AUTOMATION TEST CHECKLIST ===
+
+[ ] Happy path peminjaman
+[ ] Happy path pengembalian (on-time)
+[ ] Happy path pengembalian (late)
+[ ] Error: user UID kosong
+[ ] Error: buku UID kosong
+[ ] Error: user UID invalid
+[ ] Error: buku UID invalid
+[ ] Business logic: stok habis
+[ ] Business logic: max borrow limit
+[ ] Trust score: +1 untuk on-time
+[ ] Trust score: no change untuk late
+[ ] Cache hit performance
+[ ] Multiple rapid scans
+[ ] Special character UID
+[ ] Timezone edge case
+[ ] API timeout handling
+[ ] DB null value handling
