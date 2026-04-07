@@ -41,13 +41,13 @@ class ApiController extends Controller
         
         // Logging Gemini
         if (empty($this->gemini_api_key)) {
-            log_message('error', '⚠️ GEMINI_API_KEY not set in .env file');
-            $this->clientLog('⚠️ GEMINI_API_KEY not set in .env file', 'ERROR');
+            log_message('error', ' GEMINI_API_KEY not set in .env file');
+            $this->clientLog(' GEMINI_API_KEY not set in .env file', 'ERROR');
         } else {
             $keyLength = strlen($this->gemini_api_key);
             $keyPreview = substr($this->gemini_api_key, 0, 10) . '...' . substr($this->gemini_api_key, -4);
-            log_message('info', "✅ Gemini API key loaded (length: {$keyLength}, preview: {$keyPreview})");
-            $this->clientLog("✅ Gemini API key loaded", "length: {$keyLength}, preview: {$keyPreview}");
+            log_message('info', " Gemini API key loaded (length: {$keyLength}, preview: {$keyPreview})");
+            $this->clientLog(" Gemini API key loaded", "length: {$keyLength}, preview: {$keyPreview}");
         }
 
         // =======================================================
@@ -68,13 +68,13 @@ class ApiController extends Controller
         
         // Logging OpenAI
         if (empty($this->openai_api_key)) {
-            log_message('error', '⚠️ OPENAI_API_KEY not set in .env file');
-            $this->clientLog('⚠️ OPENAI_API_KEY not set in .env file', 'ERROR');
+            log_message('error', ' OPENAI_API_KEY not set in .env file');
+            $this->clientLog(' OPENAI_API_KEY not set in .env file', 'ERROR');
         } else {
             $keyLength = strlen($this->openai_api_key);
             $keyPreview = substr($this->openai_api_key, 0, 10) . '...' . substr($this->openai_api_key, -4);
-            log_message('info', "✅ OpenAI API key loaded (length: {$keyLength}, preview: {$keyPreview})");
-            $this->clientLog("✅ OpenAI API key loaded", "length: {$keyLength}, preview: {$keyPreview}");
+            log_message('info', " OpenAI API key loaded (length: {$keyLength}, preview: {$keyPreview})");
+            $this->clientLog(" OpenAI API key loaded", "length: {$keyLength}, preview: {$keyPreview}");
         }
     }
 
@@ -97,24 +97,26 @@ class ApiController extends Controller
 
     /**
      * JSON Schema for structured output (Used by Gemini).
+     * Follows Gemini API schema format properly
      */
     private function getResponseSchema()
     {
-        return [
-            'type' => 'OBJECT',
-            'properties' => [
-                'is_book' => ['type' => 'BOOLEAN', 'description' => 'True if the image is a book cover, false otherwise.'],
-                'title' => ['type' => 'STRING', 'description' => 'The full book title.'],
-                'author' => ['type' => 'STRING', 'description' => 'The main author of the book.'],
-                'illustrator' => ['type' => 'STRING', 'description' => 'The illustrator or artist, if mentioned.'],
-                'publisher' => ['type' => 'STRING', 'description' => 'The publisher name.'],
-                'series' => ['type' => 'STRING', 'description' => 'The book series, if applicable.'],
-                'isbn' => ['type' => 'STRING', 'description' => 'The 13-digit ISBN number.'],
-                'ddcNumber' => ['type' => 'STRING', 'description' => 'The Dewey Decimal Classification number. GENERATE if not found.'],
-                'category' => ['type' => 'STRING', 'description' => 'The genre or category of the book (in Indonesian).'],
-                'synopsis' => ['type' => 'STRING', 'description' => 'A brief synopsis of the book (2-3 sentences in Indonesian).'],
-                'quantity' => ['type' => 'STRING', 'description' => 'Always "1" for a single book.']
-            ]
+        return (object)[
+            'type' => 'object',
+            'properties' => (object)[
+                'is_book' => (object)['type' => 'boolean', 'description' => 'True if the image is a book cover, false otherwise.'],
+                'title' => (object)['type' => 'string', 'description' => 'The full book title.'],
+                'author' => (object)['type' => 'string', 'description' => 'The main author of the book.'],
+                'illustrator' => (object)['type' => 'string', 'description' => 'The illustrator or artist, if mentioned.'],
+                'publisher' => (object)['type' => 'string', 'description' => 'The publisher name.'],
+                'series' => (object)['type' => 'string', 'description' => 'The book series, if applicable.'],
+                'isbn' => (object)['type' => 'string', 'description' => 'The 13-digit ISBN number.'],
+                'ddcNumber' => (object)['type' => 'string', 'description' => 'The Dewey Decimal Classification number. GENERATE if not found.'],
+                'category' => (object)['type' => 'string', 'description' => 'The genre or category of the book (in Indonesian).'],
+                'synopsis' => (object)['type' => 'string', 'description' => 'A brief synopsis of the book (2-3 sentences in Indonesian).'],
+                'quantity' => (object)['type' => 'string', 'description' => 'Always "1" for a single book.']
+            ],
+            'required' => ['is_book', 'title', 'author', 'category']
         ];
     }
     
@@ -123,7 +125,7 @@ class ApiController extends Controller
      */
     private function extractJsonFallback($text)
     {
-        $this->clientLog('⚠️ Attempting RegEx Fallback for JSON Parsing');
+        $this->clientLog(' Attempting RegEx Fallback for JSON Parsing');
         $data = [
             'is_book' => true, 'title' => '', 'author' => '', 'illustrator' => '', 'publisher' => '', 
             'series' => '', 'category' => '', 'isbn' => 'NOT FOUND', 
@@ -161,9 +163,9 @@ class ApiController extends Controller
     {
         $queries = $response['candidates'][0]['groundingMetadata']['webSearchQueries'] ?? [];
         if (!empty($queries)) {
-            $this->clientLog("🔍 Search Queries Used (Grounding):", $queries);
+            $this->clientLog(" Search Queries Used (Grounding):", $queries);
         } else {
-            $this->clientLog("🔍 Search Queries Used (Grounding): None generated by the model.", 'INFO');
+            $this->clientLog(" Search Queries Used (Grounding): None generated by the model.", 'INFO');
         }
     }
 
@@ -176,7 +178,7 @@ class ApiController extends Controller
         $candidate = $response['candidates'][0] ?? null;
 
         if (isset($candidate['groundingMetadata']['groundingChunks'])) {
-            $this->clientLog("🔗 Found " . count($candidate['groundingMetadata']['groundingChunks']) . " grounding chunks/sources.");
+            $this->clientLog(" Found " . count($candidate['groundingMetadata']['groundingChunks']) . " grounding chunks/sources.");
             foreach ($candidate['groundingMetadata']['groundingChunks'] as $chunk) {
                 $annotations[] = [
                     'type' => 'Google Search',
@@ -185,7 +187,7 @@ class ApiController extends Controller
                 ];
             }
         } else {
-            $this->clientLog("🔗 No grounding chunks/sources found in response.");
+            $this->clientLog(" No grounding chunks/sources found in response.");
         }
         return $annotations;
     }
@@ -198,7 +200,7 @@ class ApiController extends Controller
     private function callGemini($prompt, $imageContent = null, $tools = null, $generationConfig = null)
     {
         if (empty($this->gemini_api_key)) {
-            $this->clientLog('❌ Gemini API Key Missing', 'Cannot call Gemini');
+            $this->clientLog(' Gemini API Key Missing', 'Cannot call Gemini');
             return ['error' => ['message' => 'Gemini API key not configured']];
         }
 
@@ -235,13 +237,13 @@ class ApiController extends Controller
         // Add 'tools'
         if ($tools) {
             $payload['tools'] = $tools;
-            $this->clientLog('🛠️ API Payload Tools Added:', $tools);
+            $this->clientLog(' API Payload Tools Added:', $tools);
         }
 
         // Add 'generationConfig'
         if ($generationConfig) {
             $payload['generationConfig'] = $generationConfig;
-            $this->clientLog('🛠️ API Payload Generation Config Added:', $generationConfig);
+            $this->clientLog(' API Payload Generation Config Added:', $generationConfig);
         }
 
         $curl = curl_init();
@@ -253,19 +255,27 @@ class ApiController extends Controller
             CURLOPT_POSTFIELDS => json_encode($payload),
             CURLOPT_TIMEOUT => 120,
         ]);
-        $this->clientLog('⬆️ Sending API Request to Gemini...');
+        $this->clientLog(' Sending API Request to Gemini...');
+        $this->clientLog(' Config:', ['responseMimeType' => 'application/json', 'temperature' => 0.0, 'tools' => 'googleSearch']);
         $response = curl_exec($curl);
         $error = curl_error($curl);
         curl_close($curl);
         if ($error) {
-            $this->clientLog('❌ Gemini cURL Error:', $error);
+            $this->clientLog(' Gemini cURL Error:', $error);
             return ['error' => ['message' => 'Connection error: ' . $error]];
         }
 
         $decoded = json_decode($response, true);
-        $this->clientLog('⬇️ API Response received.');
+        $this->clientLog('⬇ API Response received.');
+        
+        // Log raw response for debugging (only if error)
+        if ($response && !$decoded) {
+            $this->clientLog('⚠️ Response is not valid JSON:', substr($response, 0, 500));
+        }
+        
         if (isset($decoded['error'])) {
-            $this->clientLog('❌ Gemini API Error:', $decoded['error']['message'] ?? 'Unknown error');
+            $this->clientLog(' Gemini API Error:', $decoded['error']['message'] ?? 'Unknown error');
+            $this->clientLog('Full error details:', json_encode($decoded['error']));
             return ['error' => ['message' => $decoded['error']['message'] ?? 'Unknown error']];
         }
         
@@ -280,7 +290,7 @@ class ApiController extends Controller
     private function callOpenAI($data)
     {
         if (empty($this->openai_api_key)) {
-            $this->clientLog('❌ OpenAI API Key Missing', 'Cannot call OpenAI');
+            $this->clientLog(' OpenAI API Key Missing', 'Cannot call OpenAI');
             return ['error' => ['message' => 'OpenAI API key not configured']];
         }
 
@@ -307,17 +317,17 @@ class ApiController extends Controller
         curl_close($curl);
         if ($error) {
             log_message('error', 'cURL Error: ' . $error);
-            $this->clientLog('❌ OpenAI cURL Connection Error:', $error);
+            $this->clientLog(' OpenAI cURL Connection Error:', $error);
             return ['error' => ['message' => 'Connection error: ' . $error]];
         }
 
         $decoded = json_decode($response, true);
         if ($httpCode === 200) {
-            $this->clientLog('🤖 OpenAI API Call Success (HTTP 200)');
+            $this->clientLog(' OpenAI API Call Success (HTTP 200)');
         } else {
             $errorMsg = $decoded['error']['message'] ?? 'HTTP Error ' . $httpCode;
             log_message('error', 'OpenAI API Error (HTTP ' . $httpCode . '): ' . $errorMsg);
-            $this->clientLog('❌ OpenAI API Error (HTTP ' . $httpCode . '):', $errorMsg);
+            $this->clientLog(' OpenAI API Error (HTTP ' . $httpCode . '):', $errorMsg);
         }
 
         if ($httpCode !== 200) {
@@ -332,8 +342,8 @@ class ApiController extends Controller
      */
     private function fallbackVisionOnly($imageContent, $title, $author)
     {
-        log_message('info', '🔄 Using secondary OpenAI fallback (vision-only analysis)');
-        $this->clientLog('🔄 Using secondary OpenAI fallback (vision-only analysis)');
+        log_message('info', ' Using secondary OpenAI fallback (vision-only analysis)');
+        $this->clientLog(' Using secondary OpenAI fallback (vision-only analysis)');
 
         $fallbackPayload = [
             'model' => 'gpt-4o',
@@ -352,17 +362,17 @@ class ApiController extends Controller
                 ]
             ]
         ];
-        $this->clientLog('🤖 API Call (Fallback Vision) PAYLOAD:', $fallbackPayload);
+        $this->clientLog(' API Call (Fallback Vision) PAYLOAD:', $fallbackPayload);
         $fallbackResponse = $this->callOpenAI($fallbackPayload);
 
         if (isset($fallbackResponse['error'])) {
-            $this->clientLog('❌ Secondary OpenAI fallback failed:', $fallbackResponse['error']['message']);
+            $this->clientLog(' Secondary OpenAI fallback failed:', $fallbackResponse['error']['message']);
             throw new \Exception('Secondary OpenAI analysis also failed: ' . $fallbackResponse['error']['message']);
         }
 
         $rawJson = $fallbackResponse['choices'][0]['message']['content'] ?? '';
         
-        $this->clientLog('🔥 RAW API Response (Fallback) CONTENT:', $rawJson);
+        $this->clientLog(' RAW API Response (Fallback) CONTENT:', $rawJson);
         $rawJson = trim($rawJson);
         $rawJson = preg_replace('/```json\s*/i', '', $rawJson);
         $rawJson = preg_replace('/\s*```/', '', $rawJson);
@@ -370,7 +380,7 @@ class ApiController extends Controller
 
         $parsedData = json_decode($rawJson, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            $this->clientLog('❌ Fallback JSON parse error:', json_last_error_msg());
+            $this->clientLog(' Fallback JSON parse error:', json_last_error_msg());
             $parsedData = $this->extractJsonFallback($rawJson);
             if (!$parsedData) {
                 throw new \Exception('Failed to parse secondary fallback response');
@@ -384,8 +394,8 @@ class ApiController extends Controller
         $parsedData['debug_logs'] = $this->debugLog;
         $parsedData['model_used'] = 'CHATGPT';
 
-        log_message('info', '✅ Secondary OpenAI analysis complete (vision only)');
-        $this->clientLog('✅ Secondary OpenAI analysis complete (vision only)');
+        log_message('info', ' Secondary OpenAI analysis complete (vision only)');
+        $this->clientLog(' Secondary OpenAI analysis complete (vision only)');
         return $this->response->setJSON($parsedData);
     }
 
@@ -399,8 +409,8 @@ class ApiController extends Controller
         // ============================================================
         // STEP 1 (OpenAI): EXTRACT BASIC INFO FROM VERIFIED BOOK IMAGE (GPT-4o)
         // ============================================================
-        log_message('info', '🤖 OpenAI Step 1: Analyzing book cover details with GPT-4o...');
-        $this->clientLog('🤖 OpenAI Step 1: Analyzing book cover details with GPT-4o...');
+        log_message('info', ' OpenAI Step 1: Analyzing book cover details with GPT-4o...');
+        $this->clientLog(' OpenAI Step 1: Analyzing book cover details with GPT-4o...');
 
         $visionPrompt = 'Analyze this image. Is it a book cover? Answer with ONLY "YES" or "NO" at the start. If YES, describe all visible text including: title, author, illustrator, publisher, series name, and any other text you can see.';
         $visionPayload = [
@@ -423,12 +433,12 @@ class ApiController extends Controller
         }
 
         $basicInfo = $visionResponse['choices'][0]['message']['content'] ?? '';
-        $this->clientLog("✅ OpenAI Basic info extracted (Raw):", substr($basicInfo, 0, 500) . '...');
+        $this->clientLog(" OpenAI Basic info extracted (Raw):", substr($basicInfo, 0, 500) . '...');
         
         // Check if the image is a book cover
         if (stripos($basicInfo, 'NO') === 0) {
-            log_message('info', '❌ Image is not a book cover - OpenAI analysis stopped');
-            $this->clientLog('❌ Image is not a book cover - OpenAI analysis stopped');
+            log_message('info', ' Image is not a book cover - OpenAI analysis stopped');
+            $this->clientLog(' Image is not a book cover - OpenAI analysis stopped');
             return $this->response->setJSON([
                 'is_book' => false,
                 'synopsis' => 'Gambar bukan sampul buku (via OpenAI)',
@@ -449,13 +459,13 @@ class ApiController extends Controller
         if (empty($title) && preg_match('/title[:\s]+([^,\n]+)/i', $basicInfo, $matches)) { $title = trim($matches[1]); }
         if (empty($author) && preg_match('/author[:\s]+([^,\n]+)/i', $basicInfo, $matches)) { $author = trim($matches[1]); }
 
-        $this->clientLog("📚 OpenAI Extracted Primary Info:", ['title' => $title, 'author' => $author]);
+        $this->clientLog("OpenAI Extracted Primary Info:", ['title' => $title, 'author' => $author]);
         
         // ============================================================
         // STEP 2 (OpenAI): SEARCH WEB FOR COMPLETE BOOK INFORMATION (GPT-4o Search Preview)
         // ============================================================
-        log_message('info', '🔎 OpenAI Step 2: Searching web for complete book information...');
-        $this->clientLog('🔎 OpenAI Step 2: Searching web for complete book information...');
+        log_message('info', ' OpenAI Step 2: Searching web for complete book information...');
+        $this->clientLog(' OpenAI Step 2: Searching web for complete book information...');
 
         $jsonPrompt = "Search for detailed information about the book from this message \"{$basicInfo}\" . Find:\n" .
             "1. Full title\n2. Author name\n3. Illustrator (if any)\n4. Publisher name\n5. Series name (if part of a series)\n" .
@@ -476,8 +486,8 @@ class ApiController extends Controller
         $searchResponse = $this->callOpenAI($searchPayload);
 
         if (isset($searchResponse['error'])) {
-            log_message('warning', '⚠️ OpenAI Web search failed, falling back to vision-only mode. Error: ' . ($searchResponse['error']['message'] ?? 'Unknown Error'));
-            $this->clientLog('⚠️ OpenAI Web search failed. Falling back to vision-only mode.', ($searchResponse['error']['message'] ?? 'Unknown Error'));
+            log_message('warning', ' OpenAI Web search failed, falling back to vision-only mode. Error: ' . ($searchResponse['error']['message'] ?? 'Unknown Error'));
+            $this->clientLog(' OpenAI Web search failed. Falling back to vision-only mode.', ($searchResponse['error']['message'] ?? 'Unknown Error'));
             // Internal fallback to vision-only if search fails
             return $this->fallbackVisionOnly($imageContent, $title, $author);
         }
@@ -485,8 +495,8 @@ class ApiController extends Controller
         // Extract response and annotations
         $searchResult = $searchResponse['choices'][0]['message']['content'] ?? '';
         $annotations = $searchResponse['choices'][0]['message']['annotations'] ?? [];
-        
-        $this->clientLog('🔥 RAW OpenAI Response (Search) CONTENT:', $searchResult);
+    
+        $this->clientLog('RAW OpenAI Response (Search) CONTENT:', $searchResult);
         
         // Clean and parse JSON
         $searchResult = trim($searchResult);
@@ -497,7 +507,7 @@ class ApiController extends Controller
 
         $parsedData = json_decode($searchResult, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            $this->clientLog('❌ JSON parse error:', json_last_error_msg());
+            $this->clientLog(' JSON parse error:', json_last_error_msg());
             $fallbackData = $this->extractJsonFallback($searchResult);
             if ($fallbackData) {
                 $parsedData = $fallbackData;
@@ -515,7 +525,7 @@ class ApiController extends Controller
         $parsedData['debug_logs'] = $this->debugLog;
         $parsedData['model_used'] = 'CHATGPT';
         
-        log_message('info', '✅ Book analysis complete with OpenAI web search');
+        log_message('info', ' Book analysis complete with OpenAI web search');
         $this->clientLog('--- FINISHED OPENAI FALLBACK ANALYSIS ---');
 
         return $this->response->setJSON($parsedData);
@@ -541,7 +551,7 @@ class ApiController extends Controller
                 if (empty($imageUrl)) {
                     return $this->response->setJSON(['error' => 'Parameter image_url is required', 'debug_logs' => $this->debugLog])->setStatusCode(400);
                 }
-                $this->clientLog('📸 Analyzing image from URL (GET)', substr($imageUrl, 0, 100) . '...');
+                $this->clientLog(' Analyzing image from URL (GET)', substr($imageUrl, 0, 100) . '...');
                 $imageContent = ['type' => 'image_url', 'image_url' => ['url' => $imageUrl]];
             } else if ($method === 'post') {
                 $json = $this->request->getJSON(true) ?? $this->request->getPost();
@@ -555,7 +565,7 @@ class ApiController extends Controller
                     if (empty($imageData)) {
                         return $this->response->setJSON(['error' => 'Parameter image_data is required', 'debug_logs' => $this->debugLog])->setStatusCode(400);
                     }
-                    $this->clientLog('📸 Analyzing image from base64 data', 'length: ' . strlen($imageData));
+                    $this->clientLog(' Analyzing image from base64 data', 'length: ' . strlen($imageData));
                     $url = (strpos($imageData, 'data:') === 0) ? $imageData : "data:image/jpeg;base64,{$imageData}";
                     $imageContent = ['type' => 'image_url', 'image_url' => ['url' => $url]];
                 } else {
@@ -564,7 +574,7 @@ class ApiController extends Controller
                     if (empty($imageUrl)) {
                         return $this->response->setJSON(['error' => 'Parameter image_url or image_data is required', 'debug_logs' => $this->debugLog])->setStatusCode(400);
                     }
-                    $this->clientLog('📸 Analyzing image from URL (POST)', substr($imageUrl, 0, 100) . '...');
+                    $this->clientLog(' Analyzing image from URL (POST)', substr($imageUrl, 0, 100) . '...');
                     $imageContent = ['type' => 'image_url', 'image_url' => ['url' => $imageUrl]];
                 }
             }
@@ -572,12 +582,12 @@ class ApiController extends Controller
             if ($imageContent === null) {
                 return $this->response->setJSON(['error' => 'No image data provided', 'debug_logs' => $this->debugLog])->setStatusCode(400);
             }
-            $this->clientLog('✅ Image content prepared successfully');
+            $this->clientLog(' Image content prepared successfully');
 
             // ============================================================
             // PRIMARY: GEMINI VISION + SEARCH + JSON in ONE CALL
             // ============================================================
-            log_message('info', '🤖 Step 1: Performing combined Vision + Search analysis with Gemini...');
+            log_message('info', ' Step 1: Performing combined Vision + Search analysis with Gemini...');
             $prompt = "Analyze this image. If it is NOT a book cover, return ONLY this JSON: {\"is_book\": false, \"synopsis\": \"Gambar bukan sampul buku\", \"title\": \"BUKAN BUKU\"}. 
                 If it IS a book cover, extract all visible text. Then, use Google Search to find detailed information about the book. Find:\n" .
                 "1. Full title\n2. Author name\n3. Illustrator (if any)\n4. Publisher name\n5. Series name (if part of a series)\n" .
@@ -589,14 +599,19 @@ class ApiController extends Controller
                 '  "isbn": "", "ddcNumber": "", "category": "", "synopsis": "", "quantity": "1"' .
                 "}\n\n";
             
-            // Define Tools (Google Search)
-            $tools = [['googleSearch' => (object)[]]];
+            // Define Tools (Google Search) - SIMPLIFIED
+            $tools = [
+                [
+                    'googleSearch' => (object)[]
+                ]
+            ];
             
-            // Define Generation Config (JSON Schema and Temperature)
+            // Define Generation Config
+            // NOTE: responseMimeType/responseSchema removed - incompatible with googleSearch grounding.
+            //       JSON output is enforced via prompt instructions instead.
             $generationConfig = [
-                'responseMimeType' => 'application/json',
-                'responseSchema' => $this->getResponseSchema(),
                 'temperature' => 0.0,
+                'maxOutputTokens' => 2000
             ];
 
             // Call Gemini
@@ -604,26 +619,26 @@ class ApiController extends Controller
 
             if (isset($searchResponse['error'])) {
                 $errorMsg = $searchResponse['error']['message'] ?? 'Unknown Gemini API error';
-                log_message('error', '❌ Gemini Primary Call Failed: ' . $errorMsg);
+                log_message('error', ' Gemini Primary Call Failed: ' . $errorMsg);
                 
                 // Check if the error is a quota/rate limit error (as requested)
-                if (strpos($errorMsg, 'Quota exceeded') !== false || strpos($errorMsg, 'rate-limits') !== false) {
-                    log_message('warning', '⚠️ Gemini Quota Failed. Initiating OpenAI fallback.');
-                    $this->clientLog('⚠️ Gemini Quota Failed.', 'Initiating OpenAI fallback.');
-                    
-                    // Call the Fallback Logic
-                    return $this->fallbackToOpenAI($imageContent); 
+                // Only fall back to OpenAI for quota/rate-limit errors
+                if (strpos($errorMsg, 'Quota exceeded') !== false || strpos($errorMsg, 'rate-limits') !== false || strpos($errorMsg, 'RESOURCE_EXHAUSTED') !== false) {
+                    log_message('warning', ' Gemini Quota/Rate-limit hit. Initiating OpenAI fallback.');
+                    $this->clientLog(' Gemini Quota/Rate-limit hit.', 'Initiating OpenAI fallback.');
+                    return $this->fallbackToOpenAI($imageContent);
                 }
-                
-                // For other errors (API key missing, bad request, etc.), throw the exception
-                throw new \Exception($errorMsg);
+
+                // For all other errors (400 bad request, auth, etc.) throw so the catch block handles it
+                $this->clientLog(' Gemini error (not quota-related), will NOT fall back to OpenAI:', $errorMsg);
+                throw new \Exception('Gemini API error: ' . $errorMsg);
             }
             
             // --- Gemini Success Logic ---
             $searchResult = $this->getGeminiContent($searchResponse);
             $annotations = $this->extractGroundingAnnotations($searchResponse);
             $this->logGroundingQueries($searchResponse);
-            $this->clientLog('🔥 RAW Gemini Response CONTENT:', $searchResult);
+            $this->clientLog(' RAW Gemini Response CONTENT:', $searchResult);
             
             // Clean and parse JSON
             $searchResult = trim($searchResult);
@@ -634,8 +649,8 @@ class ApiController extends Controller
 
             $parsedData = json_decode($searchResult, true);
             if (json_last_error() !== JSON_ERROR_NONE) {
-                log_message('error', '❌ JSON parse error: ' . json_last_error_msg());
-                $this->clientLog('❌ JSON parse error:', json_last_error_msg());
+                log_message('error', ' JSON parse error: ' . json_last_error_msg());
+                $this->clientLog(' JSON parse error:', json_last_error_msg());
                 $fallbackData = $this->extractJsonFallback($searchResult);
                 if ($fallbackData) {
                     $parsedData = $fallbackData;
@@ -650,8 +665,8 @@ class ApiController extends Controller
             
             // Handle NOT A BOOK scenario
             if (isset($parsedData['is_book']) && $parsedData['is_book'] === false) {
-                 log_message('info', '❌ Image is not a book cover - analysis stopped');
-                 $this->clientLog('❌ Image is not a book cover - analysis stopped');
+                 log_message('info', ' Image is not a book cover - analysis stopped');
+                 $this->clientLog(' Image is not a book cover - analysis stopped');
                  $parsedData = [
                     'is_book' => false,
                     'synopsis' => $parsedData['synopsis'] ?? 'Gambar bukan sampul buku',
@@ -668,7 +683,7 @@ class ApiController extends Controller
             $parsedData['debug_logs'] = $this->debugLog;
             $parsedData['model_used'] = 'GEMINI';
             
-            log_message('info', '✅ Book analysis complete with Gemini');
+            log_message('info', ' Book analysis complete with Gemini');
             $this->clientLog('--- FINISHED IMAGE ANALYSIS ---');
 
             return $this->response->setJSON($parsedData);
@@ -679,14 +694,14 @@ class ApiController extends Controller
             
             // --- SECONDARY FALLBACK (for any uncaught exception) ---
             try {
-                log_message('info', '🔄 Attempting secondary fallback to OpenAI due to uncaught exception.');
-                $this->clientLog('🔄 Attempting secondary fallback to OpenAI.');
+                log_message('info', ' Attempting secondary fallback to OpenAI due to uncaught exception.');
+                $this->clientLog(' Attempting secondary fallback to OpenAI.');
                 return $this->fallbackToOpenAI($imageContent);
             } catch (\Exception $e2) {
                 // If OpenAI also fails, return the 500 error
-                log_message('error', '❌ OpenAI fallback also failed: ' . $e2->getMessage());
+                log_message('error', ' OpenAI fallback also failed: ' . $e2->getMessage());
                 log_message('info', '--- FINISHED IMAGE ANALYSIS WITH DOUBLE ERROR ---');
-                $this->clientLog('❌ FATAL ERROR in OpenAI fallback:', $e2->getMessage());
+                $this->clientLog(' FATAL ERROR in OpenAI fallback:', $e2->getMessage());
                 
                 return $this->response->setJSON([
                     'error' => $e2->getMessage(),
