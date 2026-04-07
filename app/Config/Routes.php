@@ -32,6 +32,7 @@ $routes->get('api/returns', 'TransactionController::apiReturns');
 $routes->get('api/returns-all', 'TransactionController::apiAllReturns');
 
 $routes->match(['get', 'post'], 'api/analyze-image', 'ApiController::analyzeImage');
+$routes->get('api/get-book-borrowers', 'ApiController::getBookBorrowers');
 $routes->get('api/test', 'ApiController::test');
 
 $routes->get('management-buku', 'BookManagementController::index');

@@ -150,7 +150,7 @@
                     <a data-bs-toggle="collapse" href="#formExample" role="button" aria-expanded="false" aria-controls="formExample" style="text-decoration: none; color: inherit;" class="d-flex align-items-center justify-content-between">
                         <span>
                             <i class="bi bi-file-earmark-text"></i>
-                            Form
+                            Form Peminjaman
                         </span>
                         <i class="bi bi-chevron-left"></i>
                     </a>

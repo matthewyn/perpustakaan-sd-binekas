@@ -114,6 +114,56 @@
           </div>
         <?php endif; ?>
 
+        <!-- ===== TABEL PEMINJAM ===== -->
+        <?php if (!empty($borrowers)): ?>
+        <div class="mb-3">
+          <h3 class="fs-5 mb-2 text-muted text-mobile-xs">
+            <i class="bi bi-person-check"></i> Dipinjam Oleh
+          </h3>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th class="text-mobile-xs">Nama Peminjam</th>
+                  <th class="text-mobile-xs">Tgl Pinjam</th>
+                  <th class="text-mobile-xs">Due Date</th>
+                  <th class="text-mobile-xs">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($borrowers as $item): ?>
+                  <?php 
+                    $tx = $item['transaction'];
+                    $user = $item['user'];
+                    $tanggal = $tx['tanggal'] ?? '-';
+                    $dueDate = $tx['due_date'] ?? '-';
+                    $nama = esc($user['nama'] ?? 'Unknown');
+                    $isLate = strtotime(date('Y-m-d')) > strtotime($dueDate);
+                    $statusClass = $isLate ? 'bg-danger' : 'bg-warning';
+                    $statusText = $isLate ? 'TERLAMBAT' : 'AKTIF';
+                  ?>
+                  <tr>
+                    <td class="text-mobile-xs"><?= $nama ?></td>
+                    <td class="text-mobile-xs"><?= $tanggal ?></td>
+                    <td class="text-mobile-xs"><?= $dueDate ?></td>
+                    <td class="text-mobile-xs">
+                      <span class="badge <?= $statusClass ?>">
+                        <?= $statusText ?>
+                      </span>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <?php else: ?>
+        <div class="alert alert-info alert-dismissible fade show mb-3" role="alert">
+          <i class="bi bi-info-circle"></i> Buku tidak sedang dipinjam siapapun
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <?php endif; ?>
+
         <?php if (!empty($book['notes'])): ?>
           <div class="mb-3">
             <h3 class="fs-5 mb-1 text-muted text-mobile-xs">Catatan</h3>

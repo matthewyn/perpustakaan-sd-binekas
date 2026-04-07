@@ -555,8 +555,38 @@ class BookController extends Controller
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound("Book not found");
         }
 
+        $book = $books[0];
+
+        // ── Fetch active borrowers untuk buku ini ──
+        $bookId = $book['id'];
+        $activeBorrowers = $this->supabaseRequest('GET', 'transactions', null, [
+            'book_id' => 'eq.' . $bookId,
+            'status'  => 'eq.active',
+            'type'    => 'eq.borrow',
+            'order'   => 'created_at.desc'
+        ]);
+
+        // Fetch user details untuk setiap borrower
+        $borrowersWithDetails = [];
+        if (!isset($activeBorrowers['error']) && !empty($activeBorrowers)) {
+            foreach ($activeBorrowers as $tx) {
+                $userResult = $this->supabaseRequest('GET', 'users', null, [
+                    'id'    => 'eq.' . $tx['user_id'],
+                    'limit' => 1
+                ]);
+
+                if (!isset($userResult['error']) && !empty($userResult)) {
+                    $borrowersWithDetails[] = [
+                        'transaction' => $tx,
+                        'user'        => $userResult[0]
+                    ];
+                }
+            }
+        }
+
         return view('detail_buku', [
-            'book' => $books[0]
+            'book'       => $book,
+            'borrowers'  => $borrowersWithDetails
         ]);
     }
 
