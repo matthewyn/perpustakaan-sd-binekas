@@ -9,12 +9,20 @@ class ApiController extends Controller
     // --- API Keys ---
     private $gemini_api_key;
     private $openai_api_key;
+    private $supabaseUrl;
+    private $supabaseKey;
+    private $cache;
     
     // --- Logging ---
     private $debugLog = []; 
 
     public function __construct()
     { 
+        // === SUPABASE CONFIG ===
+        $this->supabaseUrl = getenv('SUPABASE_URL');
+        $this->supabaseKey = getenv('SUPABASE_API_KEY');
+        $this->cache = \Config\Services::cache();
+
         // =======================================================
         // 1. GEMINI API KEY LOADING
         // =======================================================
@@ -374,6 +382,7 @@ class ApiController extends Controller
         $parsedData['annotations'] = [['type' => 'Vision Only', 'url' => null, 'title' => 'GPT-4o Vision']]; // Mark as Vision only
         $parsedData['sources_count'] = 1;
         $parsedData['debug_logs'] = $this->debugLog;
+        $parsedData['model_used'] = 'CHATGPT';
 
         log_message('info', '✅ Secondary OpenAI analysis complete (vision only)');
         $this->clientLog('✅ Secondary OpenAI analysis complete (vision only)');
@@ -504,6 +513,7 @@ class ApiController extends Controller
         $parsedData['annotations'] = $annotations; 
         $parsedData['sources_count'] = count($annotations);
         $parsedData['debug_logs'] = $this->debugLog;
+        $parsedData['model_used'] = 'CHATGPT';
         
         log_message('info', '✅ Book analysis complete with OpenAI web search');
         $this->clientLog('--- FINISHED OPENAI FALLBACK ANALYSIS ---');
@@ -656,6 +666,7 @@ class ApiController extends Controller
             $parsedData['annotations'] = $annotations;
             $parsedData['sources_count'] = count($annotations);
             $parsedData['debug_logs'] = $this->debugLog;
+            $parsedData['model_used'] = 'GEMINI';
             
             log_message('info', '✅ Book analysis complete with Gemini');
             $this->clientLog('--- FINISHED IMAGE ANALYSIS ---');
@@ -683,6 +694,194 @@ class ApiController extends Controller
                     'debug_logs' => $this->debugLog 
                 ])->setStatusCode(500);
             }
+        }
+    }
+
+    /**
+     * Generic Supabase API Request Handler
+     */
+    private function supabaseRequest($method, $endpoint, $data = null, $queryParams = [], $cacheKey = null, $cacheTTL = 300)
+    {
+        if ($cacheKey && $method === 'GET') {
+            $cached = $this->cache->get($cacheKey);
+            if ($cached !== null) {
+                log_message('info', 'Cache HIT for: ' . $cacheKey);
+                return $cached;
+            }
+        }
+
+        if (empty($this->supabaseUrl) || empty($this->supabaseKey)) {
+            log_message('error', 'Supabase credentials not configured');
+            return ['error' => 'Supabase credentials not configured'];
+        }
+
+        $url = rtrim($this->supabaseUrl, '/') . '/rest/v1/' . $endpoint;
+        
+        if (!empty($queryParams)) {
+            $url .= '?' . http_build_query($queryParams);
+        }
+
+        $headers = [
+            'apikey: ' . $this->supabaseKey,
+            'Authorization: Bearer ' . $this->supabaseKey,
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'Prefer: return=representation'
+        ];
+
+        log_message('info', 'Supabase Request: ' . $method . ' ' . $url);
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CUSTOMREQUEST => $method,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_CONNECTTIMEOUT => 10,
+        ]);
+
+        if ($data !== null) {
+            $jsonData = json_encode($data);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
+            log_message('info', 'Request Body: ' . $jsonData);
+        }
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        log_message('info', 'Response Code: ' . $httpCode);
+
+        if ($error) {
+            log_message('error', 'Supabase CURL Error: ' . $error);
+            return ['error' => $error];
+        }
+
+        if ($httpCode >= 400) {
+            log_message('error', 'Supabase HTTP Error ' . $httpCode . ': ' . $response);
+            return [
+                'error' => 'HTTP Error ' . $httpCode,
+                'response' => $response
+            ];
+        }
+
+        $decoded = json_decode($response, true);
+
+        // Cache successful GET responses
+        if ($cacheKey && $method === 'GET' && !isset($decoded['error'])) {
+            $this->cache->save($cacheKey, $decoded, $cacheTTL);
+            log_message('info', 'Cache SET for: ' . $cacheKey);
+        }
+
+        return $decoded;
+    }
+
+    /**
+     * Get book borrowers and availability information
+     * Called from management_buku.php to show detailed book info with current borrowers
+     */
+    public function getBookBorrowers()
+    {
+        try {
+            $bookId = $this->request->getGet('book_id') ?? $this->request->getPost('book_id');
+            
+            if (empty($bookId)) {
+                return $this->response->setJSON(['error' => 'book_id parameter is required'])->setStatusCode(400);
+            }
+
+            // Fetch book data
+            $book = $this->supabaseRequest('GET', 'books', null, [
+                'id' => 'eq.' . $bookId,
+                'limit' => 1
+            ]);
+
+            if (empty($book) || isset($book['error'])) {
+                return $this->response->setJSON(['error' => 'Book not found'])->setStatusCode(404);
+            }
+
+            $bookData = $book[0];
+            $totalQuantity = $bookData['quantity'] ?? 0;
+
+            // Fetch active borrowers untuk buku ini
+            $activeBorrowers = $this->supabaseRequest('GET', 'transactions', null, [
+                'book_id' => 'eq.' . $bookId,
+                'status'  => 'eq.active',
+                'type'    => 'eq.borrow',
+                'order'   => 'tanggal.desc'
+            ]);
+
+            // Fetch user details untuk setiap borrower
+            $borrowersWithDetails = [];
+            if (!isset($activeBorrowers['error']) && !empty($activeBorrowers)) {
+                foreach ($activeBorrowers as $tx) {
+                    $userResult = $this->supabaseRequest('GET', 'users', null, [
+                        'id'    => 'eq.' . $tx['user_id'],
+                        'limit' => 1
+                    ]);
+
+                    if (!isset($userResult['error']) && !empty($userResult)) {
+                        $user = $userResult[0];
+                        
+                        // Calculate status (late or active)
+                        $status = 'AKTIF';
+                        if (!empty($tx['due_date'])) {
+                            $dueDate = new \DateTime($tx['due_date']);
+                            $today = new \DateTime();
+                            if ($today > $dueDate) {
+                                $status = 'TERLAMBAT';
+                            }
+                        }
+
+                        $borrowersWithDetails[] = [
+                            'pic_name' => $user['nama'] ?? '-',
+                            'pic_class' => $user['class_id'] ?? '-',
+                            'borrow_date' => $tx['tanggal'] ?? '-',
+                            'due_date' => $tx['due_date'] ?? '-',
+                            'status' => $status,
+                            'recorded_by' => $tx['pic_name'] ?? '-'
+                        ];
+                    }
+                }
+            }
+
+            $availableQty = $totalQuantity - count($borrowersWithDetails);
+            $isOutOfStock = $availableQty <= 0;
+
+            return $this->response->setJSON([
+                'success' => true,
+                'book_id' => $bookId,
+                'total_quantity' => $totalQuantity,
+                'borrowed_count' => count($borrowersWithDetails),
+                'available_quantity' => max(0, $availableQty),
+                'is_out_of_stock' => $isOutOfStock,
+                'borrowers' => $borrowersWithDetails,
+                'book_info' => [
+                    'code' => $bookData['code'] ?? '-',
+                    'title' => $bookData['title'] ?? '-',
+                    'author' => $bookData['author'] ?? '-',
+                    'illustrator' => $bookData['illustrator'] ?? '-',
+                    'publisher' => $bookData['publisher'] ?? '-',
+                    'year' => $bookData['year'] ?? '-',
+                    'genre' => $bookData['genre'] ?? '-',
+                    'series' => $bookData['series'] ?? '-',
+                    'isbn' => $bookData['isbn'] ?? '-',
+                    'ddc_number' => $bookData['ddc_number'] ?? '-',
+                    'synopsis' => $bookData['synopsis'] ?? '-',
+                    'is_one_day_book' => $bookData['is_one_day_book'] ?? false,
+                    'shelf_position' => $bookData['shelf_position'] ?? '-',
+                    'available' => $bookData['available'] ?? false
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error in getBookBorrowers: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'error' => 'Error fetching borrower information: ' . $e->getMessage()
+            ])->setStatusCode(500);
         }
     }
 }

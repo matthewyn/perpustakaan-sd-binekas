@@ -72,7 +72,61 @@
         font-family: monospace;
         font-size: 0.875rem;
     }
+
+    /* Toast Notification Styles */
+    #toastContainer {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        max-width: 400px;
+    }
+
+    .custom-toast {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        padding: 16px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideIn 0.3s ease-out;
+        border-left: 4px solid;
+    }
+
+    .custom-toast.success {
+        border-left-color: #28a745;
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .custom-toast.error {
+        border-left-color: #dc3545;
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .custom-toast.info {
+        border-left-color: #0d6efd;
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(400px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
 </style>
+
+<!-- Toast Container -->
+<div id="toastContainer"></div>
 
 <div class="container mt-4">
     <nav aria-label="breadcrumb">
@@ -128,6 +182,7 @@
                                     <td><?= esc($book['publisher'] ?? '-') ?></td>
                                     <td><?= esc($book['year'] ?? '-') ?></td>
                                     <td>
+                                        <button class="btn btn-sm btn-info btn-detail-buku" type="button" title="Lihat Detail"><i class="bi bi-eye"></i></button>
                                         <button class="btn btn-sm btn-warning btn-edit-buku" type="button">Edit</button>
                                         <a href="<?= base_url('management-buku/delete?code='.urlencode($book['code'])) ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin menghapus?')">Hapus</a>
                                     </td>
@@ -439,24 +494,149 @@
 </div>
 
 <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h1 class="modal-title fs-5" id="exampleModalLabel">Detail Buku</h1>
+        <div class="d-flex align-items-center gap-2">
+          <h1 class="modal-title fs-5 mb-0" id="exampleModalLabel">Detail Buku</h1>
+          <span id="availabilityBadge"></span>
+        </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <table class="table pe-none">
-            <tr><th>Kode</th><td id="detailKode"></td></tr>
-            <tr><th>Judul</th><td id="detailJudul"></td></tr>
-            <tr><th>Penulis</th><td id="detailPenulis"></td></tr>
-            <tr><th>Penerbit</th><td id="detailPenerbit"></td></tr>
-            <tr><th>Tahun</th><td id="detailTahun"></td></tr>
-            <tr><th>Genre</th><td id="detailGenre"></td></tr>
-            <tr><th>Series</th><td id="detailSeries"></td></tr>
-            <tr><th>Posisi Rak</th><td id="detailShelfPosition"></td></tr>
-            <tr><th>Tersedia</th><td id="detailAvailable"></td></tr>
-        </table>
+        <!-- Informasi Dasar Buku -->
+        <div class="mb-4">
+          <h5 class="border-bottom pb-2 mb-3">
+            <i class="bi bi-book"></i> Informasi Buku
+          </h5>
+          
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="text-muted small">Kode</label>
+              <p class="fw-bold" id="detailKode">-</p>
+            </div>
+            <div class="col-md-6">
+              <label class="text-muted small">ISBN</label>
+              <p class="fw-bold" id="detailIsbn">-</p>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="text-muted small">Judul</label>
+            <p class="fw-bold" id="detailJudul">-</p>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="text-muted small">Pengarang</label>
+              <p id="detailPenulis">-</p>
+            </div>
+            <div class="col-md-6">
+              <label class="text-muted small">Illustrator</label>
+              <p id="detailIllustrator">-</p>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="text-muted small">Penerbit</label>
+              <p id="detailPenerbit">-</p>
+            </div>
+            <div class="col-md-6">
+              <label class="text-muted small">Tahun</label>
+              <p id="detailTahun">-</p>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="text-muted small">Genre</label>
+              <p id="detailGenre">-</p>
+            </div>
+            <div class="col-md-6">
+              <label class="text-muted small">Series</label>
+              <p id="detailSeries">-</p>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="text-muted small">DDC Number</label>
+              <p id="detailDdc">-</p>
+            </div>
+            <div class="col-md-6">
+              <label class="text-muted small">Tipe Buku</label>
+              <p id="detailTipe">-</p>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="text-muted small">Posisi Rak</label>
+            <p id="detailShelfPosition">-</p>
+          </div>
+        </div>
+
+        <!-- Sinopsis -->
+        <div class="mb-4" id="synopsisSection" style="display: none;">
+          <h5 class="border-bottom pb-2 mb-3">
+            <i class="bi bi-file-text"></i> Sinopsis
+          </h5>
+          <p id="detailSinopsis" style="font-size: 0.9rem; line-height: 1.6;">-</p>
+        </div>
+
+        <!-- Status Ketersediaan -->
+        <div class="mb-4 p-3 rounded" id="stockStatusSection" style="background-color: #f8f9fa;">
+          <h5 class="mb-3">
+            <i class="bi bi-box"></i> Status Ketersediaan
+          </h5>
+          <div class="row text-center">
+            <div class="col-md-4">
+              <label class="text-muted small d-block">Total Exemplar</label>
+              <h4 class="fw-bold text-secondary" id="detailTotalQty">-</h4>
+            </div>
+            <div class="col-md-4">
+              <label class="text-muted small d-block">Sedang Dipinjam</label>
+              <h4 class="fw-bold text-secondary" id="detailBorrowedQty">-</h4>
+            </div>
+            <div class="col-md-4">
+              <label class="text-muted small d-block">Tersedia</label>
+              <h4 class="fw-bold text-secondary" id="detailAvailableQty">-</h4>
+            </div>
+          </div>
+        </div>
+
+        <!-- Data Peminjam -->
+        <div id="borrowersSection" style="display: none;">
+          <h5 class="border-bottom pb-2 mb-3">
+            <i class="bi bi-person-check"></i> Sedang Dipinjam Oleh
+          </h5>
+          <div id="borrowersList" class="table-responsive">
+            <table class="table table-sm table-striped">
+              <thead>
+                <tr>
+                  <th>Nama Peminjam</th>
+                  <th>Kelas</th>
+                  <th>Tgl Pinjam</th>
+                  <th>Jatuh Tempo</th>
+                  <th class="text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody id="borrowersBody">
+              </tbody>
+            </table>
+          </div>
+          <p id="noBorrowersMsg" class="text-muted text-center py-3" style="display: none;">
+            <i class="bi bi-info-circle"></i> Tidak ada peminjam saat ini
+          </p>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="text-center py-4" style="display: none;">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="text-muted mt-2">Memuat informasi...</p>
+        </div>
       </div>
     </div>
   </div>
@@ -483,6 +663,25 @@
 </div>
 
 <script>
+// Global Toast Function
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `custom-toast ${type}`;
+    
+    const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : type === 'info' ? 'ℹ' : '!';
+    toast.innerHTML = `
+        <div style="margin-right: 12px; font-size: 20px; font-weight: bold;">${icon}</div>
+        <div style="flex: 1;">${message}</div>
+    `;
+    
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.style.animation = 'slideIn 0.3s ease-out reverse';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
 document.addEventListener("DOMContentLoaded", function() {
     const searchInput = document.getElementById('searchBuku');
     const tableBody = document.getElementById('bukuTableBody');
@@ -778,6 +977,12 @@ document.addEventListener("DOMContentLoaded", function() {
             }
 
             showToast('Analisis berhasil! Field telah diisi otomatis.', 'success');
+            
+            // Show model used notification
+            if (data.model_used) {
+                const modelName = data.model_used === 'GEMINI' ? '🤖 GEMINI' : '🤖 CHATGPT';
+                showToast(`Model yang digunakan: ${modelName}`, 'info');
+            }
             
             return data;
 
@@ -1113,6 +1318,120 @@ document.addEventListener("DOMContentLoaded", function() {
         `;
     }
 
+    // Helper function to open detail modal
+    function openDetailModal(book) {
+        // Show loading state
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        loadingSpinner.style.display = 'block';
+        document.getElementById('borrowersSection').style.display = 'none';
+        document.getElementById('synopsisSection').style.display = 'none';
+        
+        // Populate basic info first
+        document.getElementById('detailKode').textContent = book.code || '-';
+        document.getElementById('detailJudul').textContent = book.title || '-';
+        document.getElementById('detailPenulis').textContent = book.author || '-';
+        document.getElementById('detailIllustrator').textContent = book.illustrator || '-';
+        document.getElementById('detailPenerbit').textContent = book.publisher || '-';
+        document.getElementById('detailTahun').textContent = book.year || '-';
+        document.getElementById('detailGenre').textContent = book.genre || '-';
+        document.getElementById('detailSeries').textContent = book.series || '-';
+        document.getElementById('detailIsbn').textContent = book.isbn || '-';
+        document.getElementById('detailDdc').textContent = book.ddc_number || '-';
+        document.getElementById('detailShelfPosition').textContent = book.shelf_position || '-';
+        
+        // Tipe Buku
+        const tipeBuku = book.is_one_day_book ? 'Buku 1 Hari' : 'Buku Reguler';
+        document.getElementById('detailTipe').textContent = tipeBuku;
+        
+        // Sinopsis
+        if (book.synopsis && book.synopsis.trim()) {
+            document.getElementById('detailSinopsis').textContent = book.synopsis;
+            document.getElementById('synopsisSection').style.display = 'block';
+        }
+        
+        // Fetch borrower data dan availability
+        fetch("<?= base_url('api/get-book-borrowers') ?>?book_id=" + book.id)
+            .then(response => response.json())
+            .then(data => {
+                loadingSpinner.style.display = 'none';
+                
+                if (data.error) {
+                    showToast('Gagal memuat data peminjam: ' + data.error, 'error');
+                    return;
+                }
+                
+                // Update availability status
+                const totalQty = data.total_quantity;
+                const borrowedQty = data.borrowed_count;
+                const availableQty = data.available_quantity;
+                const isOutOfStock = data.is_out_of_stock;
+                
+                document.getElementById('detailTotalQty').textContent = totalQty;
+                document.getElementById('detailBorrowedQty').textContent = borrowedQty;
+                document.getElementById('detailAvailableQty').textContent = availableQty;
+                
+                // Update availability badge
+                const badge = document.getElementById('availabilityBadge');
+                if (isOutOfStock) {
+                    badge.innerHTML = '<span class="badge bg-danger"><i class="bi bi-exclamation-circle"></i> HABIS</span>';
+                } else if (availableQty <= 2) {
+                    badge.innerHTML = '<span class="badge bg-warning"><i class="bi bi-info-circle"></i> Stok Terbatas</span>';
+                } else {
+                    badge.innerHTML = '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Tersedia</span>';
+                }
+                
+                // Update borrowers list
+                const borrowersSection = document.getElementById('borrowersSection');
+                const borrowersBody = document.getElementById('borrowersBody');
+                const noBorrowersMsg = document.getElementById('noBorrowersMsg');
+                
+                if (data.borrowers && data.borrowers.length > 0) {
+                    borrowersBody.innerHTML = '';
+                    data.borrowers.forEach((borrower) => {
+                        const row = document.createElement('tr');
+                        
+                        // Status badge
+                        const statusBadge = borrower.status === 'TERLAMBAT' 
+                            ? '<span class="badge bg-danger">TERLAMBAT</span>'
+                            : '<span class="badge bg-warning">AKTIF</span>';
+                        
+                        row.innerHTML = `
+                            <td><strong>${borrower.pic_name || '-'}</strong></td>
+                            <td>${borrower.pic_class || '-'}</td>
+                            <td>${borrower.borrow_date || '-'}</td>
+                            <td>${borrower.due_date || '-'}</td>
+                            <td class="text-center">${statusBadge}</td>
+                        `;
+                        borrowersBody.appendChild(row);
+                    });
+                    borrowersSection.style.display = 'block';
+                    noBorrowersMsg.style.display = 'none';
+                } else {
+                    borrowersBody.innerHTML = '';
+                    borrowersSection.style.display = 'block';
+                    noBorrowersMsg.style.display = 'block';
+                }
+            })
+            .catch(err => {
+                loadingSpinner.style.display = 'none';
+                console.error('Error fetching borrowers:', err);
+                showToast('Terjadi kesalahan memuat data peminjam', 'error');
+            });
+
+        var detailModal = new bootstrap.Modal(document.getElementById('exampleModal'));
+        detailModal.show();
+    }
+
+    // Detail button handler
+    document.querySelectorAll('.btn-detail-buku').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const tr = btn.closest('tr');
+            const book = JSON.parse(tr.getAttribute('data-book'));
+            openDetailModal(book);
+        });
+    });
+
     document.querySelectorAll('.btn-edit-buku').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -1327,18 +1646,7 @@ document.addEventListener("DOMContentLoaded", function() {
     document.querySelectorAll('#bukuTableBody tr').forEach(function(row) {
         row.addEventListener('dblclick', function() {
             const book = JSON.parse(row.getAttribute('data-book'));
-            document.getElementById('detailKode').textContent = book.code || '-';
-            document.getElementById('detailJudul').textContent = book.title || '-';
-            document.getElementById('detailPenulis').textContent = book.author || '-';
-            document.getElementById('detailPenerbit').textContent = book.publisher || '-';
-            document.getElementById('detailTahun').textContent = book.year || '-';
-            document.getElementById('detailGenre').textContent = book.genre || '-';
-            document.getElementById('detailSeries').textContent = book.series || '-';
-            document.getElementById('detailShelfPosition').textContent = book.shelf_position || '-';
-            document.getElementById('detailAvailable').textContent = book.available ? 'Ya' : 'Tidak';
-
-            var detailModal = new bootstrap.Modal(document.getElementById('exampleModal'));
-            detailModal.show();
+            openDetailModal(book);
         });
     });
 
