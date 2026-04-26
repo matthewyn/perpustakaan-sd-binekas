@@ -79,7 +79,7 @@ class RFIDTester {
         echo "\n\n";
         echo str_repeat("#", 80) . "\n";
         echo "# AUTOMATED TEST SUITE - PEMINJAMAN OTOMATIS RFID\n";
-        echo "# Perpustakaan SD Binekas\n";
+        echo "# Perpustakaan Sekolah\n";
         echo str_repeat("#", 80) . "\n";
 
         // ==================== 1. HAPPY PATH ====================

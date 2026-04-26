@@ -19,7 +19,7 @@ class Website extends BaseConfig
      * Website Name / Header Title
      * Displayed in the navbar and page title
      */
-    public string $siteName = 'Perpustakaan SD Binekas';
+    public string $siteName = 'Perpustakaan Sekolah';
 
     /**
      * Website Logo (Navbar Logo)

@@ -67,6 +67,14 @@
             background-color: var(--bs-dark);
             color: #fff;
         }
+        body {
+            min-height: 100vh;
+            background-image: url('<?= base_url('background.webp') ?>');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
         body.login-page {
             background-image: url('<?= base_url($websiteConfig->loginBackgroundImage) ?>');
             background-size: cover;

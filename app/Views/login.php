@@ -114,7 +114,7 @@
                         
                         <div class="text-center">
                             <small class="text-muted text-mobile-xs">
-                                Hak Cipta &copy; <?= date('Y') ?> Perpustakaan Binekas
+                                Hak Cipta &copy; <?= date('Y') ?> Perpustakaan Sekolah
                             </small>
                         </div>
                     </div>
