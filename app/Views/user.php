@@ -224,13 +224,13 @@
                         </div>
                         <div class="row">
                             <div class="col-md-6">
-                                <div class="mb-3">
+                                <div class="mb-3" id="siswaTrustScoreSection" style="display:none;">
                                     <label for="siswaTrustScore" class="form-label">Trust Score</label>
                                     <input type="number" name="trust_score" class="form-control" id="siswaTrustScore" min="0" max="100" step="0.1" placeholder="0-100">
                                     <small class="text-muted">Nilai kepercayaan siswa (0-100)</small>
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-6" id="siswaUidColumnWrapper">
                                 <div class="mb-3">
                                     <label for="siswaUid" class="form-label">
                                         <i class="bi bi-upc-scan"></i> UID Kartu RFID
@@ -704,6 +704,8 @@ function openAddSiswaModal() {
     document.getElementById('siswaMode').value = 'add';
     document.getElementById('siswaSearchSection').style.display = 'none';
     document.getElementById('siswaFormFields').style.display = 'block';
+    document.getElementById('siswaTrustScoreSection').style.display = 'none';
+    document.getElementById('siswaUidColumnWrapper').className = 'col-md-12';
     document.getElementById('formSiswa').reset();
     document.getElementById('siswaId').value = '';
     populateClassDropdown();
@@ -715,6 +717,7 @@ function openEditSiswaModal() {
     document.getElementById('siswaMode').value = 'edit';
     document.getElementById('siswaSearchSection').style.display = 'block';
     document.getElementById('siswaFormFields').style.display = 'none';
+    document.getElementById('siswaTrustScoreSection').style.display = 'none';
     document.getElementById('formSiswa').reset();
     document.getElementById('siswaId').value = '';
     document.getElementById('siswaSearch').value = '';
@@ -787,6 +790,8 @@ function setupAutocomplete() {
 
 function fillSiswaForm(siswa) {
     document.getElementById('siswaFormFields').style.display = 'block';
+    document.getElementById('siswaTrustScoreSection').style.display = 'block';
+    document.getElementById('siswaUidColumnWrapper').className = 'col-md-6';
     document.getElementById('siswaId').value    = siswa.id;
     document.getElementById('siswaNisn').value  = siswa.nisn || '';
     document.getElementById('siswaNama').value  = siswa.nama || '';

@@ -129,7 +129,6 @@ class UserController extends Controller
         $nisn       = $this->request->getPost('nisn');
         $classId    = $this->request->getPost('class_id');
         $maxBorrow  = $this->request->getPost('maxBorrow');
-        $trustScore = $this->request->getPost('trust_score');
         $isFreezed  = $this->request->getPost('isFreezed');
         $uid        = trim($this->request->getPost('uid') ?? '');
         
@@ -163,7 +162,7 @@ class UserController extends Controller
             'class_id'    => !empty($classId) ? (int)$classId : null,
             'maxborrow'   => (int)$maxBorrow,
             'role'        => 'murid',
-            'trust_score' => !empty($trustScore) ? (float)$trustScore : 100.00,
+            'trust_score' => 100.00,
             'is_freezed'  => (int)$isFreezed,
             'password'    => PasswordHelper::hashPassword($nisn),
         ];
