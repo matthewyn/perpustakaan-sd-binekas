@@ -51,7 +51,6 @@ $routes->post('user/update-guru/(:any)', 'UserController::updateGuru/$1');
 
 $routes->get('management-class', 'ClassController::index');
 $routes->get('management-class/list', 'ClassController::list');
-$routes->get('management-class/detail/(:any)', 'ClassController::detail/$1');
 $routes->post('management-class/add', 'ClassController::add');
 $routes->post('management-class/update/(:any)', 'ClassController::update/$1');
 $routes->post('management-class/delete/(:any)', 'ClassController::delete/$1');
@@ -68,7 +67,6 @@ $routes->post('reset-password-binekas', 'AuthController::resetPassword');
 
 $routes->get('peminjaman-kelas', 'ClassTransactionController::index');
 $routes->get('peminjaman-kelas/class-data', 'ClassTransactionController::getClassData');
-$routes->get('peminjaman-kelas/all-books', 'ClassTransactionController::getAllBooks');
 $routes->get('peminjaman-kelas/transactions', 'ClassTransactionController::getClassTransactions');
 $routes->post('peminjaman-kelas/add', 'ClassTransactionController::addBorrowing');
 $routes->post('peminjaman-kelas/return-multiple', 'ClassTransactionController::returnMultiple');

@@ -590,30 +590,6 @@ class BookController extends Controller
         ]);
     }
 
-    public function all()
-    {
-        $books = $this->fetchAllBooks([
-            'select' => '*',
-            'order' => 'created_at.desc'
-        ]);
-
-        return $this->response->setJSON(['books' => $books]);
-    }
-
-    public function all_key()
-    {
-        $books = $this->fetchAllBooks([
-            'select' => '*',
-            'order' => 'created_at.desc'
-        ]);
-
-        foreach ($books as &$book) {
-            $book['key'] = $book['id'];
-        }
-
-        return $this->response->setJSON(['books' => $books]);
-    }
-
     public function searchBooks()
     {
         $search = $this->request->getGet('search');

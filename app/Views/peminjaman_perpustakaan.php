@@ -514,7 +514,6 @@ document.addEventListener('DOMContentLoaded', function() {
         $.get("<?= base_url('user/list/guru') ?>", function(response) {
             if (response.success && Array.isArray(response.users)) {
                 guruList = response.users.map(u => ({ ...u, key: u.key ?? u.id ?? null }));
-                // Masukkan guru ke usersByKey agar nama & kelas tampil di tabel
                 guruList.forEach(u => { if (u.key) usersByKey[u.key] = u; });
                 dataReady.guru = true;
             }
@@ -936,7 +935,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (uid) formData.append('uidCari', uid);
 
         $.ajax({
-            url: "<?= base_url('peminjaman/add') ?>",
+            url: "<?= base_url('peminjaman-perpustakaan/add') ?>",
             type: "POST",
             data: formData,
             processData: false,

@@ -289,16 +289,6 @@ class AutomateTransactionController extends Controller
         $a2_f2 = $a2 * $f2;
         $a3_f3 = $a3 * $f3;
 
-        log_message('info', "Trust Score Calculation for User $userId:");
-        log_message('info', "Effective Transactions for User $userId: $effectiveTransactions");
-        log_message('info', "  Total Late: $totalLate");
-        log_message('info', "  Total On-Time: $totalOnTime");
-        log_message('info', "  Total Damaged/Lost: $totalDamaged");
-        log_message('info', "  a1 * f1 (delay behavior): $a1 * $f1 = $a1_f1");
-        log_message('info', "  a2 * f2 (on-time rate): $a2 * $f2 = $a2_f2");
-        log_message('info', "  a3 * f3 (damage/lost): $a3 * $f3 = $a3_f3");
-        log_message('info', "  L (cluster): $L");
-
         $trustScore = $L * (
             $a1_f1 +
             $a2_f2 +
