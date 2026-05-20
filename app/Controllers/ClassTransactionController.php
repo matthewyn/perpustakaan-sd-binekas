@@ -555,6 +555,12 @@ class ClassTransactionController extends Controller
                 ]);
             }
 
+            // Update num_borrows for user
+            $numBorrows = (int)($userData['num_borrows'] ?? 0);
+            $this->supabaseRequest('PATCH', 'users?id=eq.' . $userId, [
+                'num_borrows' => $numBorrows + 1
+            ]);
+
             // Update main books quantity (REQUIRED)
             $newBookQty = $bookQuantity - 1;
             $this->supabaseRequest('PATCH', 'books?id=eq.' . $bookId, [

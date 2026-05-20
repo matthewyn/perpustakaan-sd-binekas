@@ -453,6 +453,12 @@ class AutomateTransactionController extends Controller
                     return $this->response->setJSON(['success' => false, 'message' => 'Gagal menyimpan transaksi peminjaman']);
                 }
 
+                // Update num_borrows for user
+                $numBorrows = (int)($userData['num_borrows'] ?? 0);
+                $this->supabaseRequest('PATCH', 'users?id=eq.' . $userData['id'], [
+                    'num_borrows' => $numBorrows + 1
+                ]);
+
                 $newQuantity = $currentQty - 1;
                 $this->supabaseRequest('PATCH', 'books?id=eq.' . $bookData['id'], [
                     'quantity'  => $newQuantity,
