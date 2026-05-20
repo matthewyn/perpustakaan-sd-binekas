@@ -71,7 +71,6 @@ $routes->get('peminjaman-kelas/class-data', 'ClassTransactionController::getClas
 $routes->get('peminjaman-kelas/all-books', 'ClassTransactionController::getAllBooks');
 $routes->get('peminjaman-kelas/transactions', 'ClassTransactionController::getClassTransactions');
 $routes->post('peminjaman-kelas/add', 'ClassTransactionController::addBorrowing');
-$routes->post('peminjaman-kelas/return', 'ClassTransactionController::addReturn');
 $routes->post('peminjaman-kelas/return-multiple', 'ClassTransactionController::returnMultiple');
 $routes->post('peminjaman-kelas/apply-late-penalties', 'ClassTransactionController::applyLatePenalties');
 

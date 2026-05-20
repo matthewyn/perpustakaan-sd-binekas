@@ -605,12 +605,17 @@ class TransactionController extends Controller
             $loanIds = $this->request->getPost('loan_id');
             
             $loansToProcess = [];
+            $loanStatusMap = [];
 
             if (!empty($selectedLoans)) {
                 $decoded = json_decode($selectedLoans, true);
                 if (is_array($decoded)) {
                     foreach ($decoded as $loan) {
-                        $loansToProcess[] = $loan['loanId'] ?? $loan['loan_id'] ?? null;
+                        $loanId = $loan['loanId'] ?? $loan['loan_id'] ?? null;
+                        if ($loanId) {
+                            $loansToProcess[] = $loanId;
+                            $loanStatusMap[$loanId] = $loan['status'] ?? 'baik';
+                        }
                     }
                 }
             }
@@ -653,6 +658,7 @@ class TransactionController extends Controller
                 $bookId = $borrow['book_id'];
                 $borrowDate = $borrow['tanggal'];
                 $dueDate = $borrow['due_date'] ?? date('Y-m-d', strtotime($borrowDate . ' +7 days'));
+                $bookCondition = $loanStatusMap[$loanId] ?? 'baik';
 
                 // Create return transaction
                 $returnData = [
@@ -661,6 +667,7 @@ class TransactionController extends Controller
                     'type' => 'return',
                     'tanggal' => date('Y-m-d'),
                     'status' => 'completed',
+                    'book_condition' => $bookCondition,
                     'pic_name' => session()->get('name'),
                     'pic_username' => session()->get('username'),
                     'pic_id' => session()->get('user_id'),
@@ -702,8 +709,11 @@ class TransactionController extends Controller
                     ]);
                 }
 
-                // Update trust score
-                $this->updateTrustScore($userId, $borrowDate, $dueDate);
+                // Recalculate trust score
+                $newScore = $this->calculateTrustScore($userId);
+                $this->supabaseRequest('PATCH', 'users?id=eq.' . $userId, [
+                    'trust_score' => $newScore
+                ]);
 
                 $processedCount++;
             }
@@ -733,44 +743,142 @@ class TransactionController extends Controller
         }
     }
 
-    // Update trust score
-    private function updateTrustScore($userId, $borrowDate, $dueDate)
+    // Calculate trust score based on all transactions
+    private function calculateTrustScore($userId)
     {
-        $user = $this->supabaseRequest('GET', 'users', null, [
-            'id' => 'eq.' . $userId,
-            'select' => 'trust_score',
-            'limit' => 1
+        // Get all borrowing transactions
+        $borrowTransactions = $this->fetchAllTransactions([
+            'user_id' => 'eq.' . $userId,
+            'type' => 'eq.borrow',
+            'select' => '*'
         ]);
 
-        if (isset($user['error']) || empty($user)) {
-            log_message('error', 'Failed to get user for trust score update');
-            return false;
+        // Get all return transactions to get book_condition
+        $returnTransactions = $this->fetchAllTransactions([
+            'user_id' => 'eq.' . $userId,
+            'type' => 'eq.return',
+            'select' => '*'
+        ]);
+
+        $totalBorrowing = count($borrowTransactions);
+
+        // Default score for new users
+        if ($totalBorrowing <= 0) {
+            return 100;
         }
 
-        $currentScore = (float)($user[0]['trust_score'] ?? 100);
-        $returnDate = strtotime(date('Y-m-d'));
-        $dueTimestamp = strtotime($dueDate);
+        // Create a map of return transactions by book_id for quick lookup
+        $returnMap = [];
+        foreach ($returnTransactions as $ret) {
+            $key = $ret['book_id'] . '_' . $ret['user_id'];
+            $returnMap[$key] = $ret;
+        }
 
-        if ($returnDate <= $dueTimestamp) {
-            $newScore = $currentScore + 1;
-            $status = 'ontime';
+        $totalLate = 0;
+        $totalOnTime = 0;
+        $totalDamaged = 0;
+
+        foreach ($borrowTransactions as $borrow) {
+
+            $dueDate = $borrow['due_date'] ?? null;
+            $completedAt = $borrow['completed_at'] ?? null;
+
+            // Skip transactions that have not been returned
+            if (!$completedAt || !$dueDate) {
+                continue;
+            }
+
+            // =========================
+            // Late / On-Time Detection
+            // =========================
+
+            if (strtotime($completedAt) > strtotime($dueDate)) {
+                $totalLate++;
+            } else {
+                $totalOnTime++;
+            }
+
+            // =========================
+            // Damaged / Lost Detection
+            // =========================
+
+            // Check corresponding return transaction for book_condition
+            $key = $borrow['book_id'] . '_' . $borrow['user_id'];
+            if (isset($returnMap[$key])) {
+                $returnTrx = $returnMap[$key];
+                if (
+                    isset($returnTrx['book_condition']) &&
+                    in_array(
+                        strtolower($returnTrx['book_condition']),
+                        ['rusak', 'hilang']
+                    )
+                ) {
+                    $totalDamaged++;
+                }
+            }
+        }
+
+        // Prevent division by zero
+        $effectiveTransactions = max(
+            1,
+            ($totalLate + $totalOnTime)
+        );
+
+        // =========================
+        // Feature Calculation
+        // =========================
+
+        // f1 = delay behavior
+        $f1 = 1 - ($totalLate / $effectiveTransactions);
+
+        // f2 = on-time return rate
+        $f2 = $totalOnTime / $effectiveTransactions;
+
+        // f3 = damaged/lost behavior
+        $f3 = 1 - ($totalDamaged / $effectiveTransactions);
+
+        // Clamp values between 0 and 1
+        $f1 = max(0, min(1, $f1));
+        $f2 = max(0, min(1, $f2));
+        $f3 = max(0, min(1, $f3));
+
+        // =========================
+        // Feature Weights
+        // =========================
+
+        $a1 = 0.45; // delay behavior
+        $a2 = 0.35; // on-time return
+        $a3 = 0.20; // damaged/lost
+
+        // =========================
+        // Cluster Scaling
+        // =========================
+
+        if ($f1 >= 0.90 && $f2 >= 0.90 && $f3 >= 0.95) {
+            $L = 700; // Excellent
+        } elseif ($f1 >= 0.75) {
+            $L = 500; // Good
+        } elseif ($f1 >= 0.50) {
+            $L = 300; // Moderate
         } else {
-            $newScore = $currentScore;
-            $status = 'late';
+            $L = 100; // Poor
         }
 
-        $newScore = max(0, $newScore);
+        // =========================
+        // Final Trust Score
+        // =========================
 
-        $updateResult = $this->supabaseRequest('PATCH', 'users?id=eq.' . $userId, [
-            'trust_score' => $newScore
-        ]);
+        $trustScore = $L * (
+            ($a1 * $f1) +
+            ($a2 * $f2) +
+            ($a3 * $f3)
+        );
 
-        // Clear users cache
-        $this->cache->delete('all_users_' . md5(json_encode(['select' => '*'])));
-
-        log_message('info', "Trust score updated for user $userId: $currentScore -> $newScore ($status)");
-
-        return !isset($updateResult['error']);
+        // Normalize score
+        return round(
+            min(1000, max(0, $trustScore)),
+            2
+        );
     }
 
     public function apiBorrowings()

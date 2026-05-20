@@ -837,13 +837,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 const loanId = escapeHtml(loan.id || loan.key || '');
                 
                 checklistHtml += `
-                    <div class="form-check mb-2">
+                    <div class="form-check mb-3">
                         <input class="form-check-input return-checkbox" type="checkbox" id="return_${loanId}" 
                                data-loan-id="${loanId}" data-user-id="${userId}" data-book-id="${loan.book_id}">
                         <label class="form-check-label" for="return_${loanId}" style="cursor: pointer;">
                             <span style="color: #666; font-size: 14px;">${bookTitle}</span>
                             <span style="color: #999; font-size: 12px; margin-left: 5px;">(${escapeHtml(loan.tanggal || '-')})</span>
                         </label>
+                        <div style="margin-left: 26px; margin-top: 6px; display: none;" class="status-checkboxes" id="status_${loanId}">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input book-status" type="radio" name="status_${loanId}" 
+                                       id="baik_${loanId}" value="baik" data-loan-id="${loanId}">
+                                <label class="form-check-label" for="baik_${loanId}" style="cursor: pointer; font-size: 13px; color: #28a745;">
+                                    Baik
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input book-status" type="radio" name="status_${loanId}" 
+                                       id="rusak_${loanId}" value="rusak" data-loan-id="${loanId}">
+                                <label class="form-check-label" for="rusak_${loanId}" style="cursor: pointer; font-size: 13px; color: #ffc107;">
+                                    Rusak
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input book-status" type="radio" name="status_${loanId}" 
+                                       id="hilang_${loanId}" value="hilang" data-loan-id="${loanId}">
+                                <label class="form-check-label" for="hilang_${loanId}" style="cursor: pointer; font-size: 13px; color: #dc3545;">
+                                    Hilang
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 `;
             });
@@ -871,6 +894,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     $(this).hide();
                 }
             });
+        });
+
+        $('.return-checkbox').off('change').on('change', function() {
+            const loanId = $(this).data('loan-id');
+            const statusCheckboxes = $(`#status_${loanId}`);
+            
+            if ($(this).is(':checked')) {
+                statusCheckboxes.show();
+                $(`#baik_${loanId}`).prop('checked', true);
+            } else {
+                statusCheckboxes.hide();
+                $(`#baik_${loanId}, #rusak_${loanId}, #hilang_${loanId}`).prop('checked', false);
+            }
         });
     }
 
@@ -924,10 +960,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function handlePengembalianAdd() {
         const selectedLoans = [];
         $('#checklistPengembalian .return-checkbox:checked').each(function() {
+            const loanId = $(this).data('loan-id');
+            const status = $(`input[name="status_${loanId}"]:checked`).val() || 'baik';
+            
             selectedLoans.push({
-                loanId: $(this).data('loan-id'),
+                loanId: loanId,
                 userId: $(this).data('user-id'),
-                bookId: $(this).data('book-id')
+                bookId: $(this).data('book-id'),
+                status: status
             });
         });
 
@@ -940,7 +980,7 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('selectedLoans', JSON.stringify(selectedLoans));
 
         $.ajax({
-            url: "<?= base_url('peminjaman/return-multiple') ?>",
+            url: "<?= base_url('peminjaman-perpustakaan/return-multiple') ?>",
             type: "POST",
             data: formData,
             processData: false,
