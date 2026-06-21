@@ -923,10 +923,7 @@ class TransactionController extends Controller
                     ];
                 }
 
-                // Fetch all books with pagination and caching
                 $allBooks = $this->fetchAllBooks(['select' => 'id,title']);
-                
-                // Create book lookup map
                 $bookMap = [];
                 foreach ($allBooks as $book) {
                     if (isset($book['id']) && isset($book['title'])) {
@@ -989,6 +986,7 @@ class TransactionController extends Controller
             $classIdFilter = $this->request->getVar('class_id'); 
             $page = (int)($this->request->getVar('page') ?? 1);
             $limit = (int)($this->request->getVar('limit') ?? 10);
+            $returnAll = $this->request->getVar('all') == '1';
 
             log_message('info', 'apiAllBorrowings called with class_id filter: ' . ($classIdFilter ?? 'none'));
 
@@ -1022,8 +1020,13 @@ class TransactionController extends Controller
             }
 
             $totalCount = count($allTransactions);
-            $offset = ($page - 1) * $limit;
-            $transactions = array_slice($allTransactions, $offset, $limit);
+
+            if ($returnAll) {
+                $transactions = $allTransactions;
+            } else {
+                $offset = ($page - 1) * $limit;
+                $transactions = array_slice($allTransactions, $offset, $limit);
+            }
 
             if (!empty($transactions)) {
                 $bookIds = array_unique(array_filter(array_column($transactions, 'book_id')));
@@ -1064,6 +1067,7 @@ class TransactionController extends Controller
             ]);
         }
     }
+
 
     public function apiReturns()
     {
@@ -1131,6 +1135,7 @@ class TransactionController extends Controller
             $classIdFilter = $this->request->getVar('class_id');
             $page = (int)($this->request->getVar('page') ?? 1);
             $limit = (int)($this->request->getVar('limit') ?? 10);
+            $returnAll = $this->request->getVar('all') == '1';
 
             $allParams = [
                 'type' => 'eq.return',
@@ -1162,8 +1167,13 @@ class TransactionController extends Controller
             }
 
             $totalCount = count($allTransactions);
-            $offset = ($page - 1) * $limit;
-            $transactions = array_slice($allTransactions, $offset, $limit);
+
+            if ($returnAll) {
+                $transactions = $allTransactions;
+            } else {
+                $offset = ($page - 1) * $limit;
+                $transactions = array_slice($allTransactions, $offset, $limit);
+            }
 
             if (!empty($transactions)) {
                 $bookIds = array_unique(array_filter(array_column($transactions, 'book_id')));

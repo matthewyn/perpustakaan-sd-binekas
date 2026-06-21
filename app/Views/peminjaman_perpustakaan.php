@@ -331,6 +331,15 @@ document.addEventListener('DOMContentLoaded', function() {
     let totalReturnsPages = 1;
     const ITEMS_PER_PAGE = 25;
 
+    // Search state: saat query kosong, tabel pakai mode server-side pagination
+    // biasa (hemat memori). Saat user mengetik pencarian, seluruh data (tanpa
+    // pagination) diambil sekali dari server, disimpan di sini, lalu difilter
+    // dan dipaginasi di client - mirip manajemen buku.
+    let borrowingsSearchQuery = '';
+    let returnsSearchQuery = '';
+    let allBorrowingsCache = null; // diisi saat search aktif
+    let allReturnsCache = null;    // diisi saat search aktif
+
     // Fetch data awal
     function escapeHtml(text) {
         const map = {
@@ -620,36 +629,16 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // ===== TABLE SEARCH FUNCTIONS =====
+    // Pencarian dilakukan terhadap SELURUH data (lihat refreshBorrowingsTable /
+    // refreshReturnsTable), bukan hanya baris pada halaman yang sedang tampil.
     function filterPeminjamanTable() {
-        const query = document.getElementById('searchPeminjaman').value.toLowerCase();
-        const rows = document.querySelectorAll('#tbodyBorrowings tr');
-        
-        rows.forEach(row => {
-            const nama = row.cells[1]?.textContent.toLowerCase() || '';
-            const buku = row.cells[2]?.textContent.toLowerCase() || '';
-            
-            if (nama.includes(query) || buku.includes(query)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
+        borrowingsSearchQuery = document.getElementById('searchPeminjaman').value.toLowerCase().trim();
+        refreshBorrowingsTable(1);
     }
 
     function filterPengembalianTable() {
-        const query = document.getElementById('searchPengembalian').value.toLowerCase();
-        const rows = document.querySelectorAll('#tbodyReturns tr');
-        
-        rows.forEach(row => {
-            const nama = row.cells[1]?.textContent.toLowerCase() || '';
-            const buku = row.cells[2]?.textContent.toLowerCase() || '';
-            
-            if (nama.includes(query) || buku.includes(query)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
+        returnsSearchQuery = document.getElementById('searchPengembalian').value.toLowerCase().trim();
+        refreshReturnsTable(1);
     }
 
     // Attach event listeners to search inputs and buttons
@@ -944,6 +933,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (response.success) {
                     $('#exampleModal').modal('hide');
                     showToast('Peminjaman berhasil ditambahkan!');
+                    allBorrowingsCache = null; // data berubah, cache pencarian basi
                     refreshBorrowingsTable(1);
                     fetchBorrowingsData();
                 } else {
@@ -988,6 +978,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (response.success) {
                     $('#exampleModal').modal('hide');
                     showToast('Pengembalian berhasil ditambahkan!');
+                    allBorrowingsCache = null; // data berubah, cache pencarian basi
+                    allReturnsCache = null;
                     refreshBorrowingsTable(1);
                     refreshReturnsTable(1);
                     fetchBorrowingsData();
@@ -1003,74 +995,156 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ===== TABLE REFRESH FUNCTIONS =====
+    function renderBorrowingsRows(transactions, page) {
+        let rows = '';
+        let no = (page - 1) * ITEMS_PER_PAGE + 1;
+        transactions.forEach(b => {
+            const user = usersByKey[b.user_id] || {};
+            const bookTitle = b.book_title || '-';
+
+            const classId = user.class_id || null;
+            const className = classId ? (window._classesById && window._classesById[classId] ? window._classesById[classId].nama_kelas : '-') : '-';
+
+            const statusClass = b.status === 'active' ? 'table-danger' : '';
+
+            rows += `<tr class="${statusClass}">
+                <th scope="row">${no++}</th>
+                <td>${escapeHtml(user.nama || '-')}</td>
+                <td>${escapeHtml(bookTitle)}</td>
+                <td>${escapeHtml(className)}</td>
+                <td>${escapeHtml(b.tanggal || '-')}</td>
+            </tr>`;
+        });
+        return rows;
+    }
+
+    function matchesQuery(item, query) {
+        const user = usersByKey[item.user_id] || {};
+        const nama = (user.nama || '').toLowerCase();
+        const buku = (item.book_title || '').toLowerCase();
+        return nama.includes(query) || buku.includes(query);
+    }
+
     function refreshBorrowingsTable(page = 1) {
         currentBorrowingsPage = page;
-        
+
+        // Mode pencarian: filter & paginasi dilakukan di client dari seluruh data
+        if (borrowingsSearchQuery) {
+            if (allBorrowingsCache === null) {
+                // Belum punya cache seluruh data, ambil sekali dari server (all=1)
+                $.get("<?= base_url('api/borrowings-all') ?>", { all: 1 }, function(response) {
+                    if (response.success && Array.isArray(response.borrowings)) {
+                        allBorrowingsCache = response.borrowings;
+                        renderBorrowingsFromCache(page);
+                    }
+                });
+            } else {
+                renderBorrowingsFromCache(page);
+            }
+            return;
+        }
+
+        // Mode normal: server-side pagination (hemat memori)
         $.get("<?= base_url('api/borrowings-all') ?>", {
             page: page,
             limit: ITEMS_PER_PAGE
         }, function(response) {
             if (response.success && Array.isArray(response.borrowings)) {
-                let rows = '';
-                let no = (page - 1) * ITEMS_PER_PAGE + 1;
-                response.borrowings.forEach(b => {
-                    const user = usersByKey[b.user_id] || {};
-                    const bookTitle = b.book_title || '-';
-                    
-                    const classId = user.class_id || null;
-                    const className = classId ? (window._classesById && window._classesById[classId] ? window._classesById[classId].nama_kelas : '-') : '-';
-                    
-                    const statusClass = b.status === 'active' ? 'table-danger' : '';
-                    
-                    rows += `<tr class="${statusClass}">
-                        <th scope="row">${no++}</th>
-                        <td>${escapeHtml(user.nama || '-')}</td>
-                        <td>${escapeHtml(bookTitle)}</td>
-                        <td>${escapeHtml(className)}</td>
-                        <td>${escapeHtml(b.tanggal || '-')}</td>
-                    </tr>`;
-                });
+                let rows = renderBorrowingsRows(response.borrowings, page);
                 if (!rows) rows = `<tr><td colspan="5" class="text-center">Belum ada data peminjaman.</td></tr>`;
                 $('#tbodyBorrowings').html(rows);
-                
+
                 totalBorrowingsPages = Math.ceil(response.totalCount / ITEMS_PER_PAGE);
                 renderBorrowingsPagination();
             }
         });
     }
 
+    function renderBorrowingsFromCache(page) {
+        const filtered = allBorrowingsCache.filter(b => matchesQuery(b, borrowingsSearchQuery));
+
+        totalBorrowingsPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+        if (page > totalBorrowingsPages) page = totalBorrowingsPages;
+        currentBorrowingsPage = page;
+
+        const start = (page - 1) * ITEMS_PER_PAGE;
+        const pageData = filtered.slice(start, start + ITEMS_PER_PAGE);
+
+        let rows = renderBorrowingsRows(pageData, page);
+        if (!rows) rows = `<tr><td colspan="5" class="text-center">Tidak ada hasil pencarian.</td></tr>`;
+        $('#tbodyBorrowings').html(rows);
+
+        renderBorrowingsPagination();
+    }
+
+    function renderReturnsRows(transactions, page) {
+        let rows = '';
+        let no = (page - 1) * ITEMS_PER_PAGE + 1;
+        transactions.forEach(r => {
+            const user = usersByKey[r.user_id] || {};
+            const bookTitle = r.book_title || '-';
+
+            const classId = user.class_id || null;
+            const className = classId ? (window._classesById && window._classesById[classId] ? window._classesById[classId].nama_kelas : '-') : '-';
+
+            rows += `<tr>
+                <th scope="row">${no++}</th>
+                <td>${escapeHtml(user.nama || '-')}</td>
+                <td>${escapeHtml(bookTitle)}</td>
+                <td>${escapeHtml(className)}</td>
+                <td>${escapeHtml(r.tanggal || '-')}</td>
+            </tr>`;
+        });
+        return rows;
+    }
+
     function refreshReturnsTable(page = 1) {
         currentReturnsPage = page;
-        
+
+        if (returnsSearchQuery) {
+            if (allReturnsCache === null) {
+                $.get("<?= base_url('api/returns-all') ?>", { all: 1 }, function(response) {
+                    if (response.success && Array.isArray(response.returns)) {
+                        allReturnsCache = response.returns;
+                        renderReturnsFromCache(page);
+                    }
+                });
+            } else {
+                renderReturnsFromCache(page);
+            }
+            return;
+        }
+
         $.get("<?= base_url('api/returns-all') ?>", {
             page: page,
             limit: ITEMS_PER_PAGE
         }, function(response) {
             if (response.success && Array.isArray(response.returns)) {
-                let rows = '';
-                let no = (page - 1) * ITEMS_PER_PAGE + 1;
-                response.returns.forEach(r => {
-                    const user = usersByKey[r.user_id] || {};
-                    const bookTitle = r.book_title || '-';
-                    
-                    const classId = user.class_id || null;
-                    const className = classId ? (window._classesById && window._classesById[classId] ? window._classesById[classId].nama_kelas : '-') : '-';
-                    
-                    rows += `<tr>
-                        <th scope="row">${no++}</th>
-                        <td>${escapeHtml(user.nama || '-')}</td>
-                        <td>${escapeHtml(bookTitle)}</td>
-                        <td>${escapeHtml(className)}</td>
-                        <td>${escapeHtml(r.tanggal || '-')}</td>
-                    </tr>`;
-                });
+                let rows = renderReturnsRows(response.returns, page);
                 if (!rows) rows = `<tr><td colspan="5" class="text-center">Belum ada data pengembalian.</td></tr>`;
                 $('#tbodyReturns').html(rows);
-                
+
                 totalReturnsPages = Math.ceil(response.totalCount / ITEMS_PER_PAGE);
                 renderReturnsPagination();
             }
         });
+    }
+
+    function renderReturnsFromCache(page) {
+        const filtered = allReturnsCache.filter(r => matchesQuery(r, returnsSearchQuery));
+
+        totalReturnsPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+        if (page > totalReturnsPages) page = totalReturnsPages;
+        currentReturnsPage = page;
+
+        const start = (page - 1) * ITEMS_PER_PAGE;
+        const pageData = filtered.slice(start, start + ITEMS_PER_PAGE);
+
+        let rows = renderReturnsRows(pageData, page);
+        if (!rows) rows = `<tr><td colspan="5" class="text-center">Tidak ada hasil pencarian.</td></tr>`;
+        $('#tbodyReturns').html(rows);
+
+        renderReturnsPagination();
     }
 
     function fetchClassesData() {
