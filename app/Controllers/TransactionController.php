@@ -47,6 +47,11 @@ class TransactionController extends Controller
             CURLOPT_CUSTOMREQUEST => $method,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_TIMEOUT => 30,
+            CURLOPT_TCP_KEEPALIVE => 1,
+            CURLOPT_TCP_KEEPIDLE => 60,
+            CURLOPT_TCP_KEEPINTVL => 30,
+            CURLOPT_FORBID_REUSE => false,
+            CURLOPT_FRESH_CONNECT => false,
         ]);
 
         if ($data !== null) {
@@ -268,6 +273,57 @@ class TransactionController extends Controller
         return $allClasses;
     }
 
+    private function countActiveUserTransactions($userId): int
+    {
+        /**
+         * Count active transactions for user without fetching full data
+         * Much faster than fetchAllTransactions
+         */
+        if (empty($this->supabaseUrl) || empty($this->supabaseKey)) {
+            return 0;
+        }
+
+        $countParams = [
+            'select' => 'id',
+            'limit' => 0,
+            'user_id' => 'eq.' . $userId,
+            'type' => 'eq.borrow',
+            'status' => 'eq.active'
+        ];
+
+        $url = rtrim($this->supabaseUrl, '/') . '/rest/v1/transactions';
+        $url .= '?' . http_build_query($countParams);
+
+        $headers = [
+            'apikey: ' . $this->supabaseKey,
+            'Authorization: Bearer ' . $this->supabaseKey,
+            'Prefer: count=exact'
+        ];
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CUSTOMREQUEST => 'GET',
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_TIMEOUT => 5,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TCP_KEEPALIVE => 1,
+            CURLOPT_FORBID_REUSE => false,
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        // Try to extract count from Content-Range header
+        if ($httpCode === 200 && preg_match('/content-range:\s*\d+-\d+\/(\d+)/i', $response, $matches)) {
+            return (int)$matches[1];
+        }
+
+        return 0;
+    }
+
     public function peminjaman()
     {
         $currentPicName = session()->get('name');
@@ -457,6 +513,7 @@ class TransactionController extends Controller
                 $users = $this->supabaseRequest('GET', 'users', null, [
                     'nama' => 'ilike.' . $namaCari,
                     'role' => 'eq.murid',
+                    'select' => 'id,nama,maxBorrow,num_borrows',
                     'limit' => 1
                 ]);
 
@@ -473,6 +530,7 @@ class TransactionController extends Controller
             if (!empty($judulCari) && empty($bookId)) {
                 $books = $this->supabaseRequest('GET', 'books', null, [
                     'title' => 'ilike.' . $judulCari,
+                    'select' => 'id,title,quantity,is_one_day_book',
                     'limit' => 1
                 ]);
 
@@ -496,6 +554,7 @@ class TransactionController extends Controller
             // Get book data
             $book = $this->supabaseRequest('GET', 'books', null, [
                 'id' => 'eq.' . $bookId,
+                'select' => 'id,quantity,is_one_day_book',
                 'limit' => 1
             ]);
 
@@ -508,17 +567,19 @@ class TransactionController extends Controller
 
             $bookData = $book[0];
             $currentQty = (int)($bookData['quantity'] ?? 0);
+            $currentAvailable = $bookData['available'] ?? false;
 
-            if ($currentQty < 1) {
+            if ($currentQty < 1 || !$currentAvailable) {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Stok buku habis'
+                    'message' => 'Buku tidak tersedia untuk dipinjam'
                 ]);
             }
 
             // Get user data for trust score validation
             $user = $this->supabaseRequest('GET', 'users', null, [
                 'id' => 'eq.' . $userId,
+                'select' => 'id,maxBorrow,num_borrows',
                 'limit' => 1
             ]);
 
@@ -532,14 +593,14 @@ class TransactionController extends Controller
             $userData = $user[0];
             $maxBorrow = (int)($userData['maxBorrow'] ?? 1);
 
-            // Count active borrows using pagination
-            $userActiveBorrows = $this->fetchAllTransactions([
-                'user_id' => 'eq.' . $userId,
-                'type' => 'eq.borrow',
-                'status' => 'eq.active'
-            ]);
-
-            $activeBorrowCount = count($userActiveBorrows);
+            // Count active borrows using cache (2-min TTL)
+            $cacheKey = 'user_active_borrows_' . $userId;
+            $activeBorrowCount = $this->cache->get($cacheKey);
+            
+            if ($activeBorrowCount === null) {
+                $activeBorrowCount = $this->countActiveUserTransactions($userId);
+                $this->cache->save($cacheKey, $activeBorrowCount, 120); // 2 min TTL
+            }
 
             if ($activeBorrowCount >= $maxBorrow) {
                 return $this->response->setJSON([
@@ -575,6 +636,9 @@ class TransactionController extends Controller
                     'message' => 'Gagal menyimpan transaksi peminjaman'
                 ]);
             }
+
+            // Invalidate user's active borrow count cache
+            $this->cache->delete('user_active_borrows_' . $userId);
 
             // Update num_borrows for user
             $numBorrows = (int)($userData['num_borrows'] ?? 0);
@@ -691,6 +755,9 @@ class TransactionController extends Controller
                     $errors[] = 'Gagal menyimpan pengembalian untuk peminjaman ID ' . $loanId;
                     continue;
                 }
+
+                // Invalidate user's active borrow count cache
+                $this->cache->delete('user_active_borrows_' . $userId);
 
                 // Update borrow status
                 $this->supabaseRequest('PATCH', 'transactions?id=eq.' . $loanId, [
