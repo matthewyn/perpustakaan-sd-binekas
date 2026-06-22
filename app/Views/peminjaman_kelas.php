@@ -216,20 +216,46 @@ let borrowingsData = [];
 let returnsData = [];
 let currentBorrowingsPage = 1;
 let currentReturnsPage = 1;
+let borrowingsSearchQuery = '';
+let returnsSearchQuery = '';
+
+function getFilteredBorrowings() {
+    if (!borrowingsSearchQuery) return borrowingsData;
+    const q = borrowingsSearchQuery;
+    return borrowingsData.filter(t => {
+        const nama = (t.user_name || t.nama || '').toLowerCase();
+        const buku = (t.book_title || t.judul || '').toLowerCase();
+        return nama.includes(q) || buku.includes(q);
+    });
+}
+
+function getFilteredReturns() {
+    if (!returnsSearchQuery) return returnsData;
+    const q = returnsSearchQuery;
+    return returnsData.filter(t => {
+        const nama = (t.user_name || t.nama || '').toLowerCase();
+        const buku = (t.book_title || t.judul || '').toLowerCase();
+        return nama.includes(q) || buku.includes(q);
+    });
+}
 
 function refreshBorrowingsTable(page) {
     currentBorrowingsPage = page;
     const tbody = $('#tbodyBorrowings');
-    
-    if (!borrowingsData || borrowingsData.length === 0) {
-        tbody.html('<tr><td colspan="4" class="text-center">Belum ada data peminjaman.</td></tr>');
+    const filtered = getFilteredBorrowings();
+
+    if (!filtered || filtered.length === 0) {
+        const emptyMessage = borrowingsSearchQuery
+            ? 'Tidak ada hasil pencarian.'
+            : 'Belum ada data peminjaman.';
+        tbody.html(`<tr><td colspan="4" class="text-center">${emptyMessage}</td></tr>`);
         renderBorrowingsPagination();
         return;
     }
     
     const start = (page - 1) * ITEMS_PER_PAGE;
     const end = start + ITEMS_PER_PAGE;
-    const pageData = borrowingsData.slice(start, end);
+    const pageData = filtered.slice(start, end);
     
     let html = '';
     pageData.forEach((t, index) => {
@@ -250,7 +276,7 @@ function refreshBorrowingsTable(page) {
 
 function renderBorrowingsPagination() {
     const paginationContainer = $('#paginationBorrowings');
-    const totalPages = Math.ceil(borrowingsData.length / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(getFilteredBorrowings().length / ITEMS_PER_PAGE);
     
     if (totalPages <= 1) {
         paginationContainer.html('');
@@ -298,16 +324,20 @@ function renderBorrowingsPagination() {
 function refreshReturnsTable(page) {
     currentReturnsPage = page;
     const tbody = $('#tbodyReturns');
+    const filtered = getFilteredReturns();
     
-    if (!returnsData || returnsData.length === 0) {
-        tbody.html('<tr><td colspan="4" class="text-center">Belum ada data pengembalian.</td></tr>');
+    if (!filtered || filtered.length === 0) {
+        const emptyMessage = returnsSearchQuery
+            ? 'Tidak ada hasil pencarian.'
+            : 'Belum ada data pengembalian.';
+        tbody.html(`<tr><td colspan="4" class="text-center">${emptyMessage}</td></tr>`);
         renderReturnsPagination();
         return;
     }
     
     const start = (page - 1) * ITEMS_PER_PAGE;
     const end = start + ITEMS_PER_PAGE;
-    const pageData = returnsData.slice(start, end);
+    const pageData = filtered.slice(start, end);
     
     let html = '';
     pageData.forEach((t, index) => {
@@ -327,7 +357,7 @@ function refreshReturnsTable(page) {
 
 function renderReturnsPagination() {
     const paginationContainer = $('#paginationReturns');
-    const totalPages = Math.ceil(returnsData.length / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(getFilteredReturns().length / ITEMS_PER_PAGE);
     
     if (totalPages <= 1) {
         paginationContainer.html('');
@@ -769,12 +799,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function renderBorrowingsTable(transactions) {
         borrowingsData = transactions || [];
+        borrowingsSearchQuery = '';
+        const searchInput = document.getElementById('searchPeminjaman');
+        if (searchInput) searchInput.value = '';
         currentBorrowingsPage = 1;
         refreshBorrowingsTable(1);
     }
 
     function renderReturnsTable(transactions) {
         returnsData = transactions || [];
+        returnsSearchQuery = '';
+        const searchInput = document.getElementById('searchPengembalian');
+        if (searchInput) searchInput.value = '';
         currentReturnsPage = 1;
         refreshReturnsTable(1);
     }
@@ -981,14 +1017,14 @@ document.addEventListener('DOMContentLoaded', function() {
         isFormSubmitting = false;
     });
 
-    function filterTable(searchId, tbodyId) {
-        const query = document.getElementById(searchId).value.toLowerCase();
-        const rows = document.querySelectorAll('#' + tbodyId + ' tr');
-        
-        rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(query) ? '' : 'none';
-        });
+    function filterBorrowingsTable() {
+        borrowingsSearchQuery = document.getElementById('searchPeminjaman').value.toLowerCase().trim();
+        refreshBorrowingsTable(1);
+    }
+
+    function filterReturnsTable() {
+        returnsSearchQuery = document.getElementById('searchPengembalian').value.toLowerCase().trim();
+        refreshReturnsTable(1);
     }
 
     const searchPeminjamanInput = document.getElementById('searchPeminjaman');
@@ -997,27 +1033,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const cariPengembalianBtn = document.getElementById('cariPengembalian');
 
     if (searchPeminjamanInput) {
-        searchPeminjamanInput.addEventListener('input', function() {
-            filterTable('searchPeminjaman', 'tbodyBorrowings');
-        });
+        searchPeminjamanInput.addEventListener('input', filterBorrowingsTable);
     }
     
     if (cariPeminjamanBtn) {
-        cariPeminjamanBtn.addEventListener('click', function() {
-            filterTable('searchPeminjaman', 'tbodyBorrowings');
-        });
+        cariPeminjamanBtn.addEventListener('click', filterBorrowingsTable);
     }
     
     if (searchPengembalianInput) {
-        searchPengembalianInput.addEventListener('input', function() {
-            filterTable('searchPengembalian', 'tbodyReturns');
-        });
+        searchPengembalianInput.addEventListener('input', filterReturnsTable);
     }
     
     if (cariPengembalianBtn) {
-        cariPengembalianBtn.addEventListener('click', function() {
-            filterTable('searchPengembalian', 'tbodyReturns');
-        });
+        cariPengembalianBtn.addEventListener('click', filterReturnsTable);
     }
     
     if (userRole === 'guru' && userClassId) {
