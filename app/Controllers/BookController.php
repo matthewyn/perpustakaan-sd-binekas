@@ -4,12 +4,14 @@ namespace App\Controllers;
 
 use CodeIgniter\Controller;
 use App\Libraries\GenreCache;
+use App\Traits\BookTrait;
 
-ini_set('max_execution_time', 1000);
-ini_set('memory_limit', '512M');
+ini_set("max_execution_time", 1000);
+ini_set("memory_limit", "512M");
 
 class BookController extends Controller
 {
+    use BookTrait;
     private $supabaseUrl;
     private $supabaseKey;
     private $perPage = 10;
@@ -18,44 +20,54 @@ class BookController extends Controller
 
     public function __construct()
     {
-        $this->supabaseUrl = getenv('SUPABASE_URL');
-        $this->supabaseKey = getenv('SUPABASE_API_KEY');
+        $this->supabaseUrl = getenv("SUPABASE_URL");
+        $this->supabaseKey = getenv("SUPABASE_API_KEY");
         $this->cache = \Config\Services::cache();
         $this->genreCache = new GenreCache();
-        
-        log_message('info', '=== BookController Initialized ===');
+
+        log_message("info", "=== BookController Initialized ===");
     }
 
-    private function supabaseRequest($method, $endpoint, $data = null, $queryParams = [], $cacheKey = null, $cacheTTL = 300)
-    {
-        if ($cacheKey && $method === 'GET') {
+    // =========================================================================
+    // Supabase HTTP helpers
+    // =========================================================================
+
+    private function supabaseRequest(
+        $method,
+        $endpoint,
+        $data = null,
+        $queryParams = [],
+        $cacheKey = null,
+        $cacheTTL = 24 * 60 * 60
+    ) {
+        if ($cacheKey && $method === "GET") {
             $cached = $this->cache->get($cacheKey);
             if ($cached !== null) {
-                log_message('info', 'Cache HIT for: ' . $cacheKey);
+                log_message("info", "Cache HIT for: " . $cacheKey);
                 return $cached;
             }
         }
 
         if (empty($this->supabaseUrl) || empty($this->supabaseKey)) {
-            log_message('error', 'Supabase credentials not configured');
-            return ['error' => 'Supabase credentials not configured'];
+            log_message("error", "Supabase credentials not configured");
+            return ["error" => "Supabase credentials not configured"];
         }
 
-        $url = rtrim($this->supabaseUrl, '/') . '/rest/v1/' . $endpoint;
-        
+        $url = rtrim($this->supabaseUrl, "/") . "/rest/v1/" . $endpoint;
+
         if (!empty($queryParams)) {
-            $url .= '?' . http_build_query($queryParams);
+            $url .= "?" . http_build_query($queryParams);
         }
 
         $headers = [
-            'apikey: ' . $this->supabaseKey,
-            'Authorization: Bearer ' . $this->supabaseKey,
-            'Content-Type: application/json',
-            'Accept: application/json',
-            'Prefer: return=representation'
+            "apikey: " . $this->supabaseKey,
+            "Authorization: Bearer " . $this->supabaseKey,
+            "Content-Type: application/json",
+            "Accept: application/json",
+            "Prefer: return=representation",
         ];
 
-        log_message('info', 'Supabase Request: ' . $method . ' ' . $url);
+        log_message("info", "Supabase Request: " . $method . " " . $url);
 
         $ch = curl_init();
         curl_setopt_array($ch, [
@@ -67,12 +79,17 @@ class BookController extends Controller
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TCP_KEEPALIVE => 1,
+            CURLOPT_TCP_KEEPIDLE => 60,
+            CURLOPT_TCP_KEEPINTVL => 30,
+            CURLOPT_FORBID_REUSE => false,
+            CURLOPT_FRESH_CONNECT => false,
         ]);
 
         if ($data !== null) {
             $jsonData = json_encode($data);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
-            log_message('info', 'Request Body: ' . $jsonData);
+            log_message("info", "Request Body: " . $jsonData);
         }
 
         $response = curl_exec($ch);
@@ -80,554 +97,544 @@ class BookController extends Controller
         $error = curl_error($ch);
         curl_close($ch);
 
-        log_message('info', 'Response Code: ' . $httpCode);
+        log_message("info", "Response Code: " . $httpCode);
 
         if ($error) {
-            log_message('error', 'Supabase CURL Error: ' . $error);
-            return ['error' => $error];
+            log_message("error", "Supabase CURL Error: " . $error);
+            return ["error" => $error];
         }
 
         if ($httpCode >= 400) {
-            log_message('error', 'Supabase HTTP Error ' . $httpCode . ': ' . $response);
+            log_message(
+                "error",
+                "Supabase HTTP Error " . $httpCode . ": " . $response
+            );
             return [
-                'error' => 'HTTP Error ' . $httpCode,
-                'response' => $response
+                "error" => "HTTP Error " . $httpCode,
+                "response" => $response,
             ];
         }
 
         $decoded = json_decode($response, true);
 
-        // Cache successful GET responses
-        if ($cacheKey && $method === 'GET' && !isset($decoded['error'])) {
+        if ($cacheKey && $method === "GET" && !isset($decoded["error"])) {
             $this->cache->save($cacheKey, $decoded, $cacheTTL);
-            log_message('info', 'Cache SET for: ' . $cacheKey);
+            log_message("info", "Cache SET for: " . $cacheKey);
         }
 
         return $decoded;
     }
 
-    private function fetchAllBooks($queryParams = [])
+    private function getCountFromSupabase($endpoint, $queryParams = []): int
     {
-        $allBooks = [];
-        $limit = 1000;
-        $offset = 0;
-        $hasMore = true;
-
-        log_message('info', 'Starting fetchAllBooks with pagination');
-
-        while ($hasMore) {
-            $params = array_merge($queryParams, [
-                'limit' => $limit,
-                'offset' => $offset
-            ]);
-
-            $books = $this->supabaseRequest('GET', 'books', null, $params);
-
-            if (isset($books['error']) || !is_array($books)) {
-                log_message('error', 'Error fetching books at offset ' . $offset);
-                break;
-            }
-
-            $count = count($books);
-            log_message('info', "Fetched {$count} books at offset {$offset}");
-
-            if ($count > 0) {
-                $allBooks = array_merge($allBooks, $books);
-                $offset += $limit;
-                
-                // If we got less than limit, we've reached the end
-                if ($count < $limit) {
-                    $hasMore = false;
-                }
-            } else {
-                $hasMore = false;
-            }
+        if (empty($this->supabaseUrl) || empty($this->supabaseKey)) {
+            log_message("error", "Supabase credentials not configured");
+            return 0;
         }
 
-        log_message('info', 'Total books fetched: ' . count($allBooks));
-        return $allBooks;
-    }
+        $countParams = array_merge($queryParams, [
+            "select" => "id",
+            "limit" => 1,
+        ]);
 
-    private function getGenres(array $books = []): array
-    {
-        // If books are provided, extract genres from them instead of making separate request
-        if (!empty($books)) {
-            $genres = array_unique(array_column($books, 'genre'));
-            $genres = array_filter($genres);
-            sort($genres);
-            return $genres;
-        }
+        $url =
+            rtrim($this->supabaseUrl, "/") .
+            "/rest/v1/" .
+            $endpoint .
+            "?" .
+            http_build_query($countParams);
 
-        // Use genre cache for full genre list - 1 hour TTL
-        return $this->genreCache->getGenres(function() {
-            // Fetch ALL books to get complete genre list
-            $allBooks = $this->fetchAllBooks(['select' => 'genre']);
-
-            if (empty($allBooks)) {
-                return [];
-            }
-
-            $genres = array_unique(array_column($allBooks, 'genre'));
-            $genres = array_filter($genres); // Remove empty values
-            sort($genres);
-            return $genres;
-        });
-    }
-
-    private function getAllGenres(): array
-    {
-        // Always fetch complete genre list from database cache - 1 hour TTL
-        return $this->genreCache->getGenres(function() {
-            // Fetch ALL books to get complete genre list
-            $allBooks = $this->fetchAllBooks(['select' => 'genre']);
-
-            if (empty($allBooks)) {
-                return [];
-            }
-
-            $genres = array_unique(array_column($allBooks, 'genre'));
-            $genres = array_filter($genres); // Remove empty values
-            sort($genres);
-            return $genres;
-        });
-    }
-
-    private function generateKodeSekolah(): string
-    {
-        $currentYear = date('Y');
-        $currentMonth = date('n');
-        
-        $romanMonths = [
-            1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI',
-            7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'
-        ];
-        $monthRoman = $romanMonths[$currentMonth];
-        
-        $allBooks = $this->fetchAllBooks(['select' => 'code']);
-        
-        $maxNumber = 0;
-        $codesThisYear = [];
-        
-        if (is_array($allBooks)) {
-            // Extract numbers from codes for current year
-            foreach ($allBooks as $book) {
-                if (!empty($book['code'])) {
-                    // Parse code format: {nomor}/YCB-CB/{bulan}/{tahun}
-                    $parts = explode('/', $book['code']);
-                    if (count($parts) >= 4) {
-                        $codeYear = (int)$parts[3];  // Get year from code
-                        $codeNumber = (int)$parts[0];  // Get number from code
-                        
-                        if ($codeYear == $currentYear) {
-                            $codesThisYear[] = $codeNumber;
-                            $maxNumber = max($maxNumber, $codeNumber);
-                        }
-                    }
-                }
-            }
-        }
-        
-        log_message('info', 'Generated Kode Debug - Year: ' . $currentYear . ', Max Number: ' . $maxNumber . ', Codes This Year: ' . json_encode($codesThisYear));
-        
-        $newNumber = $maxNumber + 1;
-        return sprintf('%03d/YCB-CB/%s/%s', $newNumber, $monthRoman, $currentYear);
-    }
-
-    public function getNextKodeSekolah()
-    {
-        try {
-            $kodeSekolah = $this->generateKodeSekolah();
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'kode_sekolah' => $kodeSekolah
-            ]);
-        } catch (\Exception $e) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ]);
-        }
-    }
-
-    public function index()
-    {
-        $search = $this->request->getGet('search') ?? '';
-        $selectedGenres = $this->request->getGet('genres') ?? [];
-        $page = max(1, (int)($this->request->getGet('page') ?? 1));
-
-        // Build query for fetching books with pagination
-        $queryParams = [
-            'select' => '*',
-            'order' => 'created_at.desc',
-            'limit' => $this->perPage,
-            'offset' => ($page - 1) * $this->perPage
+        $headers = [
+            "apikey: " . $this->supabaseKey,
+            "Authorization: Bearer " . $this->supabaseKey,
+            "Prefer: count=exact",
         ];
 
-        // Search filter
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CUSTOMREQUEST => "GET",
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TCP_KEEPALIVE => 1,
+            CURLOPT_FORBID_REUSE => false,
+            CURLOPT_HEADER => true,
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        curl_close($ch);
+
+        $headerText = substr($response, 0, $headerSize);
+
+        // Content-Range: 0-9/100  →  total = 100
+        if (
+            ($httpCode === 200 || $httpCode === 206) &&
+            preg_match(
+                "/content-range:\s*\d+-\d+\/(\d+)/i",
+                $headerText,
+                $matches
+            )
+        ) {
+            log_message(
+                "info",
+                "Count retrieved for: " . $endpoint . " = " . $matches[1]
+            );
+            return (int) $matches[1];
+        }
+
+        log_message(
+            "info",
+            "Count request failed for: " .
+                $endpoint .
+                " (HTTP: " .
+                $httpCode .
+                ")"
+        );
+        return 0;
+    }
+
+    /**
+     * Build Supabase query params from search/genre filters.
+     * Returns params ready to pass to supabaseRequest or getCountFromSupabase.
+     */
+    private function buildBookQueryParams(
+        string $search,
+        array $selectedGenres,
+        bool $withPagination = false,
+        int $page = 1,
+        array $extraParams = []
+    ): array {
+        $params = ["select" => "*", "order" => "created_at.desc"];
+
+        if ($withPagination) {
+            $params["limit"] = $this->perPage;
+            $params["offset"] = ($page - 1) * $this->perPage;
+        }
+
         if (!empty($search)) {
-            $searchFilter = "(title.ilike.*{$search}*,author.ilike.*{$search}*,code.ilike.*{$search}*,isbn.ilike.*{$search}*,series.ilike.*{$search}*)";
-            $queryParams['or'] = $searchFilter;
+            $params[
+                "or"
+            ] = "(title.ilike.*{$search}*,author.ilike.*{$search}*,code.ilike.*{$search}*,isbn.ilike.*{$search}*,series.ilike.*{$search}*)";
         }
 
-        // Genre filter
-        if (!empty($selectedGenres) && is_array($selectedGenres)) {
-            if (isset($queryParams['or'])) {
-                $genreFilter = 'genre.in.(' . implode(',', $selectedGenres) . ')';
-                $queryParams['and'] = "({$queryParams['or']}),{$genreFilter}";
-                unset($queryParams['or']);
+        if (!empty($selectedGenres)) {
+            $genreFilter = "genre.in.(" . implode(",", $selectedGenres) . ")";
+            if (isset($params["or"])) {
+                $params["and"] = "({$params["or"]}),{$genreFilter}";
+                unset($params["or"]);
             } else {
-                $queryParams['genre'] = 'in.(' . implode(',', $selectedGenres) . ')';
+                $params["genre"] = $genreFilter;
             }
         }
 
-        $books = $this->supabaseRequest('GET', 'books', null, $queryParams);
+        // Extra params (e.g. select override) are merged last so they can override defaults
+        return array_merge($params, $extraParams);
+    }
 
-        if (isset($books['error'])) {
-            log_message('error', 'Failed to fetch books: ' . print_r($books, true));
+    /**
+     * Fetch a paginated page of books plus total count in one call pair.
+     *
+     * @return array{books: array, totalBooks: int, totalPages: int}
+     */
+    private function fetchBooksPage(
+        string $search,
+        array $selectedGenres,
+        int $page,
+        array $selectParams = []
+    ): array {
+        $queryParams = $this->buildBookQueryParams(
+            $search,
+            $selectedGenres,
+            true,
+            $page,
+            $selectParams
+        );
+        $books = $this->supabaseRequest("GET", "books", null, $queryParams);
+
+        if (isset($books["error"])) {
+            log_message(
+                "error",
+                "Failed to fetch books: " . print_r($books, true)
+            );
             $books = [];
         }
 
-        $countParams = ['select' => 'id'];
-        
-        if (!empty($search)) {
-            $searchFilter = "(title.ilike.*{$search}*,author.ilike.*{$search}*,code.ilike.*{$search}*,isbn.ilike.*{$search}*,series.ilike.*{$search}*)";
-            $countParams['or'] = $searchFilter;
-        }
+        $countParams = $queryParams;
+        unset(
+            $countParams["limit"],
+            $countParams["offset"],
+            $countParams["select"]
+        );
 
-        if (!empty($selectedGenres) && is_array($selectedGenres)) {
-            $genreFilter = 'genre.in.(' . implode(',', $selectedGenres) . ')';
-            if (isset($countParams['or'])) {
-                $countParams['and'] = "({$countParams['or']}),{$genreFilter}";
-                unset($countParams['or']);
-            } else {
-                $countParams['genre'] = 'in.(' . implode(',', $selectedGenres) . ')';
-            }
-        }
+        $totalBooks = $this->getCountFromSupabase("books", $countParams);
+        $totalPages = max(1, (int) ceil($totalBooks / $this->perPage));
 
-        $allMatchingBooks = $this->fetchAllBooks($countParams);
-        $totalBooks = count($allMatchingBooks);
-        $totalPages = max(1, ceil($totalBooks / $this->perPage));
+        return compact("books", "totalBooks", "totalPages");
+    }
 
-        $latestBooks = $this->supabaseRequest('GET', 'books', null, [
-            'select' => '*',
-            'order' => 'created_at.desc',
-            'limit' => 5
-        ], 'latest_books_5', 300);
+    // =========================================================================
+    // Public actions
+    // =========================================================================
 
-        if (isset($latestBooks['error'])) {
-            $latestBooks = [];
-        }
+    public function index()
+    {
+        $search = $this->request->getGet("search") ?? "";
+        $selectedGenres = $this->request->getGet("genres") ?? [];
+        $page = max(1, (int) ($this->request->getGet("page") ?? 1));
 
-        $allGenres = $this->getAllGenres();
+        [
+            "books" => $books,
+            "totalBooks" => $totalBooks,
+            "totalPages" => $totalPages,
+        ] = $this->fetchBooksPage($search, $selectedGenres, $page, [
+            "select" => "id,title,author,genre,image,year",
+        ]);
 
-        // Return view for normal page load
-        return view('home', [
-            'booksOnPage' => $books,
-            'latestBooks' => $latestBooks,
-            'genres' => $allGenres,
-            'search' => $search,
-            'selectedGenres' => $selectedGenres,
-            'page' => $page,
-            'totalPages' => $totalPages,
-            'totalBooks' => $totalBooks
+        $latestBooks = $this->supabaseRequest(
+            "GET",
+            "books",
+            null,
+            [
+                "select" => "title,synopsis,image",
+                "order" => "created_at.desc",
+                "limit" => 5,
+            ],
+            "latest_books_5"
+        );
+
+        return view("homepage", [
+            "booksOnPage" => $books,
+            "latestBooks" => $latestBooks ?? [],
+            "genres" => $this->getAllGenres(),
+            "search" => $search,
+            "selectedGenres" => $selectedGenres,
+            "page" => $page,
+            "totalPages" => $totalPages,
+            "totalBooks" => $totalBooks,
         ]);
     }
 
     public function filter()
     {
-        $search = $this->request->getGet('search') ?? '';
-        $selectedGenres = $this->request->getGet('genres') ?? [];
-        $page = max(1, (int)($this->request->getGet('page') ?? 1));
-        $queryParams = [
-            'select' => '*',
-            'order' => 'created_at.desc',
-            'limit' => $this->perPage,
-            'offset' => ($page - 1) * $this->perPage
-        ];
+        $search = $this->request->getGet("search") ?? "";
+        $selectedGenres = $this->request->getGet("genres") ?? [];
+        $page = max(1, (int) ($this->request->getGet("page") ?? 1));
 
-        // Search filter
-        if (!empty($search)) {
-            $searchFilter = "(title.ilike.*{$search}*,author.ilike.*{$search}*,code.ilike.*{$search}*,isbn.ilike.*{$search}*,series.ilike.*{$search}*)";
-            $queryParams['or'] = $searchFilter;
-        }
-
-        // Genre filter
-        if (!empty($selectedGenres) && is_array($selectedGenres)) {
-            if (isset($queryParams['or'])) {
-                $genreFilter = 'genre.in.(' . implode(',', $selectedGenres) . ')';
-                $queryParams['and'] = "({$queryParams['or']}),{$genreFilter}";
-                unset($queryParams['or']);
-            } else {
-                $queryParams['genre'] = 'in.(' . implode(',', $selectedGenres) . ')';
-            }
-        }
-
-        $books = $this->supabaseRequest('GET', 'books', null, $queryParams);
-
-        if (isset($books['error'])) {
-            log_message('error', 'Failed to fetch books: ' . print_r($books, true));
-            $books = [];
-        }
-
-        $countParams = ['select' => 'id'];
-        
-        if (!empty($search)) {
-            $searchFilter = "(title.ilike.*{$search}*,author.ilike.*{$search}*,code.ilike.*{$search}*,isbn.ilike.*{$search}*,series.ilike.*{$search}*)";
-            $countParams['or'] = $searchFilter;
-        }
-
-        if (!empty($selectedGenres) && is_array($selectedGenres)) {
-            $genreFilter = 'genre.in.(' . implode(',', $selectedGenres) . ')';
-            if (isset($countParams['or'])) {
-                $countParams['and'] = "({$countParams['or']}),{$genreFilter}";
-                unset($countParams['or']);
-            } else {
-                $countParams['genre'] = 'in.(' . implode(',', $selectedGenres) . ')';
-            }
-        }
-
-        $allMatchingBooks = $this->fetchAllBooks($countParams);
-        $totalBooks = count($allMatchingBooks);
-        $totalPages = max(1, ceil($totalBooks / $this->perPage));
-
-        $allGenres = $this->getAllGenres();
+        [
+            "books" => $books,
+            "totalBooks" => $totalBooks,
+            "totalPages" => $totalPages,
+        ] = $this->fetchBooksPage($search, $selectedGenres, $page, [
+            "select" => "id,title,author,genre,image,year",
+        ]);
 
         return $this->response->setJSON([
-            'html' => view('partials/book_list', [
-                'booksOnPage' => $books,
-                'page' => $page,
-                'totalPages' => $totalPages,
-                'totalBooks' => $totalBooks
-            ], ['debug' => false]),
-            'page' => $page,
-            'totalPages' => $totalPages,
-            'totalBooks' => $totalBooks,
-            'genres' => $allGenres
+            "booksOnPage" => $books,
+            "page" => $page,
+            "totalPages" => $totalPages,
+            "totalBooks" => $totalBooks,
+            "genres" => $this->getAllGenres(),
         ]);
+    }
+
+    public function getNextKodeSekolah()
+    {
+        try {
+            return $this->response->setJSON([
+                "success" => true,
+                "kode_sekolah" => $this->generateKodeSekolah(),
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                "success" => false,
+                "message" => "Error: " . $e->getMessage(),
+            ]);
+        }
     }
 
     public function add()
     {
         try {
             $json = $this->request->getJSON(true);
-            
+
             if (!$json) {
                 return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'No data received'
+                    "success" => false,
+                    "message" => "No data received",
                 ]);
             }
 
-            // Process UID - convert to PostgreSQL array format
-            $uidArray = [];
-            if (!empty($json['rfid_uid'])) {
-                if (is_string($json['rfid_uid']) && strpos($json['rfid_uid'], ',') !== false) {
-                    $uidArray = array_map('trim', explode(',', $json['rfid_uid']));
-                } else if (is_string($json['rfid_uid'])) {
-                    $uidArray = [trim($json['rfid_uid'])];
-                } else if (is_array($json['rfid_uid'])) {
-                    $uidArray = $json['rfid_uid'];
-                }
+            $rfid = $json["rfid_uid"] ?? "";
+            if (is_string($rfid) && strpos($rfid, ",") !== false) {
+                $uidArray = array_map("trim", explode(",", $rfid));
+            } else {
+                $uidArray = $rfid !== "" ? [trim($rfid)] : [];
             }
 
             $bookData = [
-                'uid' => $uidArray,
-                'code' => $json['kode_sekolah'] ?? '',
-                'title' => $json['judul'] ?? '',
-                'author' => $json['pengarang'] ?? '',
-                'illustrator' => $json['illustrator'] ?? '',
-                'publisher' => $json['publisher'] ?? '',
-                'series' => $json['series'] ?? '',
-                'genre' => $json['kategori'] ?? '',
-                'isbn' => $json['isbn'] ?? '',
-                'ddc_number' => $json['ddcNumber'] ?? '',
-                'image' => $json['gambar'] ?? '',
-                'quantity' => (int)($json['quantity'] ?? 1),
-                'synopsis' => $json['sinopsis'] ?? '',
-                'year' => (int)(date('Y')),
-                'available' => true
+                "uid" => $uidArray,
+                "code" => $json["kode_sekolah"] ?? "",
+                "title" => $json["judul"] ?? "",
+                "author" => $json["pengarang"] ?? "",
+                "illustrator" => $json["illustrator"] ?? "",
+                "publisher" => $json["publisher"] ?? "",
+                "series" => $json["series"] ?? "",
+                "genre" => $json["kategori"] ?? "",
+                "isbn" => $json["isbn"] ?? "",
+                "ddc_number" => $json["ddcNumber"] ?? "",
+                "image" => $json["gambar"] ?? "",
+                "quantity" => (int) ($json["quantity"] ?? 1),
+                "synopsis" => $json["sinopsis"] ?? "",
+                "year" => (int) date("Y"),
+                "available" => true,
             ];
 
-            if (empty($bookData['title'])) {
+            $result = $this->supabaseRequest("POST", "books", $bookData);
+
+            if (isset($result["error"])) {
                 return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Judul harus diisi'
+                    "success" => false,
+                    "message" => "Gagal menambahkan buku: " . $result["error"],
                 ]);
             }
 
-            $result = $this->supabaseRequest('POST', 'books', $bookData);
-            
-            if (isset($result['error'])) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Gagal menambahkan buku: ' . ($result['error'] ?? 'Unknown error')
-                ]);
-            }
+            $this->cache->delete("latest_books_5");
+            $this->invalidateBooksCache(['select' => 'id,title']);
 
             return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Buku berhasil ditambahkan',
-                'data' => $result
+                "success" => true,
+                "message" => "Buku berhasil ditambahkan",
+                "data" => $result,
             ]);
-
         } catch (\Exception $e) {
-            log_message('error', 'Error adding book: ' . $e->getMessage());
+            log_message("error", "Error adding book: " . $e->getMessage());
             return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                "success" => false,
+                "message" => "Terjadi kesalahan: " . $e->getMessage(),
             ]);
         }
     }
 
     public function edit()
     {
-        $originalTitle = $this->request->getPost('originalTitle');
-        $title = $this->request->getPost('title');
-        $author = $this->request->getPost('author');
-        $illustrator = $this->request->getPost('illustrator');
-        $publisher = $this->request->getPost('publisher');
-        $series = $this->request->getPost('series');
-        $genre = $this->request->getPost('genre');
-        $quantity = $this->request->getPost('quantity');
-        $notes = $this->request->getPost('notes');
-        $image = $this->request->getFile('image');
+        $originalTitle = $this->request->getPost("originalTitle");
 
-        // Find book by original title
-        $books = $this->supabaseRequest('GET', 'books', null, [
-            'title' => 'eq.' . $originalTitle,
-            'limit' => 1
+        $books = $this->supabaseRequest("GET", "books", null, [
+            "title" => "eq." . $originalTitle,
+            "limit" => 1,
         ]);
 
-        if (isset($books['error']) || empty($books)) {
+        if (isset($books["error"]) || empty($books)) {
             return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Book not found'
+                "success" => false,
+                "message" => "Book not found",
             ]);
         }
 
         $book = $books[0];
-        $bookId = $book['id'];
+        $bookId = $book["id"];
 
-        $imageName = $book['image'] ?? '';
+        $image = $this->request->getFile("image");
+        $imageName = $book["image"] ?? "";
         if ($image && $image->isValid() && !$image->hasMoved()) {
             $imageName = $image->getRandomName();
-            $image->move(FCPATH . 'uploads', $imageName);
+            $image->move(FCPATH . "uploads", $imageName);
         }
 
         $updateData = [
-            'title' => $title,
-            'author' => $author,
-            'illustrator' => $illustrator,
-            'publisher' => $publisher,
-            'series' => $series,
-            'genre' => $genre,
-            'quantity' => (int)$quantity,
-            'notes' => $notes,
-            'image' => $imageName
+            "title" => $this->request->getPost("title"),
+            "author" => $this->request->getPost("author"),
+            "illustrator" => $this->request->getPost("illustrator"),
+            "publisher" => $this->request->getPost("publisher"),
+            "series" => $this->request->getPost("series"),
+            "genre" => $this->request->getPost("genre"),
+            "quantity" => (int) $this->request->getPost("quantity"),
+            "notes" => $this->request->getPost("notes"),
+            "image" => $imageName,
         ];
 
-        $result = $this->supabaseRequest('PATCH', 'books?id=eq.' . $bookId, $updateData);
+        $result = $this->supabaseRequest(
+            "PATCH",
+            "books?id=eq." . $bookId,
+            $updateData
+        );
 
-        if (isset($result['error'])) {
+        if (isset($result["error"])) {
             return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Failed to update book'
+                "success" => false,
+                "message" => "Failed to update book",
             ]);
         }
 
         return $this->response->setJSON([
-            'success' => true,
-            'message' => 'Book updated successfully'
+            "success" => true,
+            "message" => "Book updated successfully",
         ]);
     }
 
     public function detail()
     {
-        $title = $this->request->getGet('title');
+        $title = $this->request->getGet("title");
 
-        $books = $this->supabaseRequest('GET', 'books', null, [
-            'title' => 'eq.' . $title,
-            'limit' => 1
+        $books = $this->supabaseRequest("GET", "books", null, [
+            "title" => "eq." . $title,
+            "limit" => 1,
         ]);
 
-        if (isset($books['error']) || empty($books)) {
-            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound("Book not found");
+        if (isset($books["error"]) || empty($books)) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound(
+                "Book not found"
+            );
         }
 
         $book = $books[0];
+        $bookId = $book["id"];
 
-        // ── Fetch active borrowers untuk buku ini ──
-        $bookId = $book['id'];
-        $activeBorrowers = $this->supabaseRequest('GET', 'transactions', null, [
-            'book_id' => 'eq.' . $bookId,
-            'status'  => 'eq.active',
-            'type'    => 'eq.borrow',
-            'order'   => 'created_at.desc'
+        $activeBorrowers = $this->supabaseRequest("GET", "transactions", null, [
+            "book_id" => "eq." . $bookId,
+            "status" => "eq.active",
+            "type" => "eq.borrow",
+            "order" => "created_at.desc",
         ]);
 
-        // Fetch user details untuk setiap borrower
         $borrowersWithDetails = [];
-        if (!isset($activeBorrowers['error']) && !empty($activeBorrowers)) {
+        if (!isset($activeBorrowers["error"]) && !empty($activeBorrowers)) {
             foreach ($activeBorrowers as $tx) {
-                $userResult = $this->supabaseRequest('GET', 'users', null, [
-                    'id'    => 'eq.' . $tx['user_id'],
-                    'limit' => 1
+                $userResult = $this->supabaseRequest("GET", "users", null, [
+                    "id" => "eq." . $tx["user_id"],
+                    "limit" => 1,
                 ]);
 
-                if (!isset($userResult['error']) && !empty($userResult)) {
+                if (!isset($userResult["error"]) && !empty($userResult)) {
                     $borrowersWithDetails[] = [
-                        'transaction' => $tx,
-                        'user'        => $userResult[0]
+                        "transaction" => $tx,
+                        "user" => $userResult[0],
                     ];
                 }
             }
         }
 
-        return view('detail_buku', [
-            'book'       => $book,
-            'borrowers'  => $borrowersWithDetails
+        return view("detail_buku", [
+            "book" => $book,
+            "borrowers" => $borrowersWithDetails,
         ]);
     }
 
     public function searchBooks()
     {
-        $search = $this->request->getGet('search');
-        $limit = (int)$this->request->getGet('limit') ?? 20;
-        
-        if (!$search || strlen(trim($search)) < 1) {
-            return $this->response->setJSON(['success' => false, 'books' => []]);
+        $search = trim($this->request->getGet("search") ?? "");
+        $limit = max(1, (int) ($this->request->getGet("limit") ?? 20));
+
+        if ($search === "") {
+            return $this->response->setJSON([
+                "success" => false,
+                "books" => [],
+            ]);
         }
 
-        $search = trim($search);
-        
-        // Use only title and id fields to minimize egress
         $queryParams = [
-            'select' => 'id,title',
-            'title' => "ilike.*" . $search . "*",
-            'order' => 'title.asc',
-            'limit' => $limit
+            "select" => "id,title",
+            "title" => "ilike.*{$search}*",
+            "order" => "title.asc",
+            "limit" => $limit,
         ];
 
-        $cacheKey = 'book_search_' . md5($search) . '_' . $limit;
-        $books = $this->supabaseRequest('GET', 'books', null, $queryParams, $cacheKey, 300);
+        $books = $this->supabaseRequest("GET", "books", null, $queryParams);
 
-        if (is_array($books) && !isset($books['error'])) {
-            return $this->response->setJSON(['success' => true, 'books' => $books]);
+        if (is_array($books) && !isset($books["error"])) {
+            return $this->response->setJSON([
+                "success" => true,
+                "books" => $books,
+            ]);
         }
 
-        return $this->response->setJSON(['success' => false, 'books' => [], 'error' => 'Search failed']);
+        return $this->response->setJSON([
+            "success" => false,
+            "books" => [],
+            "error" => "Search failed",
+        ]);
     }
 
     public function uploadImage()
     {
-        $file = $this->request->getFile('gambar');
+        $file = $this->request->getFile("gambar");
         if (!$file || !$file->isValid()) {
-            return $this->response->setJSON(['success' => false]);
+            return $this->response->setJSON(["success" => false]);
         }
+
         $fileName = $file->getRandomName();
-        $file->move(FCPATH . 'uploads', $fileName);
-        $imageUrl = base_url('uploads/' . $fileName);
-        return $this->response->setJSON(['success' => true, 'imageUrl' => $imageUrl]);
+        $file->move(FCPATH . "uploads", $fileName);
+
+        return $this->response->setJSON([
+            "success" => true,
+            "imageUrl" => base_url("uploads/" . $fileName),
+        ]);
+    }
+
+    // =========================================================================
+    // Private helpers
+    // =========================================================================
+
+    private function generateKodeSekolah(): string
+    {
+        $currentYear = date("Y");
+        $currentMonth = (int) date("n");
+
+        $romanMonths = [
+            1 => "I",
+            2 => "II",
+            3 => "III",
+            4 => "IV",
+            5 => "V",
+            6 => "VI",
+            7 => "VII",
+            8 => "VIII",
+            9 => "IX",
+            10 => "X",
+            11 => "XI",
+            12 => "XII",
+        ];
+
+        $allBooks = $this->fetchAllBooks(["select" => "code"]);
+        $maxNumber = 0;
+
+        foreach ((array) $allBooks as $book) {
+            if (empty($book["code"])) {
+                continue;
+            }
+            $parts = explode("/", $book["code"]);
+            if (count($parts) >= 4 && (int) $parts[3] === (int) $currentYear) {
+                $maxNumber = max($maxNumber, (int) $parts[0]);
+            }
+        }
+
+        log_message(
+            "info",
+            "generateKodeSekolah - year: {$currentYear}, next: " .
+                ($maxNumber + 1)
+        );
+
+        return sprintf(
+            "%03d/YCB-CB/%s/%s",
+            $maxNumber + 1,
+            $romanMonths[$currentMonth],
+            $currentYear
+        );
+    }
+
+    private function getGenres(array $books = []): array
+    {
+        if (!empty($books)) {
+            $genres = array_unique(array_filter(array_column($books, "genre")));
+            sort($genres);
+            return array_values($genres);
+        }
+
+        return $this->getAllGenres();
     }
 }

@@ -203,7 +203,7 @@ $websiteConfig = WebsiteConfigHelper::getConfig();
                 <?php endif; ?>
                 <?php if (session('role') === 'admin'): ?>
                     <li class="list-group-item border-0 text-mobile-md">
-                        <a href="<?= base_url('management-class') ?>" style="text-decoration: none; color: inherit;">
+                        <a href="<?= base_url('classes') ?>" style="text-decoration: none; color: inherit;">
                             <i class="bi bi-mortarboard"></i>
                             Manajemen Kelas
                         </a>

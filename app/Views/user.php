@@ -1,5 +1,5 @@
-<?= $this->extend('layout') ?>
-<?= $this->section('content') ?>
+<?= $this->extend("layout") ?>
+<?= $this->section("content") ?>
   <style>
   .page-item.active .page-link {
       background-color: #f4f4f4;
@@ -225,7 +225,7 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3" id="siswaTrustScoreSection" style="display:none;">
-                                    <label for="siswaTrustScore" class="form-label">Trust Score</label>
+                                    <label for="siswaTrustScore" class="form-label required">Trust Score</label>
                                     <input type="number" name="trust_score" class="form-control" id="siswaTrustScore" min="0" max="100" step="0.1" placeholder="0-100">
                                     <small class="text-muted">Nilai kepercayaan siswa (0-100)</small>
                                 </div>
@@ -372,7 +372,6 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchClassData();
     fetchSiswaData();
     fetchGuruData();
-    setupAutocomplete();
     
     const searchSiswaEl = document.getElementById('searchSiswa');
     if (searchSiswaEl) searchSiswaEl.addEventListener('input', filterSiswaTable);
@@ -402,7 +401,7 @@ function showToast(message, type = 'success') {
 
 // ================== FETCH DATA ==================
 function fetchClassData() {
-    fetch("<?= base_url('management-class/list') ?>")
+    fetch("<?= base_url("classes/list") ?>")
         .then(response => response.json())
         .then(data => {
             if (data.success && Array.isArray(data.classes)) {
@@ -467,7 +466,7 @@ function sortSiswaTable(field) {
 }
 
 function fetchSiswaData() {
-    fetch("<?= base_url('user/list/murid') ?>")
+    fetch("<?= base_url("user/list/murid") ?>")
         .then(response => response.json())
         .then(data => {
             if (data.success && Array.isArray(data.users)) {
@@ -488,7 +487,7 @@ function fetchSiswaData() {
 }
 
 function fetchGuruData() {
-    fetch("<?= base_url('user/list/guru') ?>")
+    fetch("<?= base_url("user/list/guru") ?>")
         .then(response => response.json())
         .then(data => {
             if (data.success && Array.isArray(data.users)) {
@@ -793,6 +792,7 @@ function fillSiswaForm(siswa) {
     document.getElementById('siswaTrustScoreSection').style.display = 'block';
     document.getElementById('siswaUidColumnWrapper').className = 'col-md-6';
     document.getElementById('siswaId').value    = siswa.id;
+    document.getElementById('siswaSearch').value    = siswa.nama || '';
     document.getElementById('siswaNisn').value  = siswa.nisn || '';
     document.getElementById('siswaNama').value  = siswa.nama || '';
     document.getElementById('siswaUid').value   = siswa.uid  || '';
@@ -804,7 +804,7 @@ function fillSiswaForm(siswa) {
     if (maxBorrowEl) maxBorrowEl.value = siswa.maxborrow || siswa.maxBorrow || siswa.max_borrow || 1;
 
     const trustScoreEl = document.getElementById('siswaTrustScore');
-    if (trustScoreEl) trustScoreEl.value = siswa.trust_score || '';
+    if (trustScoreEl) trustScoreEl.value = siswa.trust_score;
 
     const isFreezedEl = document.getElementById('isFreezed');
     if (isFreezedEl) isFreezedEl.checked = siswa.is_freezed == 1 || siswa.is_freezed === true;
@@ -814,6 +814,7 @@ function fillGuruForm(guru) {
     document.getElementById('guruFormFields').style.display = 'block';
     document.getElementById('guruId').value      = guru.id;
     document.getElementById('guruNip').value     = guru.nip     || '';
+    document.getElementById('guruSearch').value  = guru.nama    || '';
     document.getElementById('guruNama').value    = guru.nama    || '';
     document.getElementById('guruJabatan').value = guru.jabatan || '';
     document.getElementById('guruUid').value     = guru.uid     || '';
@@ -852,8 +853,8 @@ function handleSiswaSubmit(event) {
     };
     
     const url = mode === 'add' 
-        ? "<?= base_url('user/add') ?>"
-        : "<?= base_url('user/update') ?>/" + id;
+        ? "<?= base_url("user/add") ?>"
+        : "<?= base_url("user/update") ?>/" + id;
     
     fetch(url, {
         method: 'POST',
@@ -897,8 +898,8 @@ function handleGuruSubmit(event) {
         : { namaGuruUbah: nama, nipUbah: nip, jabatanUbah: jabatan, classIdUbah: classId, uid: uid };
     
     const url = mode === 'add' 
-        ? "<?= base_url('user/add-guru') ?>"
-        : "<?= base_url('user/update-guru') ?>/" + id;
+        ? "<?= base_url("user/add-guru") ?>"
+        : "<?= base_url("user/update-guru") ?>/" + id;
     
     fetch(url, {
         method: 'POST',

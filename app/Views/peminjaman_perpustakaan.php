@@ -1148,7 +1148,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function fetchClassesData() {
-        $.get("<?= base_url('management-class/list') ?>", function(response) {
+        $.get("<?= base_url('classes/list') ?>", function(response) {
             if (response.success && Array.isArray(response.classes)) {
                 window._classesById = {};
                 response.classes.forEach(c => {

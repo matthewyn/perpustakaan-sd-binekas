@@ -569,13 +569,6 @@ class TransactionController extends Controller
             $currentQty = (int)($bookData['quantity'] ?? 0);
             $currentAvailable = $bookData['available'] ?? false;
 
-            if ($currentQty < 1 || !$currentAvailable) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Buku tidak tersedia untuk dipinjam'
-                ]);
-            }
-
             // Get user data for trust score validation
             $user = $this->supabaseRequest('GET', 'users', null, [
                 'id' => 'eq.' . $userId,

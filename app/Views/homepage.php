@@ -1,16 +1,25 @@
-<?php 
+<?php
 use App\Helpers\WebsiteConfigHelper;
 $websiteConfig = WebsiteConfigHelper::getConfig();
+if (!is_array($selectedGenres ?? null)) {
+    $selectedGenres = [];
+}
 ?>
-<?= $this->extend('layout') ?>
-<?= $this->section('content') ?>
+<?= $this->extend("layout") ?>
+<?= $this->section("content") ?>
 <div class="d-flex justify-content-center align-items-center my-5 my-lg-4">
-  <img src="<?= base_url($websiteConfig->homepageLogo) ?>" alt="Logo" class="d-inline-block align-text-top me-2 img-mobile-lg" id="logoImage" fetchpriority="high"/>
-  <h1 class="h-mobile-xl" id="logoTitle"><?= esc($websiteConfig->homepageTitle) ?></h1>
+  <img src="<?= base_url(
+      $websiteConfig->homepageLogo
+  ) ?>" alt="Logo" class="d-inline-block align-text-top me-2 img-mobile-lg" id="logoImage" fetchpriority="high"/>
+  <h1 class="h-mobile-xl" id="logoTitle"><?= esc(
+      $websiteConfig->homepageTitle
+  ) ?></h1>
 </div>
 
 <div class="card relative" style="border-style: dashed;">
-  <img src="<?= base_url($websiteConfig->homepageDecorativeImage) ?>" alt="Children" class="position-absolute end-0 z-n1 img-mobile-xl top-mobile-xl" id="childrenImage" fetchpriority="high"/>
+  <img src="<?= base_url(
+      $websiteConfig->homepageDecorativeImage
+  ) ?>" alt="Children" class="position-absolute end-0 z-n1 img-mobile-xl top-mobile-xl" id="childrenImage" fetchpriority="high"/>
   <div class="card-body">
     <div class="row">
       <div class="col-lg-9">
@@ -18,7 +27,7 @@ $websiteConfig = WebsiteConfigHelper::getConfig();
           <nav aria-label="Book pagination" class="col-4">
             <ul class="pagination pagination-mobile mb-2" id="bookPagination" style="flex-wrap: wrap;">
             </ul>
-            <?php if (session('role') === 'admin'): ?>
+            <?php if (session("role") === "admin"): ?>
               <div class="col-auto">
                 <button type="button" id="tambah" class="btn btn-primary btn-mobile-md" data-bs-toggle="modal" data-bs-target="#exampleModal">
                   <i class="bi bi-plus"></i> Tambah Buku
@@ -28,9 +37,13 @@ $websiteConfig = WebsiteConfigHelper::getConfig();
           </nav>
           <div class="col">
             <form id="searchForm" class="d-flex mb-2" role="search">
-              <input class="form-control me-2 mobile-search" type="search" name="search" placeholder="Ketik Kata Kunci" aria-label="Search" value="<?= esc($search) ?>"/>
+              <input class="form-control me-2 mobile-search" type="search" name="search" placeholder="Ketik Kata Kunci" aria-label="Search" value="<?= esc(
+                  $search
+              ) ?>"/>
               <?php foreach ($selectedGenres as $selected): ?>
-                <input type="hidden" name="genres[]" value="<?= esc($selected) ?>">
+                <input type="hidden" name="genres[]" value="<?= esc(
+                    $selected
+                ) ?>">
               <?php endforeach; ?>
               <button class="btn btn-outline-success btn-mobile-md" type="submit" id="btnSearch"><i class="bi bi-search"></i></button>
             </form>
@@ -40,7 +53,12 @@ $websiteConfig = WebsiteConfigHelper::getConfig();
               <?php endif; ?>
               <select id="genreSelectpicker" class="selectpicker form-control" name="genres[]" multiple data-live-search="true" data-actions-box="true">
                 <?php foreach ($genres as $genre): ?>
-                  <option value="<?= esc($genre) ?>" <?= in_array($genre, $selectedGenres) ? 'selected' : '' ?>>
+                  <option value="<?= esc($genre) ?>" <?= in_array(
+    $genre,
+    $selectedGenres
+)
+    ? "selected"
+    : "" ?>>
                     <?= esc($genre) ?>
                   </option>
                 <?php endforeach; ?>
@@ -48,23 +66,35 @@ $websiteConfig = WebsiteConfigHelper::getConfig();
             </form>
           </div>
         </div>
-        <?= $this->include('partials/book_list') ?>
+        <?= $this->include("partials/book_list") ?>
       </div>
       <div class="col-lg-3">
-        <h2 class="h-mobile-lg mb-lg-2 mb-4" id="newBookTitle"><?= esc($websiteConfig->latestBooksTitle) ?></h2>
+        <h2 class="h-mobile-lg mb-lg-2 mb-4" id="newBookTitle"><?= esc(
+            $websiteConfig->latestBooksTitle
+        ) ?></h2>
         <div class="row">
           <?php foreach ($latestBooks as $latestIndex => $book): ?>
           <div class="col-6 col-lg-12">
             <div class="card border-light mb-3 shadow-sm" class="latest-book-card">
-              <img src="<?= !empty($book['image']) ? esc($book['image']) : 'https://placehold.co/600x400?text=No+Image' ?>" 
+              <img src="<?= !empty($book["image"])
+                  ? esc($book["image"])
+                  : "https://placehold.co/600x400?text=No+Image" ?>" 
                   class="card-img-top latest-book-img height-mobile-xl" 
-                  alt="<?= esc($book['title'] ?? 'Gambar Buku') ?>"
+                  alt="<?= esc($book["title"] ?? "Gambar Buku") ?>"
                   onerror="this.src='https://placehold.co/600x400?text=Image+Error'"
-                  <?php if ($latestIndex === 0): ?>fetchpriority="high"<?php else: ?>loading="lazy"<?php endif; ?>>
+                  <?php if (
+                      $latestIndex === 0
+                  ): ?>fetchpriority="high"<?php else: ?>loading="lazy"<?php endif; ?>>
               <div class="card-body">
-                <h5 class="card-title card-title-mobile"><?= esc($book['title'] ?? 'Tanpa Judul') ?></h5>
-                <p class="card-text card-text-mobile truncate"><?= esc($book['synopsis'] ?? 'Tidak ada sinopsis.') ?></p>
-                <a href="<?= base_url('books/detail?title=' . urlencode($book['title'])) ?>" class="btn btn-secondary btn-mobile-md card-link">Detail <i class="bi bi-arrow-right"></i></a>
+                <h5 class="card-title card-title-mobile"><?= esc(
+                    $book["title"] ?? "Tanpa Judul"
+                ) ?></h5>
+                <p class="card-text card-text-mobile truncate"><?= esc(
+                    $book["synopsis"] ?? "Tidak ada sinopsis."
+                ) ?></p>
+                <a href="<?= base_url(
+                    "books/detail?title=" . urlencode($book["title"])
+                ) ?>" class="btn btn-secondary btn-mobile-md card-link">Detail <i class="bi bi-arrow-right"></i></a>
               </div>
             </div>
           </div>
@@ -113,18 +143,18 @@ $websiteConfig = WebsiteConfigHelper::getConfig();
 
           <div class="row mb-3">
             <div class="col">
-              <label for="illustrator" class="form-label required text-mobile-sm">Illustrator</label>
+              <label for="illustrator" class="form-label text-mobile-sm">Illustrator</label>
               <input type="text" class="form-control form-control-mobile" id="illustrator">
             </div>
             <div class="col">
-              <label for="publisher" class="form-label required text-mobile-sm">Publisher</label>
+              <label for="publisher" class="form-label text-mobile-sm">Publisher</label>
               <input type="text" class="form-control form-control-mobile" id="publisher">
             </div>
           </div>
 
           <div class="row mb-3">
             <div class="col">
-              <label for="series" class="form-label required text-mobile-sm">Series</label>
+              <label for="series" class="form-label text-mobile-sm">Series</label>
               <input type="text" class="form-control form-control-mobile" id="series">
             </div>
             <div class="col">
@@ -214,7 +244,7 @@ $websiteConfig = WebsiteConfigHelper::getConfig();
             </div>
           </div>
           <div class="mb-3">
-            <label for="sinopsis" class="form-label required text-mobile-sm">Sinopsis</label>
+            <label for="sinopsis" class="form-label text-mobile-sm">Sinopsis</label>
             <textarea class="form-control form-control-mobile" id="sinopsis" rows="4" placeholder="Tuliskan sinopsis buku di sini..."></textarea>
           </div>
           <div class="mb-3">
@@ -494,7 +524,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       updateStep('step3', 'active');
       
-      const response = await fetch("<?= base_url('books/add') ?>", {
+      const response = await fetch("<?= base_url("books/add") ?>", {
         method: "POST",
         headers: {
           'Content-Type': 'application/json'
@@ -576,7 +606,6 @@ document.addEventListener("DOMContentLoaded", () => {
   captureBtn.addEventListener('click', async () => {
     const context = cameraCanvas.getContext('2d');
     
-    // Resize image to max 1024px width to reduce size
     const maxWidth = 1024;
     const scale = Math.min(1, maxWidth / cameraPreview.videoWidth);
     
@@ -585,7 +614,6 @@ document.addEventListener("DOMContentLoaded", () => {
     
     context.drawImage(cameraPreview, 0, 0, cameraCanvas.width, cameraCanvas.height);
     
-    // Use lower quality (0.7) to further reduce size
     capturedImageData = cameraCanvas.toDataURL('image/jpeg', 0.7);
     
     previewImage.src = capturedImageData;
@@ -663,143 +691,144 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   async function analyzeImage(imageData, type) {
-  const analyzeBtn = document.getElementById('analyzeBtn');
-  const analyzeUploadBtn = document.getElementById('analyzeUploadBtn');
-  const originalText = analyzeBtn.innerHTML;
-  
-  analyzeBtn.disabled = true;
-  analyzeUploadBtn.disabled = true;
-  analyzeBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Analyzing...';
-
-  try {
-    let response;
-    const apiUrl = '<?= base_url("api/analyze-image") ?>';
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const analyzeUploadBtn = document.getElementById('analyzeUploadBtn');
+    const originalText = analyzeBtn.innerHTML;
     
-    if (type === 'url') {
-      const fullUrl = `${apiUrl}?image_url=${encodeURIComponent(imageData)}`;
-      response = await fetch(fullUrl, {
-        method: 'GET'
-      });
-    } else {
-      let base64String = imageData;
-      if (imageData.startsWith('data:')) {
-        base64String = imageData.split(',')[1];
+    analyzeBtn.disabled = true;
+    analyzeUploadBtn.disabled = true;
+    analyzeBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Analyzing...';
+
+    try {
+      let response;
+      const apiUrl = '<?= base_url("api/analyze-image") ?>';
+      
+      if (type === 'url') {
+        const fullUrl = `${apiUrl}?image_url=${encodeURIComponent(imageData)}`;
+        response = await fetch(fullUrl, {
+          method: 'GET'
+        });
+      } else {
+        let base64String = imageData;
+        if (imageData.startsWith('data:')) {
+          base64String = imageData.split(',')[1];
+        }
+        
+        response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            type: 'base64',
+            image_data: base64String
+          })
+        });
       }
-      
-      response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          type: 'base64',
-          image_data: base64String
-        })
-      });
-    }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    if (data.error) {
-      alert('Gagal menganalisis gambar: ' + data.error);
-      return data;
-    }
-
-    if (data.title === 'BUKAN BUKU' || !data.title) {
-      alert('⚠️ Gambar bukan sampul buku atau tidak dapat dianalisis');
-      return data;
-    }
-
-    const fields = {
-      'judul': data.title,
-      'pengarang': data.author,
-      'illustrator': data.illustrator,
-      'publisher': data.publisher,
-      'series': data.series,
-      'isbn': data.isbn,
-      'ddcNumber': data.ddcNumber || data.ddc,
-      'quantity': data.quantity || 1,
-      'sinopsis': data.synopsis
-    };
-
-    for (const [fieldId, value] of Object.entries(fields)) {
-      const element = document.getElementById(fieldId);
-      if (element && value && value !== 'NOT FOUND') {
-        element.value = value;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    }
 
-    const kategoriSelect = document.getElementById('kategori');
-    if (kategoriSelect && (data.category || data.genre)) {
-      const genreValue = (data.category || data.genre).toLowerCase().trim();
-      
-      let found = false;
-      
-      for (const option of kategoriSelect.options) {
-        if (option.value.toLowerCase() === genreValue) {
-          option.selected = true;
-          found = true;
-          break;
+      const data = await response.json();
+
+      if (data.error) {
+        alert('Gagal menganalisis gambar: ' + data.error);
+        return data;
+      }
+
+      if (data.title === 'BUKAN BUKU' || !data.title) {
+        alert('⚠️ Gambar bukan sampul buku atau tidak dapat dianalisis');
+        return data;
+      }
+
+      const fields = {
+        'judul': data.title,
+        'pengarang': data.author,
+        'illustrator': data.illustrator,
+        'publisher': data.publisher,
+        'series': data.series,
+        'isbn': data.isbn,
+        'ddcNumber': data.ddcNumber || data.ddc,
+        'quantity': data.quantity || 1,
+        'sinopsis': data.synopsis
+      };
+
+      for (const [fieldId, value] of Object.entries(fields)) {
+        const element = document.getElementById(fieldId);
+        if (element && value && value !== 'NOT FOUND') {
+          element.value = value;
         }
       }
-      
-      if (!found) {
+
+      const kategoriSelect = document.getElementById('kategori');
+      if (kategoriSelect && (data.category || data.genre)) {
+        const genreValue = (data.category || data.genre).toLowerCase().trim();
+        
+        let found = false;
+        
         for (const option of kategoriSelect.options) {
-          const optionLower = option.value.toLowerCase();
-          
-          if (optionLower.includes(genreValue) || genreValue.includes(optionLower)) {
+          if (option.value.toLowerCase() === genreValue) {
             option.selected = true;
             found = true;
             break;
           }
         }
-      }
-      
-      if (!found) {
-        const keywords = genreValue.split(' ');
-        for (const option of kategoriSelect.options) {
-          const optionLower = option.value.toLowerCase();
-          for (const keyword of keywords) {
-            if (keyword.length > 3 && optionLower.includes(keyword)) {
+        
+        if (!found) {
+          for (const option of kategoriSelect.options) {
+            const optionLower = option.value.toLowerCase();
+            
+            if (optionLower.includes(genreValue) || genreValue.includes(optionLower)) {
               option.selected = true;
               found = true;
               break;
             }
           }
-          if (found) break;
+        }
+        
+        if (!found) {
+          const keywords = genreValue.split(' ');
+          for (const option of kategoriSelect.options) {
+            const optionLower = option.value.toLowerCase();
+            for (const keyword of keywords) {
+              if (keyword.length > 3 && optionLower.includes(keyword)) {
+                option.selected = true;
+                found = true;
+                break;
+              }
+            }
+            if (found) break;
+          }
         }
       }
+
+      if (window.formSync && window.formSync.channel) {
+        window.formSync.broadcastAIAnalysis(data);
+      }
+
+      alert('✅ Analisis berhasil! Field telah diisi otomatis.\n\n💡 Gambar akan diupload ke Cloudinary setelah RFID dikonfirmasi.');
+      
+      return data;
+
+    } catch (err) {
+      alert('Terjadi kesalahan saat menganalisis gambar: ' + err.message);
+      throw err;
+    } finally {
+      analyzeBtn.disabled = false;
+      analyzeUploadBtn.disabled = false;
+      analyzeBtn.innerHTML = originalText;
     }
-
-    if (window.formSync && window.formSync.channel) {
-      window.formSync.broadcastAIAnalysis(data);
-    }
-
-    alert('✅ Analisis berhasil! Field telah diisi otomatis.\n\n💡 Gambar akan diupload ke Cloudinary setelah RFID dikonfirmasi.');
-    
-    return data;
-
-  } catch (err) {
-    alert('Terjadi kesalahan saat menganalisis gambar: ' + err.message);
-    throw err;
-  } finally {
-    analyzeBtn.disabled = false;
-    analyzeUploadBtn.disabled = false;
-    analyzeBtn.innerHTML = originalText;
   }
-}
 
-window.analyzeImage = analyzeImage;
+  window.analyzeImage = analyzeImage;
+
   function loadNextKodeSekolah() {
     $('#kode_sekolah').val('Loading...');
     
     $.ajax({
-      url: "<?= base_url('books/next-kode') ?>",
+      url: "<?= base_url("books/next-kode") ?>",
       type: "GET",
       dataType: "json",
       success: function(response) {
@@ -857,7 +886,7 @@ window.analyzeImage = analyzeImage;
       isbn: $('#isbn').val() || '',
       ddcNumber: $('#ddcNumber').val() || '',
       gambar: capturedImageData || $('#gambarLink').val() || '',
-      quantity: $('#quantity').val() || '1',
+      quantity: $('#quantity').val(),
       sinopsis: $('#sinopsis').val() || ''
     };
 
@@ -882,6 +911,12 @@ window.analyzeImage = analyzeImage;
     if (!bookData.kategori) {
       alert('⚠️ Kategori harus dipilih!');
       $('#kategori').focus();
+      return;
+    }
+
+    if (!bookData.quantity || isNaN(bookData.quantity) || parseInt(bookData.quantity) < 1) {
+      alert('⚠️ Quantity harus berupa angka dan minimal 1!');
+      $('#quantity').focus();
       return;
     }
 
@@ -992,40 +1027,98 @@ window.analyzeImage = analyzeImage;
     });
   }
 
+  const BASE_URL = "<?= base_url() ?>";
+
+  function escHtml(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function renderBooks(booksOnPage) {
+    if (!booksOnPage || booksOnPage.length === 0) {
+      return `<div class="col">
+        <div class="alert alert-warning">Buku tidak ditemukan.</div>
+      </div>`;
+    }
+
+    return booksOnPage.map(function(book, index) {
+      const imageUrl = (book.image && book.image.match(/^https?:\/\//))
+        ? escHtml(book.image)
+        : (book.image ? BASE_URL + escHtml(book.image) : 'https://placehold.co/400x600/e9ecef/6c757d?text=No+Image');
+
+      const fetchPriority = index === 0 ? 'fetchpriority="high"' : 'loading="lazy"';
+      const detailUrl = BASE_URL + 'books/detail?title=' + encodeURIComponent(book.title);
+
+      return `
+      <div class="col-lg-6 mb-4">
+        <div class="row g-3">
+          <div class="col-4">
+            <div class="card shadow-sm h-100">
+              <div class="card-body p-2">
+                <img
+                  src="${imageUrl}"
+                  class="img-fluid book-thumbnail-img height-mobile-xl"
+                  alt="${escHtml(book.title ?? 'Gambar Buku')}"
+                  onerror="this.onerror=null; this.src='https://placehold.co/400x600/e9ecef/6c757d?text=Image+Error'; this.classList.add('img-error');"
+                  ${fetchPriority}>
+              </div>
+            </div>
+          </div>
+          <div class="col-8">
+            <h2 class="text-uppercase text-primary mt-2 mb-2 h-mobile-md">${escHtml(book.title)}</h2>
+            <p class="mb-1 text-muted text-mobile-lg"><i class="bi bi-person"></i> ${escHtml(book.author)}</p>
+            <p class="mb-1"><span class="badge bg-secondary badge-mobile-md">${escHtml(book.genre)}</span></p>
+            <p class="mb-2 text-muted text-mobile-lg"><i class="bi bi-calendar"></i> ${escHtml(book.year)}</p>
+            <div class="d-grid gap-1 d-md-flex justify-content-md-start">
+              <a href="${detailUrl}" class="btn btn-secondary btn-mobile-md">
+                <i class="bi bi-eye"></i> Detail
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
   function loadBooks(page = 1) {
     let formData = $('#selectpickerForm').serialize();
-    let searchValue = $('input[name="search"]').val();
+    const searchValue = $('input[name="search"]').val();
     if (searchValue) {
       formData += '&search=' + encodeURIComponent(searchValue);
     }
     formData += '&page=' + page;
 
     $.ajax({
-      url: "<?= base_url('books/filter') ?>",
+      url: "<?= base_url("books/filter") ?>",
       type: "GET",
       data: formData,
       dataType: "json",
       success: function(response) {
-        $('#booksContainer').html(response.html);
-        
+        $('#booksContainer .row').html(renderBooks(response.booksOnPage));
+
         totalPages = response.totalPages;
         currentPage = response.page;
-        
+
         if (response.genres && response.genres.length > 0) {
           const currentGenres = $('#genreSelectpicker option').map(function() {
             return $(this).val();
           }).get();
-          
-          if (currentGenres.length !== response.genres.length || 
+
+          if (currentGenres.length !== response.genres.length ||
               !currentGenres.every((v, i) => v === response.genres[i])) {
             updateGenreSelectPicker(response.genres);
           }
         }
-        
+
         renderBookPagination();
       },
       error: function(xhr, status, error) {
-        $('#booksContainer').html('<div class="alert alert-danger">Error loading books. Please try again.</div>');
+        $('#booksContainer .row').html('<div class="col"><div class="alert alert-danger">Error loading books. Please try again.</div></div>');
       }
     });
   }
@@ -1076,7 +1169,7 @@ window.analyzeImage = analyzeImage;
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<script src="<?= base_url('js/supabase-config.js') ?>"></script>
+<script src="<?= base_url("js/supabase-config.js") ?>"></script>
 
 <script>
 class FormSyncManager {
@@ -1557,7 +1650,6 @@ class FormSyncManager {
   }
 }
 
-// Initialize on page load
 let formSync = null;
 
 document.addEventListener('DOMContentLoaded', () => {

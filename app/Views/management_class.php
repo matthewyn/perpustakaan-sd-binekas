@@ -1,5 +1,5 @@
-<?= $this->extend('layout') ?>
-<?= $this->section('content') ?>
+<?= $this->extend("layout") ?>
+<?= $this->section("content") ?>
 <style>
     .page-item.active .page-link {
         background-color: #f4f4f4;
@@ -76,19 +76,30 @@
                             </tr>
                         </thead>
                         <tbody id="kelasTableBody">
-                            <?php $i=1; foreach($classes as $class): ?>
-                                <tr data-class-id="<?= $class['id'] ?>">
+                            <?php
+                            $i = 1;
+                            foreach ($classes as $class): ?>
+                                <tr data-class-id="<?= $class["id"] ?>">
                                     <td><?= $i++ ?></td>
-                                    <td><?= esc($class['nama_kelas'] ?? '-') ?></td>
-                                    <td><?= $class['student_count'] ?? 0 ?> siswa</td>
-                                    <td><?= isset($class['created_at']) ? date('d/m/Y', strtotime($class['created_at'])) : '-' ?></td>
+                                    <td><?= esc(
+                                        $class["nama_kelas"] ?? "-"
+                                    ) ?></td>
+                                    <td><?= $class["student_count"] ??
+                                        0 ?> siswa</td>
+                                    <td><?= isset($class["created_at"])
+                                        ? date(
+                                            "d/m/Y",
+                                            strtotime($class["created_at"])
+                                        )
+                                        : "-" ?></td>
                                     <td>
                                         <button class="btn btn-sm btn-info btn-view-class">Detail</button>
                                         <button class="btn btn-sm btn-warning btn-edit-class">Edit</button>
                                         <button class="btn btn-sm btn-danger btn-delete-class">Hapus</button>
                                     </td>
                                 </tr>
-                            <?php endforeach; ?>
+                            <?php endforeach;
+                            ?>
                         </tbody>
                     </table>
                 </div>
@@ -167,13 +178,9 @@
       </div>
       <div class="modal-body">
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-12">
                 <h6>Daftar Siswa (<span id="detailStudentCount">0</span>)</h6>
                 <div class="list-group" id="detailStudentsList"></div>
-            </div>
-            <div class="col-md-6">
-                <h6>Daftar Buku (<span id="detailBookCount">0</span>)</h6>
-                <div class="list-group" id="detailBooksList"></div>
             </div>
         </div>
       </div>
@@ -197,7 +204,7 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         const formData = new FormData(this);
         
-        fetch("<?= base_url('management-class/add') ?>", {
+        fetch("<?= base_url("classes/add") ?>", {
             method: 'POST',
             body: formData
         })
@@ -219,7 +226,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const row = this.closest('tr');
             currentClassId = row.dataset.classId;
             
-            fetch(`<?= base_url('management-class/getClassMembers') ?>/${currentClassId}`)
+            fetch(`<?= base_url(
+                "classes/getClassMembers"
+            ) ?>/${currentClassId}`)
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
@@ -235,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function loadStudentsForEdit(assignedStudents) {
-        fetch("<?= base_url('management-class/getUnassignedStudents') ?>")
+        fetch("<?= base_url("classes/getUnassignedStudents") ?>")
             .then(r => r.json())
             .then(data => {
                 const available = data.students || [];
@@ -325,7 +334,7 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('nama_kelas', document.getElementById('editNamaKelas').value);
         formData.append('student_ids', JSON.stringify(studentIds));
         
-        fetch(`<?= base_url('management-class/update') ?>/${currentClassId}`, {
+        fetch(`<?= base_url("classes/update") ?>/${currentClassId}`, {
             method: 'POST',
             body: formData
         })
@@ -345,21 +354,16 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function() {
             const classId = this.closest('tr').dataset.classId;
             
-            fetch(`<?= base_url('management-class/getClassMembers') ?>/${classId}`)
+            fetch(`<?= base_url("classes/getClassMembers") ?>/${classId}`)
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
                         document.getElementById('detailNamaKelas').textContent = data.class.nama_kelas;
                         document.getElementById('detailStudentCount').textContent = data.students.length;
-                        document.getElementById('detailBookCount').textContent = data.books.length;
                         
                         document.getElementById('detailStudentsList').innerHTML = data.students.map(s => 
                             `<div class="list-group-item">${s.nama} (${s.nisn})</div>`
                         ).join('') || '<div class="text-muted">Tidak ada siswa</div>';
-                        
-                        document.getElementById('detailBooksList').innerHTML = data.books.map(b => 
-                            `<div class="list-group-item">${b.title} <span class="badge bg-primary">${b.class_quantity} buku</span></div>`
-                        ).join('') || '<div class="text-muted">Tidak ada buku</div>';
                         
                         detailModal.show();
                     }
@@ -373,7 +377,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const classId = this.closest('tr').dataset.classId;
             
-            fetch(`<?= base_url('management-class/delete') ?>/${classId}`, { method: 'POST' })
+            fetch(`<?= base_url(
+                "classes/delete"
+            ) ?>/${classId}`, { method: 'POST' })
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
@@ -411,9 +417,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<?php if (session()->getFlashdata('message')): ?>
+<?php if (session()->getFlashdata("message")): ?>
 <script>
-    showToast("<?= esc(session()->getFlashdata('message'), 'js') ?>");
+    showToast("<?= esc(session()->getFlashdata("message"), "js") ?>");
 </script>
 <?php endif; ?>
 

@@ -1,5 +1,5 @@
-<?= $this->extend('layout') ?>
-<?= $this->section('content') ?>
+<?= $this->extend("layout") ?>
+<?= $this->section("content") ?>
 <style>
     .page-item.active .page-link {
         background-color: #f4f4f4;
@@ -20,57 +20,6 @@
     }
     .table tbody tr {
         cursor: pointer;
-    }
-
-    .camera-container {
-        background: #f8f9fa;
-        padding: 1rem;
-        border-radius: 8px;
-    }
-
-    .nav-tabs .nav-link {
-        color: #6c757d;
-    }
-
-    .nav-tabs .nav-link.active {
-        color: #0d6efd;
-        font-weight: 500;
-    }
-
-    #rfid_uid_confirm:focus {
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 252, 0.25);
-    }
-
-    .progress-step {
-        padding: 0.5rem;
-        margin: 0.25rem 0;
-        border-left: 3px solid #0d6efd;
-        background: #f8f9fa;
-    }
-
-    .progress-step.active {
-        background: #e7f1ff;
-        font-weight: 500;
-    }
-
-    .progress-step.completed {
-        border-left-color: #198754;
-        background: #d1e7dd;
-    }
-
-    .progress-step.failed {
-        border-left-color: #dc3545;
-        background: #f8d7da;
-    }
-
-    .cloudinary-link {
-        word-break: break-all;
-        background: #f8f9fa;
-        padding: 0.5rem;
-        border-radius: 4px;
-        font-family: monospace;
-        font-size: 0.875rem;
     }
 
     /* Toast Notification Styles */
@@ -137,13 +86,12 @@
     </nav>
 
     <div class="d-flex justify-content-end gap-2 mt-4">
-        <button type="button" class="btn btn-primary" id="btnTambahBuku">
-            <i class="bi bi-plus"></i> Tambah Buku
-        </button>
         <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#importModal">
             <i class="bi bi-file-earmark-arrow-up"></i> Import JSON
         </button>
-        <a href="<?= base_url('management-buku/export-csv') ?>" class="btn btn-success">
+        <a href="<?= base_url(
+            "management-buku/export-csv"
+        ) ?>" class="btn btn-success">
             <i class="bi bi-download"></i> Export CSV
         </a>
     </div>
@@ -173,22 +121,35 @@
                             </tr>
                         </thead>
                         <tbody id="bukuTableBody">
-                            <?php $i=1; foreach($books as $book): ?>
-                                <tr data-book='<?= json_encode($book, JSON_HEX_QUOT | JSON_HEX_APOS | JSON_UNESCAPED_UNICODE) ?>'>
+                            <?php
+                            $i = 1;
+                            foreach ($books as $book): ?>
+                                <tr data-book='<?= json_encode(
+                                    $book,
+                                    JSON_HEX_QUOT |
+                                        JSON_HEX_APOS |
+                                        JSON_UNESCAPED_UNICODE
+                                ) ?>'>
                                     <td><?= $i++ ?></td>
-                                    <td><?= esc($book['code'] ?? '-') ?></td>
-                                    <td><?= esc($book['title'] ?? '-') ?></td>
-                                    <td><?= esc($book['author'] ?? '-') ?></td>
-                                    <td><?= esc($book['publisher'] ?? '-') ?></td>
-                                    <td><?= esc($book['year'] ?? '-') ?></td>
+                                    <td><?= esc($book["code"] ?? "-") ?></td>
+                                    <td><?= esc($book["title"] ?? "-") ?></td>
+                                    <td><?= esc($book["author"] ?? "-") ?></td>
+                                    <td><?= esc(
+                                        $book["publisher"] ?? "-"
+                                    ) ?></td>
+                                    <td><?= esc($book["year"] ?? "-") ?></td>
                                     <td>
                                         <button class="btn btn-sm btn-info btn-detail-buku" type="button" title="Lihat Detail"><i class="bi bi-eye"></i></button>
                                         <button class="btn btn-sm btn-warning btn-edit-buku" type="button">Edit</button>
-                                        <a href="<?= base_url('management-buku/delete?code='.urlencode($book['code'])) ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin menghapus?')">Hapus</a>
+                                        <a href="<?= base_url(
+                                            "management-buku/delete?code=" .
+                                                urlencode($book["code"])
+                                        ) ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin menghapus?')">Hapus</a>
                                     </td>
                                 </tr>
-                            <?php endforeach; ?>
-                            <?php if(empty($books)): ?>
+                            <?php endforeach;
+                            ?>
+                            <?php if (empty($books)): ?>
                                 <tr>
                                     <td colspan="7" class="text-center">Data buku kosong</td>
                                 </tr>
@@ -204,26 +165,21 @@
     </div>
 </div>
 
-<div class="modal fade" id="addModal" tabindex="-1" aria-hidden="true">
+<!-- ===== EDIT MODAL ===== -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
-    <form id="bukuForm" action="<?= base_url('management-buku/add') ?>" method="post" enctype="multipart/form-data" class="modal-content">
+    <form id="bukuForm" class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="modalBukuTitle">Tambah Buku</h5>
+        <h5 class="modal-title">Edit Buku</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <input type="hidden" name="editId" id="editId">
-        
+
         <div class="row mb-3">
             <div class="col">
                 <label for="code" class="form-label required">Kode</label>
-                <div class="input-group">
-                    <input type="text" name="code" class="form-control" id="code" required>
-                    <button class="btn btn-outline-secondary" type="button" id="generateKodeBtn" title="Generate Kode Baru">
-                        <i class="bi bi-arrow-clockwise"></i> Auto
-                    </button>
-                </div>
-                <small class="form-text text-muted">Auto-generate atau ketik manual</small>
+                <input type="text" name="code" class="form-control" id="code" required>
             </div>
         </div>
 
@@ -240,18 +196,18 @@
 
         <div class="row mb-3">
             <div class="col">
-                <label for="illustrator" class="form-label required">Illustrator</label>
+                <label for="illustrator" class="form-label">Illustrator</label>
                 <input type="text" name="illustrator" class="form-control" id="illustrator">
             </div>
             <div class="col">
-                <label for="publisher" class="form-label required">Penerbit</label>
+                <label for="publisher" class="form-label">Penerbit</label>
                 <input type="text" name="publisher" class="form-control" id="publisher">
             </div>
         </div>
 
         <div class="row mb-3">
             <div class="col">
-                <label for="series" class="form-label required">Series</label>
+                <label for="series" class="form-label">Series</label>
                 <input type="text" name="series" class="form-control" id="series">
             </div>
             <div class="col">
@@ -301,7 +257,7 @@
                 <input type="text" name="ddcNumber" class="form-control" id="ddcNumber">
             </div>
             <div class="col">
-                <label for="year" class="form-label required">Tahun</label>
+                <label for="year" class="form-label">Tahun</label>
                 <input type="number" name="year" class="form-control" id="year">
             </div>
             <div class="col">
@@ -311,93 +267,26 @@
         </div>
 
         <div class="mb-3">
-            <label class="form-label required">Gambar</label>
-            
-            <ul class="nav nav-tabs nav-tabs-mobile mb-2" id="imageInputTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="url-tab-mgmt" data-bs-toggle="tab" data-bs-target="#url-panel-mgmt" type="button" role="tab">
-                        <i class="bi bi-link-45deg"></i> URL
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="camera-tab-mgmt" data-bs-toggle="tab" data-bs-target="#camera-panel-mgmt" type="button" role="tab">
-                        <i class="bi bi-camera"></i> Camera
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="upload-tab-mgmt" data-bs-toggle="tab" data-bs-target="#upload-panel-mgmt" type="button" role="tab">
-                        <i class="bi bi-upload"></i> Upload
-                    </button>
-                </li>
-            </ul>
-
-            <div class="tab-content" id="imageInputTabContent">
-                <div class="tab-pane fade show active" id="url-panel-mgmt" role="tabpanel">
-                    <div class="input-group">
-                        <input type="text" class="form-control" id="imageLink" placeholder="Paste image URL here">
-                        <button class="btn btn-primary" type="button" id="analyzeBtnMgmt">
-                            <i class="bi bi-search"></i> Analyze
-                        </button>
-                    </div>
-                </div>
-
-                <div class="tab-pane fade" id="camera-panel-mgmt" role="tabpanel">
-                    <div class="camera-container">
-                        <video id="cameraPreviewMgmt" autoplay playsinline style="width: 100%; max-height: 300px; display: none; border-radius: 8px; background: #000;"></video>
-                        <canvas id="cameraCanvasMgmt" style="display: none;"></canvas>
-                        
-                        <div class="d-grid gap-2 mb-2">
-                            <button class="btn btn-outline-primary" type="button" id="startCameraBtnMgmt">
-                                <i class="bi bi-camera-video"></i> Start Camera
-                            </button>
-                            <button class="btn btn-success" type="button" id="captureBtnMgmt" style="display: none;">
-                                <i class="bi bi-camera"></i> Capture Photo
-                            </button>
-                            <button class="btn btn-outline-secondary" type="button" id="stopCameraBtnMgmt" style="display: none;">
-                                <i class="bi bi-stop-circle"></i> Stop Camera
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="tab-pane fade" id="upload-panel-mgmt" role="tabpanel">
-                    <div class="input-group">
-                        <input type="file" class="form-control" id="fileUploadMgmt" accept="image/*">
-                        <button class="btn btn-primary" type="button" id="analyzeUploadBtnMgmt">
-                            <i class="bi bi-search"></i> Analyze
-                        </button>
-                    </div>
-                    <small class="form-text text-muted">Accepted formats: JPG, PNG, WEBP</small>
-                </div>
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <img id="previewImageMgmt" src="" alt="Preview" style="max-width: 100%; max-height: 300px; display:none; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <label class="form-label required">Gambar (URL)</label>
+            <input type="text" name="image" class="form-control" id="imageLink" placeholder="Paste image URL here">
             <small class="text-muted" id="currentImageText"></small>
         </div>
 
         <div class="mb-3">
-            <label for="synopsis" class="form-label required">Sinopsis</label>
+            <img id="previewImageMgmt" src="" alt="Preview" style="max-width: 100%; max-height: 300px; display:none; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        </div>
+
+        <div class="mb-3">
+            <label for="synopsis" class="form-label">Sinopsis</label>
             <textarea name="synopsis" class="form-control" id="synopsis" rows="3"></textarea>
         </div>
 
-        <div class="mb-3" id="uidSection" style="display: none;">
-            <label class="form-label fw-bold">
-                <i class="bi bi-credit-card"></i> UID RFID 
-                <span class="text-danger">*</span>
-                <small class="text-muted">(Masukkan <span id="quantityRequiredLabel">1</span> RFID)</small>
+        <div class="mb-3" id="uidSection">
+            <label class="form-label fw-bold required">
+                <i class="bi bi-credit-card"></i> UID RFID
             </label>
-            <small class="d-block text-muted mb-2">Setiap exemplar buku harus punya 1 RFID UID unik</small>
-            <div class="uid-container" id="uidContainer">
-                <div class="input-group mb-2">
-                    <input type="text" name="uid[]" class="form-control" placeholder="RFID UID #1">
-                    <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
-            </div>
-            <button class="btn btn-sm btn-primary" type="button" id="btnAddUid">
+            <div class="uid-container" id="uidContainer"></div>
+            <button class="btn btn-sm btn-primary mt-1" type="button" id="btnAddUid">
                 <i class="bi bi-plus"></i> Tambah UID Manual
             </button>
         </div>
@@ -408,7 +297,7 @@
                     <input class="form-check-input" type="checkbox" role="switch" id="isOneDayBook" name="isOneDayBook">
                     <label class="form-check-label" for="isOneDayBook">Buku 1 Hari</label>
                 </div>
-                <div class="form-check form-switch" id="availableSection">
+                <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" role="switch" id="available" name="available">
                     <label class="form-check-label" for="available">Tersedia</label>
                 </div>
@@ -423,76 +312,7 @@
   </div>
 </div>
 
-<div class="modal fade" id="rfidModal" tabindex="-1" aria-labelledby="rfidModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title" id="rfidModalLabel">
-          <i class="bi bi-credit-card-2-front"></i> Scan RFID Card
-        </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="rfidModalClose"></button>
-      </div>
-      <div class="modal-body">
-        <div class="text-center mb-3">
-          <i class="bi bi-upc-scan" style="font-size: 3rem; color: #0d6efd;"></i>
-          <p class="mt-2 text-muted" id="rfidInstruction">Silakan scan kartu RFID sekarang</p>
-        </div>
-        
-        <div class="mb-3">
-          <label for="rfid_uid_confirm" class="form-label fw-bold">RFID UID <span class="text-danger">*</span></label>
-          <input 
-            type="text" 
-            class="form-control form-control-lg text-center" 
-            id="rfid_uid_confirm" 
-            placeholder="Scan atau ketik RFID UID" 
-            autocomplete="off"
-            style="letter-spacing: 2px; font-family: monospace;">
-        </div>
-
-        <div class="card bg-light" id="bookSummaryCard">
-          <div class="card-body">
-            <h6 class="card-subtitle mb-2 text-muted">Ringkasan Buku:</h6>
-            <p class="mb-1"><strong>Judul:</strong> <span id="bookSummaryTitle">-</span></p>
-            <p class="mb-1"><strong>Pengarang:</strong> <span id="bookSummaryAuthor">-</span></p>
-            <p class="mb-0"><strong>Kode:</strong> <span id="bookSummaryKode">-</span></p>
-          </div>
-        </div>
-
-        <div id="progressSteps" class="mt-3" style="display: none;">
-          <h6 class="mb-2"><i class="bi bi-hourglass-split"></i> Progress:</h6>
-          <div class="progress-step" id="step1">
-            <i class="bi bi-circle"></i> <span>Validating RFID...</span>
-          </div>
-          <div class="progress-step" id="step2">
-            <i class="bi bi-circle"></i> <span>Uploading image to Cloudinary...</span>
-          </div>
-          <div class="progress-step" id="step3">
-            <i class="bi bi-circle"></i> <span>Saving to database...</span>
-          </div>
-        </div>
-
-        <div id="cloudinaryResult" class="mt-3" style="display: none;">
-          <div class="alert alert-success mb-0">
-            <strong><i class="bi bi-check-circle"></i> Cloudinary Upload Successful!</strong>
-            <div class="mt-2">
-              <small class="text-muted">URL:</small>
-              <div class="cloudinary-link" id="cloudinaryUrl"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="rfidCancelBtn">
-          <i class="bi bi-x-circle"></i> Batal
-        </button>
-        <button type="button" class="btn btn-primary" id="confirmRfidBtn" disabled>
-          <i class="bi bi-check-circle"></i> Konfirmasi & Simpan
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
+<!-- ===== DETAIL MODAL ===== -->
 <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -509,7 +329,7 @@
           <h5 class="border-bottom pb-2 mb-3">
             <i class="bi bi-book"></i> Informasi Buku
           </h5>
-          
+
           <div class="row mb-3">
             <div class="col-md-6">
               <label class="text-muted small">Kode</label>
@@ -642,9 +462,12 @@
   </div>
 </div>
 
+<!-- ===== IMPORT MODAL ===== -->
 <div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
-    <form action="<?= base_url('management-buku/importJson') ?>" method="post" enctype="multipart/form-data" class="modal-content">
+    <form action="<?= base_url(
+        "management-buku/importJson"
+    ) ?>" method="post" enctype="multipart/form-data" class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Import Buku dari JSON</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -668,13 +491,13 @@ function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
     toast.className = `custom-toast ${type}`;
-    
+
     const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : type === 'info' ? 'ℹ' : '!';
     toast.innerHTML = `
         <div style="margin-right: 12px; font-size: 20px; font-weight: bold;">${icon}</div>
         <div style="flex: 1;">${message}</div>
     `;
-    
+
     container.appendChild(toast);
     setTimeout(() => {
         toast.style.animation = 'slideIn 0.3s ease-out reverse';
@@ -688,8 +511,8 @@ document.addEventListener("DOMContentLoaded", function() {
     const rowsPerPage = 25;
     let currentPage = 1;
     const bukuForm = document.getElementById('bukuForm');
-    const addModal = new bootstrap.Modal(document.getElementById('addModal'));
-    
+    const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+
     let sortState = {
         column: null,
         direction: 'asc'
@@ -709,10 +532,10 @@ document.addEventListener("DOMContentLoaded", function() {
             th.style.cursor = 'pointer';
             th.style.userSelect = 'none';
             th.innerHTML += ' <i class="bi bi-arrow-down-up" style="font-size: 0.8rem; opacity: 0.5;"></i>';
-            
+
             th.addEventListener('click', function() {
                 const icon = th.querySelector('i');
-                
+
                 document.querySelectorAll('thead tr th').forEach(header => {
                     const i = header.querySelector('i');
                     if (i && header !== th) {
@@ -720,19 +543,19 @@ document.addEventListener("DOMContentLoaded", function() {
                         i.style.opacity = '0.5';
                     }
                 });
-                
+
                 if (sortState.column === colName) {
                     sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
                 } else {
                     sortState.column = colName;
                     sortState.direction = 'asc';
                 }
-                
+
                 if (sortState.column === colName) {
                     icon.className = sortState.direction === 'asc' ? 'bi bi-sort-up' : 'bi bi-sort-down';
                     icon.style.opacity = '1';
                 }
-                
+
                 currentPage = 1;
                 filterTable();
             });
@@ -741,17 +564,17 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function sortRows(rows, column, direction) {
         const columnIndex = columnHeaders[column];
-        
+
         return rows.sort((rowA, rowB) => {
             let valueA = rowA.children[columnIndex]?.textContent.trim() || '';
             let valueB = rowB.children[columnIndex]?.textContent.trim() || '';
-            
+
             if (!isNaN(valueA) && valueA !== '') valueA = parseFloat(valueA);
             if (!isNaN(valueB) && valueB !== '') valueB = parseFloat(valueB);
-            
+
             if (typeof valueA === 'string') valueA = valueA.toLowerCase();
             if (typeof valueB === 'string') valueB = valueB.toLowerCase();
-            
+
             if (direction === 'asc') {
                 return valueA > valueB ? 1 : valueA < valueB ? -1 : 0;
             } else {
@@ -760,471 +583,30 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    let cameraStreamMgmt = null;
-    let capturedImageDataMgmt = null;
+    // ===== EDIT BOOK =====
 
-    const cameraPreviewMgmt = document.getElementById('cameraPreviewMgmt');
-    const cameraCanvasMgmt = document.getElementById('cameraCanvasMgmt');
-    const startCameraBtnMgmt = document.getElementById('startCameraBtnMgmt');
-    const captureBtnMgmt = document.getElementById('captureBtnMgmt');
-    const stopCameraBtnMgmt = document.getElementById('stopCameraBtnMgmt');
-    const previewImageMgmt = document.getElementById('previewImageMgmt');
-
-    startCameraBtnMgmt.addEventListener('click', async () => {
-        try {
-            cameraStreamMgmt = await navigator.mediaDevices.getUserMedia({ 
-                video: { 
-                    facingMode: 'environment',
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 }
-                } 
-            });
-            
-            cameraPreviewMgmt.srcObject = cameraStreamMgmt;
-            cameraPreviewMgmt.style.display = 'block';
-            startCameraBtnMgmt.style.display = 'none';
-            captureBtnMgmt.style.display = 'block';
-            stopCameraBtnMgmt.style.display = 'block';
-            previewImageMgmt.style.display = 'none';
-        } catch (err) {
-            console.error('Camera access error:', err);
-            showToast('Unable to access camera. Please check permissions.', 'error');
-        }
-    });
-
-    captureBtnMgmt.addEventListener('click', async () => {
-        const context = cameraCanvasMgmt.getContext('2d');
-        
-        const maxWidth = 1024;
-        const scale = Math.min(1, maxWidth / cameraPreviewMgmt.videoWidth);
-        
-        cameraCanvasMgmt.width = cameraPreviewMgmt.videoWidth * scale;
-        cameraCanvasMgmt.height = cameraPreviewMgmt.videoHeight * scale;
-        
-        context.drawImage(cameraPreviewMgmt, 0, 0, cameraCanvasMgmt.width, cameraCanvasMgmt.height);
-        
-        capturedImageDataMgmt = cameraCanvasMgmt.toDataURL('image/jpeg', 0.7);
-        
-        previewImageMgmt.src = capturedImageDataMgmt;
-        previewImageMgmt.style.display = 'block';
-        
-        stopCameraMgmt();
-        
-        await analyzeImageMgmt(capturedImageDataMgmt, 'base64');
-    });
-
-    stopCameraBtnMgmt.addEventListener('click', stopCameraMgmt);
-
-    function stopCameraMgmt() {
-        if (cameraStreamMgmt) {
-            cameraStreamMgmt.getTracks().forEach(track => track.stop());
-            cameraStreamMgmt = null;
-        }
-        cameraPreviewMgmt.style.display = 'none';
-        cameraPreviewMgmt.srcObject = null;
-        startCameraBtnMgmt.style.display = 'block';
-        captureBtnMgmt.style.display = 'none';
-        stopCameraBtnMgmt.style.display = 'none';
+    function resetForm() {
+        bukuForm.reset();
+        document.getElementById('editId').value = '';
+        document.getElementById('currentImageText').textContent = '';
+        document.getElementById('previewImageMgmt').style.display = 'none';
+        document.getElementById('uidContainer').innerHTML = '';
     }
-
-    document.getElementById('analyzeBtnMgmt').addEventListener('click', async () => {
-        const imageUrl = document.getElementById('imageLink').value.trim();
-        
-        if (!imageUrl) {
-            showToast('Masukkan link gambar terlebih dahulu.', 'error');
-            return;
-        }
-
-        previewImageMgmt.src = imageUrl;
-        previewImageMgmt.style.display = 'block';
-        
-        await analyzeImageMgmt(imageUrl, 'url');
-    });
-
-    document.getElementById('analyzeUploadBtnMgmt').addEventListener('click', async () => {
-        const fileInput = document.getElementById('fileUploadMgmt');
-        const file = fileInput.files[0];
-        
-        if (!file) {
-            showToast('Pilih file gambar terlebih dahulu.', 'error');
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const img = new Image();
-            img.onload = async () => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                
-                const maxWidth = 1024;
-                const scale = Math.min(1, maxWidth / img.width);
-                
-                canvas.width = img.width * scale;
-                canvas.height = img.height * scale;
-                
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                
-                const compressedData = canvas.toDataURL('image/jpeg', 0.7);
-                
-                previewImageMgmt.src = compressedData;
-                previewImageMgmt.style.display = 'block';
-                
-                capturedImageDataMgmt = compressedData;
-                
-                await analyzeImageMgmt(compressedData, 'base64');
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-    });
-
-    async function analyzeImageMgmt(imageData, type) {
-        const analyzeBtn = document.getElementById('analyzeBtnMgmt');
-        const analyzeUploadBtn = document.getElementById('analyzeUploadBtnMgmt');
-        const originalText = analyzeBtn.innerHTML;
-        
-        analyzeBtn.disabled = true;
-        analyzeUploadBtn.disabled = true;
-        analyzeBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Analyzing...';
-
-        try {
-            let response;
-            const apiUrl = '<?= base_url("api/analyze-image") ?>';
-            
-            if (type === 'url') {
-                const fullUrl = `${apiUrl}?image_url=${encodeURIComponent(imageData)}`;
-                response = await fetch(fullUrl, {
-                    method: 'GET'
-                });
-            } else {
-                let base64String = imageData;
-                if (imageData.startsWith('data:')) {
-                    base64String = imageData.split(',')[1];
-                }
-                
-                response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        type: 'base64',
-                        image_data: base64String
-                    })
-                });
-            }
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            if (data.error) {
-                showToast('Gagal menganalisis gambar: ' + data.error, 'error');
-                return data;
-            }
-
-            if (data.title === 'BUKAN BUKU' || !data.title) {
-                showToast('Gambar bukan sampul buku atau tidak dapat dianalisis', 'error');
-                return data;
-            }
-            
-            const fields = {
-                'title': data.title,
-                'author': data.author,
-                'illustrator': data.illustrator,
-                'publisher': data.publisher,
-                'series': data.series,
-                'isbn': data.isbn,
-                'year': data.year,
-                'synopsis': data.synopsis,
-                'ddcNumber': data.ddcNumber
-            };
-
-            for (const [fieldName, value] of Object.entries(fields)) {
-                const element = bukuForm.querySelector(`[name="${fieldName}"]`);
-                if (element && value && value !== 'NOT FOUND') {
-                    element.value = value;
-                }
-            }
-
-            const genreSelect = bukuForm.querySelector('[name="genre"]');
-            if (genreSelect && (data.category || data.genre)) {
-                const genreValue = (data.category || data.genre).toLowerCase().trim();
-                
-                let found = false;
-                for (const option of genreSelect.options) {
-                    if (option.value.toLowerCase() === genreValue) {
-                        option.selected = true;
-                        found = true;
-                        break;
-                    }
-                }
-                
-                if (!found) {
-                    for (const option of genreSelect.options) {
-                        const optionLower = option.value.toLowerCase();
-                        if (optionLower.includes(genreValue) || genreValue.includes(optionLower)) {
-                            option.selected = true;
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            showToast('Analisis berhasil! Field telah diisi otomatis.', 'success');
-            
-            // Show model used notification
-            if (data.model_used) {
-                const modelName = data.model_used === 'GEMINI' ? '🤖 GEMINI' : '🤖 CHATGPT';
-                showToast(`Model yang digunakan: ${modelName}`, 'info');
-            }
-            
-            return data;
-
-        } catch (err) {
-            showToast('Terjadi kesalahan saat menganalisis gambar: ' + err.message, 'error');
-            throw err;
-        } finally {
-            analyzeBtn.disabled = false;
-            analyzeUploadBtn.disabled = false;
-            analyzeBtn.innerHTML = originalText;
-        }
-    }
-
-    const CLOUDINARY_CONFIG = {
-        cloud_name: 'dqx1ofl8j',
-        upload_preset: 'ml_default'
-    };
-
-    async function uploadToCloudinary(imageData) {
-        try {
-            const formData = new FormData();
-            
-            let fileToUpload = imageData;
-            if (imageData.startsWith('data:')) {
-                const response = await fetch(imageData);
-                const blob = await response.blob();
-                fileToUpload = blob;
-            }
-
-            const timestamp = Date.now();
-            const randomStr = Math.random().toString(36).substring(7);
-            const filename = `book_${timestamp}_${randomStr}`;
-
-            formData.append('file', fileToUpload);
-            formData.append('upload_preset', CLOUDINARY_CONFIG.upload_preset);
-            formData.append('public_id', filename);
-            formData.append('folder', 'books');
-
-            const uploadResponse = await fetch(
-                `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloud_name}/image/upload`,
-                {
-                    method: 'POST',
-                    body: formData
-                }
-            );
-
-            if (!uploadResponse.ok) {
-                const errorData = await uploadResponse.json();
-                throw new Error(errorData.error?.message || 'Upload failed');
-            }
-
-            const data = await uploadResponse.json();
-            return data.secure_url;
-
-        } catch (error) {
-            console.error('❌ Cloudinary upload error:', error);
-            throw error;
-        }
-    }
-
-    function updateStep(stepId, status) {
-        const step = document.getElementById(stepId);
-        if (!step) return;
-
-        step.classList.remove('active', 'completed', 'failed');
-        
-        const icon = step.querySelector('i');
-        if (status === 'active') {
-            step.classList.add('active');
-            icon.className = 'bi bi-hourglass-split';
-        } else if (status === 'completed') {
-            step.classList.add('completed');
-            icon.className = 'bi bi-check-circle-fill';
-        } else if (status === 'failed') {
-            step.classList.add('failed');
-            icon.className = 'bi bi-x-circle-fill';
-        }
-    }
-
-    function resetSteps() {
-        ['step1', 'step2', 'step3'].forEach(stepId => {
-            const step = document.getElementById(stepId);
-            if (step) {
-                step.classList.remove('active', 'completed', 'failed');
-                const icon = step.querySelector('i');
-                icon.className = 'bi bi-circle';
-            }
-        });
-    }
-
-    // =============== RFID MODAL FUNCTIONALITY ===============
-    const rfidModal = new bootstrap.Modal(document.getElementById('rfidModal'));
-    const rfidInput = document.getElementById('rfid_uid_confirm');
-    const confirmRfidBtn = document.getElementById('confirmRfidBtn');
-    const progressSteps = document.getElementById('progressSteps');
-    const cloudinaryResult = document.getElementById('cloudinaryResult');
-    const cloudinaryUrl = document.getElementById('cloudinaryUrl');
-    let pendingBookData = null;
-
-    rfidInput.addEventListener('input', function() {
-        const hasValue = this.value.trim().length > 0;
-        confirmRfidBtn.disabled = !hasValue;
-    });
-
-    document.getElementById('rfidModal').addEventListener('shown.bs.modal', function () {
-        rfidInput.focus();
-    });
-
-    document.getElementById('rfidModal').addEventListener('hidden.bs.modal', function () {
-        rfidInput.value = '';
-        confirmRfidBtn.disabled = true;
-        progressSteps.style.display = 'none';
-        cloudinaryResult.style.display = 'none';
-        resetSteps();
-        pendingBookData = null;
-    });
-
-    rfidInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && !confirmRfidBtn.disabled) {
-            confirmRfidBtn.click();
-        }
-    });
-
-    confirmRfidBtn.addEventListener('click', async function() {
-        if (!pendingBookData) {
-            showToast('Data buku tidak ditemukan', 'error');
-            return;
-        }
-
-        const rfidValue = rfidInput.value.trim();
-        if (!rfidValue) {
-            showToast('RFID UID harus diisi!', 'error');
-            rfidInput.focus();
-            return;
-        }
-
-        rfidInput.disabled = true;
-        confirmRfidBtn.disabled = true;
-        document.getElementById('rfidCancelBtn').disabled = true;
-        document.getElementById('rfidModalClose').disabled = true;
-
-        progressSteps.style.display = 'block';
-        cloudinaryResult.style.display = 'none';
-
-        try {
-            updateStep('step1', 'active');
-            await new Promise(resolve => setTimeout(resolve, 500));
-            pendingBookData.uid = rfidValue;
-            updateStep('step1', 'completed');
-
-            let cloudinaryImageUrl = null;
-            if (capturedImageDataMgmt || pendingBookData.image) {
-                updateStep('step2', 'active');
-                
-                try {
-                    const imageToUpload = capturedImageDataMgmt || pendingBookData.image;
-                    cloudinaryImageUrl = await uploadToCloudinary(imageToUpload);
-                    
-                    cloudinaryUrl.textContent = cloudinaryImageUrl;
-                    cloudinaryResult.style.display = 'block';
-                    
-                    pendingBookData.image = cloudinaryImageUrl;
-                    
-                    updateStep('step2', 'completed');
-                } catch (error) {
-                    updateStep('step2', 'failed');
-                    showToast('Upload ke Cloudinary gagal: ' + error.message, 'error');
-                    throw error;
-                }
-            } else {
-                updateStep('step2', 'completed');
-            }
-
-            updateStep('step3', 'active');
-            
-            const response = await fetch("<?= base_url('management-buku/add') ?>", {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(pendingBookData)
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Server error: ${response.status} - ${errorText}`);
-            }
-
-            const data = await response.json();
-
-            if (data.success) {
-                updateStep('step3', 'completed');
-                
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                rfidModal.hide();
-                addModal.hide();
-                
-                showToast('Buku berhasil ditambahkan!', 'success');
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                updateStep('step3', 'failed');
-                showToast('Gagal menyimpan ke database: ' + data.message, 'error');
-            }
-
-        } catch (error) {
-            console.error('❌ Process error:', error);
-        } finally {
-            rfidInput.disabled = false;
-            confirmRfidBtn.disabled = false;
-            document.getElementById('rfidCancelBtn').disabled = false;
-            document.getElementById('rfidModalClose').disabled = false;
-        }
-    });
 
     async function submitBookEdit(bookData) {
         try {
             const editId = document.getElementById('editId').value;
-            
+
             if (!editId) {
                 showToast('ID buku tidak ditemukan', 'error');
                 return;
             }
 
-            let cloudinaryImageUrl = null;
-            
-            if (capturedImageDataMgmt) {
-                try {
-                    cloudinaryImageUrl = await uploadToCloudinary(capturedImageDataMgmt);
-                    bookData.image = cloudinaryImageUrl;
-                } catch (error) {
-                    showToast('Upload ke Cloudinary gagal: ' + error.message, 'error');
-                    throw error;
-                }
-            }
-
-            // Submit the edit
-            const response = await fetch("<?= base_url('management-buku/edit/') ?>" + editId, {
+            const response = await fetch("<?= base_url(
+                "management-buku/edit/"
+            ) ?>" + editId, {
                 method: "POST",
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(bookData)
             });
 
@@ -1236,7 +618,7 @@ document.addEventListener("DOMContentLoaded", function() {
             const data = await response.json();
 
             if (data.success) {
-                addModal.hide();
+                editModal.hide();
                 showToast('Buku berhasil diupdate!', 'success');
                 setTimeout(() => location.reload(), 1500);
             } else {
@@ -1261,140 +643,153 @@ document.addEventListener("DOMContentLoaded", function() {
         container.appendChild(inputGroup);
     });
 
-    document.getElementById('generateKodeBtn').addEventListener('click', function() {
-        const kodeInput = document.getElementById('code');
-        kodeInput.value = 'Loading...';
-        
-        $.ajax({
-            url: "<?= base_url('books/next-kode') ?>",
-            type: "GET",
-            dataType: "json",
-            success: function(response) {
-                if (response.success) {
-                    kodeInput.value = response.kode_sekolah;
-                } else {
-                    kodeInput.value = 'Error';
-                }
-            },
-            error: function() {
-                kodeInput.value = 'Error';
+    document.querySelectorAll('.btn-edit-buku').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const tr = btn.closest('tr');
+            const book = JSON.parse(tr.getAttribute('data-book'));
+            resetForm();
+
+            bukuForm.querySelector('[name="code"]').value = book.code || '';
+            bukuForm.querySelector('[name="title"]').value = book.title || '';
+            bukuForm.querySelector('[name="author"]').value = book.author || '';
+            bukuForm.querySelector('[name="publisher"]').value = book.publisher || '';
+            bukuForm.querySelector('[name="genre"]').value = book.genre || '';
+            bukuForm.querySelector('[name="isbn"]').value = book.isbn || '';
+            bukuForm.querySelector('[name="ddcNumber"]').value = book.ddc_number || '';
+            bukuForm.querySelector('[name="year"]').value = book.year || '';
+            bukuForm.querySelector('[name="illustrator"]').value = book.illustrator || '';
+            bukuForm.querySelector('[name="series"]').value = book.series || '';
+            bukuForm.querySelector('[name="synopsis"]').value = book.synopsis || '';
+            bukuForm.querySelector('[name="quantity"]').value = book.quantity || 1;
+
+            document.getElementById('isOneDayBook').checked = book.is_one_day_book || false;
+            document.getElementById('available').checked = book.available !== false;
+
+            if (book.image) {
+                document.getElementById('imageLink').value = book.image;
+                document.getElementById('previewImageMgmt').src = book.image;
+                document.getElementById('previewImageMgmt').style.display = 'block';
+                document.getElementById('currentImageText').textContent = 'Gambar saat ini: ' + book.image;
             }
+
+            const uidContainer = document.getElementById('uidContainer');
+            uidContainer.innerHTML = '';
+
+            const uids = (book.uid && Array.isArray(book.uid) && book.uid.length > 0)
+                ? book.uid.filter(Boolean)
+                : [''];
+
+            uids.forEach(uid => {
+                const inputGroup = document.createElement('div');
+                inputGroup.className = 'input-group mb-2';
+                inputGroup.innerHTML = `
+                    <input type="text" name="uid[]" class="form-control" placeholder="Masukkan UID" value="${uid}">
+                    <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                `;
+                uidContainer.appendChild(inputGroup);
+            });
+
+            document.getElementById('editId').value = book.id;
+
+            editModal.show();
         });
     });
 
-    document.getElementById('btnTambahBuku').addEventListener('click', function() {
-        resetForm();
-        document.getElementById('modalBukuTitle').textContent = 'Tambah Buku';
-        bukuForm.action = "<?= base_url('management-buku/add') ?>";
-        document.getElementById('code').value = '';
-        
-        document.getElementById('uidSection').style.display = 'none';
-        
-        setTimeout(() => {
-            document.getElementById('generateKodeBtn').click();
-        }, 300);
-        
-        addModal.show();
+    document.getElementById('submitBukuBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+
+        const bookData = {
+            code:          bukuForm.querySelector('[name="code"]').value,
+            uid:           Array.from(bukuForm.querySelectorAll('[name="uid[]"]')).map(el => el.value).filter(v => v),
+            title:         bukuForm.querySelector('[name="title"]').value,
+            author:        bukuForm.querySelector('[name="author"]').value,
+            illustrator:   bukuForm.querySelector('[name="illustrator"]').value,
+            publisher:     bukuForm.querySelector('[name="publisher"]').value,
+            series:        bukuForm.querySelector('[name="series"]').value,
+            genre:         bukuForm.querySelector('[name="genre"]').value,
+            isbn:          bukuForm.querySelector('[name="isbn"]').value,
+            ddcNumber:     bukuForm.querySelector('[name="ddcNumber"]').value,
+            year:          bukuForm.querySelector('[name="year"]').value,
+            quantity:      bukuForm.querySelector('[name="quantity"]').value,
+            synopsis:      bukuForm.querySelector('[name="synopsis"]').value,
+            image:         document.getElementById('imageLink').value || '',
+            is_one_day_book: document.getElementById('isOneDayBook').checked,
+            available:     document.getElementById('available').checked
+        };
+
+        if (!bookData.code)  { showToast('Kode harus diisi!', 'error');      return; }
+        if (!bookData.title) { showToast('Judul harus diisi!', 'error');      return; }
+        if (!bookData.author){ showToast('Pengarang harus diisi!', 'error');  return; }
+        if (!bookData.genre) { showToast('Genre harus dipilih!', 'error');    return; }
+        if (!bookData.quantity || bookData.quantity < 1) { showToast('Quantity harus lebih dari 0!', 'error'); return; }
+        if (bookData.uid.length === 0) { showToast('Setidaknya satu UID harus diisi!', 'error'); return; }
+
+        submitBookEdit(bookData);
     });
 
-    function resetForm() {
-        bukuForm.reset();
-        document.getElementById('editId').value = '';
-        document.getElementById('currentImageText').textContent = '';
-        
-        document.getElementById('isOneDayBook').checked = false;
-        document.getElementById('available').checked = false;
-        previewImageMgmt.style.display = 'none';
-        capturedImageDataMgmt = null;
-        
-        const uidContainer = document.getElementById('uidContainer');
-        uidContainer.innerHTML = `
-            <div class="input-group mb-2">
-                <input type="text" name="uid[]" class="form-control" placeholder="Masukkan UID">
-                <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </div>
-        `;
-    }
+    // ===== DETAIL MODAL =====
 
-    // Helper function to open detail modal
     function openDetailModal(book) {
-        // Show loading state
         const loadingSpinner = document.getElementById('loadingSpinner');
         loadingSpinner.style.display = 'block';
         document.getElementById('borrowersSection').style.display = 'none';
         document.getElementById('synopsisSection').style.display = 'none';
-        
-        // Populate basic info first
-        document.getElementById('detailKode').textContent = book.code || '-';
-        document.getElementById('detailJudul').textContent = book.title || '-';
-        document.getElementById('detailPenulis').textContent = book.author || '-';
-        document.getElementById('detailIllustrator').textContent = book.illustrator || '-';
-        document.getElementById('detailPenerbit').textContent = book.publisher || '-';
-        document.getElementById('detailTahun').textContent = book.year || '-';
-        document.getElementById('detailGenre').textContent = book.genre || '-';
-        document.getElementById('detailSeries').textContent = book.series || '-';
-        document.getElementById('detailIsbn').textContent = book.isbn || '-';
-        document.getElementById('detailDdc').textContent = book.ddc_number || '-';
+
+        document.getElementById('detailKode').textContent         = book.code || '-';
+        document.getElementById('detailJudul').textContent        = book.title || '-';
+        document.getElementById('detailPenulis').textContent      = book.author || '-';
+        document.getElementById('detailIllustrator').textContent  = book.illustrator || '-';
+        document.getElementById('detailPenerbit').textContent     = book.publisher || '-';
+        document.getElementById('detailTahun').textContent        = book.year || '-';
+        document.getElementById('detailGenre').textContent        = book.genre || '-';
+        document.getElementById('detailSeries').textContent       = book.series || '-';
+        document.getElementById('detailIsbn').textContent         = book.isbn || '-';
+        document.getElementById('detailDdc').textContent          = book.ddc_number || '-';
         document.getElementById('detailShelfPosition').textContent = book.shelf_position || '-';
-        
-        // Tipe Buku
-        const tipeBuku = book.is_one_day_book ? 'Buku 1 Hari' : 'Buku Reguler';
-        document.getElementById('detailTipe').textContent = tipeBuku;
-        
-        // Sinopsis
+        document.getElementById('detailTipe').textContent         = book.is_one_day_book ? 'Buku 1 Hari' : 'Buku Reguler';
+
         if (book.synopsis && book.synopsis.trim()) {
             document.getElementById('detailSinopsis').textContent = book.synopsis;
             document.getElementById('synopsisSection').style.display = 'block';
         }
-        
-        // Fetch borrower data dan availability
-        fetch("<?= base_url('api/get-book-borrowers') ?>?book_id=" + book.id)
+
+        fetch("<?= base_url("management-buku/get-book-borrowers") ?>?book_id=" + book.id)
             .then(response => response.json())
             .then(data => {
                 loadingSpinner.style.display = 'none';
-                
+
                 if (data.error) {
                     showToast('Gagal memuat data peminjam: ' + data.error, 'error');
                     return;
                 }
-                
-                // Update availability status
-                const totalQty = data.total_quantity;
-                const borrowedQty = data.borrowed_count;
-                const availableQty = data.available_quantity;
-                const isOutOfStock = data.is_out_of_stock;
-                
-                document.getElementById('detailTotalQty').textContent = totalQty;
-                document.getElementById('detailBorrowedQty').textContent = borrowedQty;
-                document.getElementById('detailAvailableQty').textContent = availableQty;
-                
-                // Update availability badge
+
+                document.getElementById('detailTotalQty').textContent     = data.total_quantity;
+                document.getElementById('detailBorrowedQty').textContent  = data.borrowed_count;
+                document.getElementById('detailAvailableQty').textContent = data.available_quantity;
+
                 const badge = document.getElementById('availabilityBadge');
-                if (isOutOfStock) {
+                if (data.is_out_of_stock) {
                     badge.innerHTML = '<span class="badge bg-danger"><i class="bi bi-exclamation-circle"></i> HABIS</span>';
-                } else if (availableQty <= 2) {
+                } else if (data.available_quantity <= 2) {
                     badge.innerHTML = '<span class="badge bg-warning"><i class="bi bi-info-circle"></i> Stok Terbatas</span>';
                 } else {
                     badge.innerHTML = '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Tersedia</span>';
                 }
-                
-                // Update borrowers list
+
                 const borrowersSection = document.getElementById('borrowersSection');
-                const borrowersBody = document.getElementById('borrowersBody');
-                const noBorrowersMsg = document.getElementById('noBorrowersMsg');
-                
+                const borrowersBody    = document.getElementById('borrowersBody');
+                const noBorrowersMsg   = document.getElementById('noBorrowersMsg');
+
                 if (data.borrowers && data.borrowers.length > 0) {
                     borrowersBody.innerHTML = '';
                     data.borrowers.forEach((borrower) => {
                         const row = document.createElement('tr');
-                        
-                        // Status badge
-                        const statusBadge = borrower.status === 'TERLAMBAT' 
+                        const statusBadge = borrower.status === 'TERLAMBAT'
                             ? '<span class="badge bg-danger">TERLAMBAT</span>'
                             : '<span class="badge bg-warning">AKTIF</span>';
-                        
                         row.innerHTML = `
                             <td><strong>${borrower.pic_name || '-'}</strong></td>
                             <td>${borrower.pic_class || '-'}</td>
@@ -1418,144 +813,26 @@ document.addEventListener("DOMContentLoaded", function() {
                 showToast('Terjadi kesalahan memuat data peminjam', 'error');
             });
 
-        var detailModal = new bootstrap.Modal(document.getElementById('exampleModal'));
-        detailModal.show();
+        new bootstrap.Modal(document.getElementById('exampleModal')).show();
     }
 
-    // Detail button handler
+    // ===== TABLE INTERACTIONS =====
+
     document.querySelectorAll('.btn-detail-buku').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
-            const tr = btn.closest('tr');
-            const book = JSON.parse(tr.getAttribute('data-book'));
+            const book = JSON.parse(btn.closest('tr').getAttribute('data-book'));
             openDetailModal(book);
         });
     });
 
-    document.querySelectorAll('.btn-edit-buku').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const tr = btn.closest('tr');
-            const book = JSON.parse(tr.getAttribute('data-book'));
-            resetForm();
-            document.getElementById('modalBukuTitle').textContent = 'Edit Buku';
-            bukuForm.action = "<?= base_url('management-buku/edit/') ?>" + book.id;
-            
-            document.getElementById('uidSection').style.display = 'block';
-            
-            bukuForm.querySelector('[name="code"]').value = book.code || '';
-            bukuForm.querySelector('[name="title"]').value = book.title || '';
-            bukuForm.querySelector('[name="author"]').value = book.author || '';
-            bukuForm.querySelector('[name="publisher"]').value = book.publisher || '';
-            bukuForm.querySelector('[name="genre"]').value = book.genre || '';
-            bukuForm.querySelector('[name="isbn"]').value = book.isbn || '';
-            
-            const ddcInput = bukuForm.querySelector('[name="ddcNumber"]');
-            ddcInput.value = book.ddc_number || '';
-            
-            bukuForm.querySelector('[name="year"]').value = book.year || '';
-            bukuForm.querySelector('[name="illustrator"]').value = book.illustrator || '';
-            bukuForm.querySelector('[name="series"]').value = book.series || '';
-            bukuForm.querySelector('[name="synopsis"]').value = book.synopsis || '';
-            bukuForm.querySelector('[name="quantity"]').value = book.quantity || 1;
-            
-            document.getElementById('isOneDayBook').checked = book.is_one_day_book || false;
-            document.getElementById('available').checked = book.available !== false;
-            
-            if (book.image) {
-                document.getElementById('currentImageText').textContent = 'Gambar saat ini: ' + book.image;
-            }
-            
-            const uidContainer = document.getElementById('uidContainer');
-            uidContainer.innerHTML = '';
-            
-            if (book.uid && Array.isArray(book.uid) && book.uid.length > 0) {
-                book.uid.forEach(uid => {
-                    if (uid) {
-                        const inputGroup = document.createElement('div');
-                        inputGroup.className = 'input-group mb-2';
-                        inputGroup.innerHTML = `
-                            <input type="text" name="uid[]" class="form-control" placeholder="Masukkan UID" value="${uid}">
-                            <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        `;
-                        uidContainer.appendChild(inputGroup);
-                    }
-                });
-            } else {
-                const inputGroup = document.createElement('div');
-                inputGroup.className = 'input-group mb-2';
-                inputGroup.innerHTML = `
-                    <input type="text" name="uid[]" class="form-control" placeholder="Masukkan UID">
-                    <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                `;
-                uidContainer.appendChild(inputGroup);
-            }
-            
-            document.getElementById('editId').value = book.id;
-            
-            addModal.show();
+    document.querySelectorAll('#bukuTableBody tr').forEach(function(row) {
+        row.addEventListener('dblclick', function() {
+            openDetailModal(JSON.parse(row.getAttribute('data-book')));
         });
     });
 
-    document.getElementById('submitBukuBtn').addEventListener('click', function(e) {
-        e.preventDefault();
-        
-        const isEditMode = document.getElementById('editId').value !== '';
-        
-        const bookData = {
-            code: bukuForm.querySelector('[name="code"]').value,
-            uid: Array.from(bukuForm.querySelectorAll('[name="uid[]"]')).map(el => el.value).filter(v => v),
-            title: bukuForm.querySelector('[name="title"]').value,
-            author: bukuForm.querySelector('[name="author"]').value,
-            illustrator: bukuForm.querySelector('[name="illustrator"]').value,
-            publisher: bukuForm.querySelector('[name="publisher"]').value,
-            series: bukuForm.querySelector('[name="series"]').value,
-            genre: bukuForm.querySelector('[name="genre"]').value,
-            isbn: bukuForm.querySelector('[name="isbn"]').value,
-            ddcNumber: bukuForm.querySelector('[name="ddcNumber"]').value,
-            year: bukuForm.querySelector('[name="year"]').value,
-            quantity: bukuForm.querySelector('[name="quantity"]').value,
-            synopsis: bukuForm.querySelector('[name="synopsis"]').value,
-            image: capturedImageDataMgmt || bukuForm.querySelector('[name="image"]')?.value || '',
-            is_one_day_book: document.getElementById('isOneDayBook').checked,
-            available: document.getElementById('available').checked
-        };
-
-        if (!bookData.code) {
-            showToast('Kode harus diisi!', 'error');
-            return;
-        }
-
-        if (!bookData.title) {
-            showToast('Judul harus diisi!', 'error');
-            return;
-        }
-
-        if (!bookData.author) {
-            showToast('Pengarang harus diisi!', 'error');
-            return;
-        }
-
-        if (!bookData.genre) {
-            showToast('Genre harus dipilih!', 'error');
-            return;
-        }
-
-        if (isEditMode) {
-            submitBookEdit(bookData);
-        } else {
-            pendingBookData = bookData;
-            document.getElementById('bookSummaryTitle').textContent = bookData.title;
-            document.getElementById('bookSummaryAuthor').textContent = bookData.author;
-            document.getElementById('bookSummaryKode').textContent = bookData.code;
-            addModal.hide();
-            rfidModal.show();
-        }
-    });
+    // ===== SEARCH & PAGINATION =====
 
     function renderPagination(totalRows) {
         const pages = Math.ceil(totalRows / rowsPerPage);
@@ -1623,9 +900,9 @@ document.addEventListener("DOMContentLoaded", function() {
     function filterTable() {
         const query = searchInput.value.toLowerCase();
         let rows = Array.from(tableBody.querySelectorAll('tr'));
-        
+
         const filtered = rows.filter(row => {
-            const code = row.children[1]?.textContent.toLowerCase() || '';
+            const code  = row.children[1]?.textContent.toLowerCase() || '';
             const title = row.children[2]?.textContent.toLowerCase() || '';
             return code.includes(query) || title.includes(query);
         });
@@ -1643,101 +920,17 @@ document.addEventListener("DOMContentLoaded", function() {
         renderPagination(filtered.length);
     }
 
-    document.querySelectorAll('#bukuTableBody tr').forEach(function(row) {
-        row.addEventListener('dblclick', function() {
-            const book = JSON.parse(row.getAttribute('data-book'));
-            openDetailModal(book);
-        });
-    });
-
     searchInput.addEventListener('input', () => { currentPage = 1; filterTable(); });
     document.getElementById('cariBuku').addEventListener('click', () => { currentPage = 1; filterTable(); });
-
-    // ===== DYNAMIC RFID INPUT BASED ON QUANTITY =====
-    const quantityInput = document.getElementById('quantity');
-    const uidSection = document.getElementById('uidSection');
-    const uidContainer = document.getElementById('uidContainer');
-    const btnAddUid = document.getElementById('btnAddUid');
-    const quantityLabel = document.getElementById('quantityRequiredLabel');
-    
-    // Function untuk generate RFID input fields sesuai quantity
-    function updateRfidInputs() {
-        const quantity = parseInt(quantityInput.value) || 1;
-        const currentInputs = uidContainer.querySelectorAll('input[name="uid[]"]').length;
-        
-        // Update label
-        quantityLabel.textContent = quantity;
-        
-        if (quantity > currentInputs) {
-            // Add more inputs
-            for (let i = currentInputs; i < quantity; i++) {
-                const inputGroup = document.createElement('div');
-                inputGroup.className = 'input-group mb-2';
-                inputGroup.innerHTML = `
-                    <input type="text" name="uid[]" class="form-control" placeholder="RFID UID #${i + 1}">
-                    <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                `;
-                uidContainer.appendChild(inputGroup);
-            }
-        } else if (quantity < currentInputs) {
-            // Remove extra inputs
-            const inputsToRemove = currentInputs - quantity;
-            const allInputs = uidContainer.querySelectorAll('.input-group');
-            for (let i = 0; i < inputsToRemove; i++) {
-                allInputs[allInputs.length - 1 - i].remove();
-            }
-        }
-    }
-    
-    // Event listener untuk quantity change
-    quantityInput.addEventListener('change', function() {
-        updateRfidInputs();
-    });
-    
-    // Event listener untuk quantity input (real-time)
-    quantityInput.addEventListener('input', function() {
-        const quantity = parseInt(this.value) || 1;
-        if (quantity > 0) {
-            updateRfidInputs();
-            // Show UID section when quantity > 0
-            if (quantity > 0 && uidSection.style.display === 'none') {
-                uidSection.style.display = 'block';
-            }
-        }
-    });
-    
-    // Button untuk manual add UID
-    btnAddUid.addEventListener('click', function() {
-        const allInputs = uidContainer.querySelectorAll('.input-group');
-        const inputGroup = document.createElement('div');
-        inputGroup.className = 'input-group mb-2';
-        inputGroup.innerHTML = `
-            <input type="text" name="uid[]" class="form-control" placeholder="RFID UID #${allInputs.length + 1}">
-            <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()">
-                <i class="bi bi-trash"></i>
-            </button>
-        `;
-        uidContainer.appendChild(inputGroup);
-    });
-    
-    // Initialize pada load form tambah
-    document.getElementById('bukuForm').addEventListener('reset', function() {
-        setTimeout(() => {
-            quantityInput.value = 1;
-            updateRfidInputs();
-        }, 100);
-    });
 
     filterTable();
 });
 </script>
 
-<?php if (session()->getFlashdata('message')): ?>
+<?php if (session()->getFlashdata("message")): ?>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        showToast("<?= esc(session()->getFlashdata('message'), 'js') ?>");
+        showToast("<?= esc(session()->getFlashdata("message"), "js") ?>");
     });
 </script>
 <?php endif; ?>

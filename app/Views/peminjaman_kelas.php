@@ -1,5 +1,5 @@
-<?= $this->extend('layout') ?>
-<?= $this->section('content') ?>
+<?= $this->extend("layout") ?>
+<?= $this->section("content") ?>
 
 <style>
     .page-item.active .page-link {
@@ -27,7 +27,11 @@
         </ol>
     </nav>
 
-    <div class="card border-light shadow-sm mt-4" id="headerKelasCard" style="<?= session('role') === 'guru' ? 'display: none;' : '' ?>">
+    <div class="card border-light shadow-sm mt-4" id="headerKelasCard" style="<?= session(
+        "role"
+    ) === "guru"
+        ? "display: none;"
+        : "" ?>">
         <div class="card-body">
             <div class="row align-items-center">
                 <div class="col-md-6">
@@ -48,7 +52,11 @@
         </div>
     </div>
 
-    <div class="alert alert-info mt-4" id="guruClassInfo" style="<?= session('role') === 'guru' ? '' : 'display: none;' ?>">
+    <div class="alert alert-info mt-4" id="guruClassInfo" style="<?= session(
+        "role"
+    ) === "guru"
+        ? ""
+        : "display: none;" ?>">
         <strong>Kelas Anda: <span id="guruClassName">-</span></strong><br>
         <small>Siswa: <span id="guruStudentCount">0</span></small>
     </div>
@@ -430,8 +438,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let activeBorrowings = [];
     let allClasses = <?= json_encode($classes) ?>;
     
-    const userRole = "<?= session('role') ?>";
-    const userClassId = "<?= session('class_id') ?>";
+    const userRole = "<?= session("role") ?>";
+    const userClassId = "<?= session("class_id") ?>";
     
     let isFormSubmitting = false;
     let showClassSelectionToast = true;
@@ -499,7 +507,9 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        $.get("<?= base_url('peminjaman-kelas/class-data') ?>", { class_id: classId }, function(response) {
+        $.get("<?= base_url(
+            "peminjaman-kelas/class-data"
+        ) ?>", { class_id: classId }, function(response) {
             if (response.success) {
                 classDataCache[classId] = {
                     data: response,
@@ -518,17 +528,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function processClassData(response) {
         currentClassName = response.class.nama_kelas;
         classStudents = response.students || [];
-        classBooks = response.books || [];
         
         $('#CariKelas').val(currentClassName);
         $('#selectedClassName').text(currentClassName);
         $('#studentCount').text(classStudents.length);
-        $('#bookCount').text(classBooks.length);
         $('#classInfo').removeClass('d-none');
         
         $('#guruClassName').text(currentClassName);
         $('#guruStudentCount').text(classStudents.length);
-        $('#guruBookCount').text(classBooks.length);
         
         peminjamanBtn.disabled = false;
         pengembalianBtn.disabled = false;
@@ -581,7 +588,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        $.get("<?= base_url('books/search-autocomplete') ?>", {
+        $.get("<?= base_url("books/search-autocomplete") ?>", {
             search: searchTerm,
             limit: 50
         }, function(response) {
@@ -609,7 +616,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         $('#judulCari').autocomplete({
             source: function(request, response) {
-                if (request.term.length < 1) {
+                if (request.term.length < 3) {
                     response([]);
                     return;
                 }
@@ -781,17 +788,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function loadTransactions(type) {
         if (!currentClassId) return;
-        
-        $.get("<?= base_url('peminjaman-kelas/transactions') ?>", {
-            class_id: currentClassId,
-            type: type
-        }, function(response) {
-            if (response.success) {
-                if (type === 'borrow') {
-                    renderBorrowingsTable(response.transactions);
-                    activeBorrowings = response.transactions.filter(t => t.status === 'active');
-                } else if (type === 'return') {
-                    renderReturnsTable(response.transactions);
+
+        $.ajax({
+            url: "<?= base_url("peminjaman-kelas/transactions") ?>",
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                class_id: currentClassId,
+                type: type,
+                students: classStudents
+            }),
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    if (type === 'borrow') {
+                        renderBorrowingsTable(response.transactions);
+                        activeBorrowings = response.transactions.filter(t => t.status === 'active');
+                    } else if (type === 'return') {
+                        renderReturnsTable(response.transactions);
+                    }
                 }
             }
         });
@@ -845,20 +860,27 @@ document.addEventListener('DOMContentLoaded', function() {
         
         $('#namaCari, #judulCari').removeAttr('required');
         
-        $.get("<?= base_url('peminjaman-kelas/transactions') ?>", {
-            class_id: currentClassId,
-            type: 'borrow'
-        }, function(response) {
-            if (response.success) {
-                activeBorrowings = response.transactions.filter(t => t.status === 'active');
-                loadPengembalianChecklist();
-            } else {
-                console.error('Failed to fetch transactions:', response);
-                showToast('Gagal memuat data peminjaman', 'error');
+        $.ajax({
+            url: "<?= base_url("peminjaman-kelas/transactions") ?>",
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                class_id: currentClassId,
+                type: 'borrow',
+                students: classStudents
+            }),
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    activeBorrowings = response.transactions.filter(t => t.status === 'active');
+                    loadPengembalianChecklist();
+                } else {
+                    showToast('Gagal memuat data peminjaman', 'error');
+                }
+            },
+            error: function(error) {
+                showToast('Error: ' + error.statusText, 'error');
             }
-        }).fail(function(error) {
-            console.error('AJAX error:', error);
-            showToast('Error: ' + error.statusText, 'error');
         });
     });
 
@@ -901,7 +923,7 @@ document.addEventListener('DOMContentLoaded', function() {
         isFormSubmitting = true;
         
         $.ajax({
-            url: "<?= base_url('peminjaman-kelas/add') ?>",
+            url: "<?= base_url("peminjaman-kelas/add") ?>",
             type: 'POST',
             data: formData,
             processData: false,
@@ -963,7 +985,7 @@ document.addEventListener('DOMContentLoaded', function() {
         isFormSubmitting = true;
         
         $.ajax({
-            url: "<?= base_url('peminjaman-kelas/return-multiple') ?>",
+            url: "<?= base_url("peminjaman-kelas/return-multiple") ?>",
             type: 'POST',
             data: formData,
             processData: false,
