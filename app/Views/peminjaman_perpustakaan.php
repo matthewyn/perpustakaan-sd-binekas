@@ -264,6 +264,8 @@
         </div>
         <form>
             <div class="modal-body">
+                <input type="hidden" id="selectedUserId" name="user_id">
+                <input type="hidden" id="selectedBookId" name="book_id">
                 <!-- Tambah peminjaman -->
                 <div id="peminjamanSection">
                     <div class="row mb-3">
@@ -501,7 +503,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // fetch data
     function fetchSiswaData() {
-        $.get("<?= base_url('user/list/murid') ?>", function(response) {
+        $.get("<?= base_url('user/list/murid') ?>", { projection: 'select=id,nama' }, function(response) {
             if (response.success && Array.isArray(response.users)) {
                 siswaList = response.users.map(u => ({
                     ...u,
@@ -520,7 +522,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function fetchGuruData() {
-        $.get("<?= base_url('user/list/guru') ?>", function(response) {
+        $.get("<?= base_url('user/list/guru') ?>", { projection: 'select=id,nama' }, function(response) {
             if (response.success && Array.isArray(response.users)) {
                 guruList = response.users.map(u => ({ ...u, key: u.key ?? u.id ?? null }));
                 guruList.forEach(u => { if (u.key) usersByKey[u.key] = u; });
@@ -533,7 +535,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function fetchBorrowingsData() {
-        $.get("<?= base_url('api/borrowings') ?>", function(response) {
+        $.get("<?= base_url('transaction/borrowings') ?>", function(response) {
             console.log('Borrowings API Response:', response);
             if (response.success && Array.isArray(response.borrowings)) {
                 borrowingsList = response.borrowings;
@@ -606,7 +608,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function fetchReturnsData(callback) {
-        $.get("<?= base_url('api/returns') ?>", function(response) {
+        $.get("<?= base_url('transaction/returns') ?>", function(response) {
             if (response.success && Array.isArray(response.returns)) {
                 returnsList = response.returns;
             } else {
@@ -696,13 +698,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
     $('#namaCari').autocomplete({
         source: function(request, response) {
-            const results = siswaList.map(u => u.nama).filter(nama => nama && nama.toLowerCase().includes(request.term.toLowerCase()));
+            const results = siswaList
+                .filter(u => u.nama && u.nama.toLowerCase().includes(request.term.toLowerCase()))
+                .map(u => ({ label: u.nama, value: u.nama, id: u.key ?? u.id }));
             response(results);
         },
         minLength: 1,
         select: function(event, ui) {
             $(this).val(ui.item.value);
+            $('#selectedUserId').val(ui.item.id);   // <-- ADD THIS
             return false;
+        }
+    });
+
+    // Also clear user_id when the field is manually cleared
+    $('#namaCari').on('input', function() {
+        if (!$(this).val().trim()) {
+            $('#selectedUserId').val('');
         }
     });
 
@@ -714,6 +726,7 @@ document.addEventListener('DOMContentLoaded', function() {
         minLength: 2,  // Require at least 2 characters to reduce requests
         select: function(event, ui) {
             $(this).val(ui.item.value);
+            $('#selectedBookId').val(ui.item.id);
             // Note: UID field is no longer available from server-side search
             // Remove UID input section if it exists
             if ($('#uidInputSection').length) {
@@ -725,6 +738,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     $('#judulCari').on('input', function() {
         if (!$(this).val().trim()) {
+            $('#selectedBookId').val('');
             if ($('#uidInputSection').length) {
                 $('#uidInputSection').hide();
             }
@@ -909,7 +923,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const peminjamanForm = modal.querySelector('form');
         const nama = peminjamanForm.querySelector('[name="namaCari"]').value.trim();
         const judul = peminjamanForm.querySelector('[name="judulCari"]').value.trim();
-        
+        const userId = $('#selectedUserId').val().trim();
+        const bookId = $('#selectedBookId').val().trim();
+
         const uidInput = peminjamanForm.querySelector('[name="uidCari"]');
         const uid = uidInput && uidInput.offsetParent !== null ? uidInput.value.trim() : '';
 
@@ -918,9 +934,16 @@ document.addEventListener('DOMContentLoaded', function() {
             return; 
         }
 
+        if (!userId || !bookId) {
+            showToast('Silakan pilih Siswa dan Buku dari daftar yang muncul', 'error');
+            return;
+        }
+
         const formData = new FormData();
         formData.append('namaCari', nama);
         formData.append('judulCari', judul);
+        formData.append('user_id', userId);    // <-- ADD
+        formData.append('book_id', bookId);
         if (uid) formData.append('uidCari', uid);
 
         $.ajax({
@@ -1032,7 +1055,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (borrowingsSearchQuery) {
             if (allBorrowingsCache === null) {
                 // Belum punya cache seluruh data, ambil sekali dari server (all=1)
-                $.get("<?= base_url('api/borrowings-all') ?>", { all: 1 }, function(response) {
+                $.get("<?= base_url('transaction/borrowings-all') ?>", { all: 1 }, function(response) {
                     if (response.success && Array.isArray(response.borrowings)) {
                         allBorrowingsCache = response.borrowings;
                         renderBorrowingsFromCache(page);
@@ -1045,7 +1068,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Mode normal: server-side pagination (hemat memori)
-        $.get("<?= base_url('api/borrowings-all') ?>", {
+        $.get("<?= base_url('transaction/borrowings-all') ?>", {
             page: page,
             limit: ITEMS_PER_PAGE
         }, function(response) {
@@ -1103,7 +1126,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (returnsSearchQuery) {
             if (allReturnsCache === null) {
-                $.get("<?= base_url('api/returns-all') ?>", { all: 1 }, function(response) {
+                $.get("<?= base_url('transaction/returns-all') ?>", { all: 1 }, function(response) {
                     if (response.success && Array.isArray(response.returns)) {
                         allReturnsCache = response.returns;
                         renderReturnsFromCache(page);
@@ -1115,7 +1138,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        $.get("<?= base_url('api/returns-all') ?>", {
+        $.get("<?= base_url('transaction/returns-all') ?>", {
             page: page,
             limit: ITEMS_PER_PAGE
         }, function(response) {

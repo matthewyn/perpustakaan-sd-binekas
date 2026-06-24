@@ -61,7 +61,6 @@ trait UserTrait
 
         log_message("info", "Total users fetched: " . count($allUsers));
 
-        // Cache for 5 minutes
         $this->cache->save($cacheKey, $allUsers, 24 * 60 * 60); // Cache for 24 hours
 
         return $allUsers;

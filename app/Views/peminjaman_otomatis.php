@@ -257,7 +257,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Mode pencarian: filter & paginasi seluruh data di client
         if (borrowingsSearchQuery) {
             if (allBorrowingsCache === null) {
-                $.get("<?= base_url('api/borrowings-all') ?>", { all: 1 }, function (response) {
+                $.get("<?= base_url('transaction/borrowings-all') ?>", { all: 1 }, function (response) {
                     if (response.success && Array.isArray(response.borrowings)) {
                         allBorrowingsCache = response.borrowings;
                         renderBorrowingsFromCache(page);
@@ -270,7 +270,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Mode normal: server-side pagination (hemat memori)
-        $.get("<?= base_url('api/borrowings-all') ?>", { page, limit: ITEMS_PER_PAGE }, function (response) {
+        $.get("<?= base_url('transaction/borrowings-all') ?>", { page, limit: ITEMS_PER_PAGE }, function (response) {
             if (response.success && Array.isArray(response.borrowings)) {
                 let rows = renderBorrowingsRows(response.borrowings, page);
                 if (!rows) rows = `<tr><td colspan="5" class="text-center">Belum ada data peminjaman.</td></tr>`;
@@ -322,7 +322,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (returnsSearchQuery) {
             if (allReturnsCache === null) {
-                $.get("<?= base_url('api/returns-all') ?>", { all: 1 }, function (response) {
+                $.get("<?= base_url('transaction/returns-all') ?>", { all: 1 }, function (response) {
                     if (response.success && Array.isArray(response.returns)) {
                         allReturnsCache = response.returns;
                         renderReturnsFromCache(page);
@@ -334,7 +334,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        $.get("<?= base_url('api/returns-all') ?>", { page, limit: ITEMS_PER_PAGE }, function (response) {
+        $.get("<?= base_url('transaction/returns-all') ?>", { page, limit: ITEMS_PER_PAGE }, function (response) {
             if (response.success && Array.isArray(response.returns)) {
                 let rows = renderReturnsRows(response.returns, page);
                 if (!rows) rows = `<tr><td colspan="5" class="text-center">Belum ada data pengembalian.</td></tr>`;

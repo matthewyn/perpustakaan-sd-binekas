@@ -54,7 +54,6 @@ trait BookTrait
             }
         }
 
-        // Cache for 5 minutes
         $this->cache->save($cacheKey, $allBooks, 24 * 60 * 60); // Cache for 24 hours
 
         log_message("info", "Total books fetched: " . count($allBooks));

@@ -460,6 +460,8 @@ class BookManagementController extends Controller
                     ->with("error", "Gagal menghapus buku");
             }
 
+            $this->invalidateBooksCache(["select" => "id,title"]);
+
             return redirect()
                 ->to("/management-buku")
                 ->with("message", "Buku berhasil dihapus");

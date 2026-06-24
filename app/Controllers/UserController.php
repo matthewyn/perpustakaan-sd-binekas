@@ -124,13 +124,21 @@ class UserController extends Controller
         ]);
     }
 
-    public function list($role = null)
+    public function list($role = null, $queryProjection = "")
     {
         $params = null;
         if ($role && $role == "murid") {
-            $params = 'select=id,nama,nisn,uid,num_borrows,class_id,maxBorrow,trust_score';
+            if (!empty($queryProjection)) {
+                $params = $queryProjection;
+            } else {
+                $params = 'select=id,nama,nisn,uid,num_borrows,class_id,maxBorrow,trust_score';
+            }
         } else {
-            $params = 'select=id,nama,nip,jabatan,uid,class_id';
+            if (!empty($queryProjection)) {
+                $params = $queryProjection;
+            } else {
+                $params = 'select=id,nama,nip,jabatan,uid,class_id';
+            }
         }
         
         if ($role) {
@@ -226,6 +234,7 @@ class UserController extends Controller
             'role'     => 'eq.murid',
             'select'   => 'id,nama',
         ]);
+        $this->invalidateUserCache(['select' => 'id,nama,class_id']);
 
         return $this->response->setJSON([
             "success" => !isset($result["error"]),
@@ -315,6 +324,7 @@ class UserController extends Controller
             'role'     => 'eq.murid',
             'select'   => 'id,nama',
         ]);
+        $this->invalidateUserCache(['select' => 'id,nama,class_id']);
         log_message("info", "Update User Response: " . json_encode($result));
 
         return $this->response->setJSON([

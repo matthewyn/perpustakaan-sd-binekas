@@ -268,6 +268,7 @@ class ClassController extends Controller
             "role" => "eq.murid",
             "select" => "id,nama,nisn",
         ]);
+        $this->invalidateUserCache(['select' => 'id,nama,class_id']);
 
         return $this->response->setJSON([
             "success" => true,
@@ -327,6 +328,7 @@ class ClassController extends Controller
             "role" => "eq.murid",
             "select" => "id,nama,nisn",
         ]);
+        $this->invalidateUserCache(['select' => 'id,nama,class_id']);
 
         return $this->response->setJSON([
             "success" => true,

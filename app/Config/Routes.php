@@ -26,10 +26,10 @@ $routes->post(
     "TransactionController::addReturn"
 );
 
-$routes->get("api/borrowings", "TransactionController::apiBorrowings");
-$routes->get("api/borrowings-all", "TransactionController::apiAllBorrowings");
-$routes->get("api/returns", "TransactionController::apiReturns");
-$routes->get("api/returns-all", "TransactionController::apiAllReturns");
+$routes->get("transaction/borrowings", "TransactionController::getBorrowings");
+$routes->get("transaction/borrowings-all", "TransactionController::getAllBorrowings");
+$routes->get("transaction/returns", "TransactionController::getReturns");
+$routes->get("transaction/returns-all", "TransactionController::getAllReturns");
 
 $routes->match(
     ["get", "post"],

@@ -193,7 +193,7 @@ class ClassTransactionController extends Controller
 
         $queryParams = [
             "user_id" => "in.(" . implode(",", $studentIds) . ")",
-            "select" => "*",
+            "select" => "id,user_id,book_id,tanggal,status",
             "order" => "created_at.desc",
         ];
 
@@ -253,6 +253,7 @@ class ClassTransactionController extends Controller
             // Get book data
             $book = $this->supabaseRequest("GET", "books", null, [
                 "id" => "eq." . $bookId,
+                'select' => 'id,quantity,is_one_day_book',
                 "limit" => 1,
             ]);
 
@@ -276,6 +277,7 @@ class ClassTransactionController extends Controller
             // Get user data
             $user = $this->supabaseRequest("GET", "users", null, [
                 "id" => "eq." . $userId,
+                'select' => 'id,maxBorrow,num_borrows',
                 "limit" => 1,
             ]);
 
@@ -291,6 +293,7 @@ class ClassTransactionController extends Controller
             $userActiveBorrows = $this->fetchAllTransactions([
                 "user_id" => "eq." . $userId,
                 "type" => "eq.borrow",
+                "select" => "id",
                 "status" => "eq.active",
             ]);
 
@@ -350,7 +353,6 @@ class ClassTransactionController extends Controller
 
             // Clear cache
             $this->cache->delete("class_data_" . $classId);
-            $this->invalidateBooksCache(["select" => "id,title"]);
             $this->cache->delete("book_borrowers_" . $bookId);
 
             return $this->response->setJSON([
@@ -521,7 +523,6 @@ class ClassTransactionController extends Controller
 
             // Clear cache
             $this->cache->delete("class_data_" . $classId);
-            $this->invalidateBooksCache(["select" => "id,title"]);
 
             $message =
                 "Pengembalian berhasil dicatat untuk " .
