@@ -404,7 +404,10 @@ class BookController extends Controller
             }
 
             $this->cache->delete("latest_books_5");
+            $this->invalidateBooksCache(['select' => 'id,title,quantity,is_one_day_book']);
             $this->invalidateBooksCache(['select' => 'id,title']);
+            $this->invalidateBooksCache(['select' => 'code']);
+            $this->invalidateBooksCache(["order" => "created_at.desc"]);
 
             return $this->response->setJSON([
                 "success" => true,

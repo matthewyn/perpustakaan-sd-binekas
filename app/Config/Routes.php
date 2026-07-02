@@ -64,6 +64,7 @@ $routes->get(
 $routes->get("user", "UserController::index");
 $routes->get("user/list/(:segment)", 'UserController::list/$1');
 $routes->post("user/add", "UserController::addUser");
+$routes->post("user/reset-trust-score", "UserController::resetTrustScore");
 $routes->post("user/update/(:any)", 'UserController::updateUser/$1');
 $routes->post("user/add-guru", "UserController::addGuru");
 $routes->post("user/update-guru/(:any)", 'UserController::updateGuru/$1');

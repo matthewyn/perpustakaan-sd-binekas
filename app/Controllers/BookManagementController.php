@@ -397,8 +397,11 @@ class BookManagementController extends Controller
                 ]);
             }
 
+            $this->invalidateBooksCache(["select" => "id,title,quantity,is_one_day_book"]);
             $this->invalidateBooksCache(["select" => "id,title"]);
-
+            $this->invalidateBooksCache(["select" => "code"]);
+            $this->invalidateBooksCache(["order" => "created_at.desc"]);
+            
             return $this->response->setJSON([
                 "success" => true,
                 "message" => "Buku berhasil diupdate",
@@ -460,7 +463,10 @@ class BookManagementController extends Controller
                     ->with("error", "Gagal menghapus buku");
             }
 
+            $this->invalidateBooksCache(["select" => "id,title,quantity,is_one_day_book"]);
             $this->invalidateBooksCache(["select" => "id,title"]);
+            $this->invalidateBooksCache(["select" => "code"]);
+            $this->invalidateBooksCache(["order" => "created_at.desc"]);
 
             return redirect()
                 ->to("/management-buku")

@@ -32,6 +32,9 @@
     <div class="d-flex justify-content-between align-items-center mt-4">
         <h4>Data Siswa</h4>
         <div class="gap-2 d-flex">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetTrustScore()">
+                <i class="bi bi-arrow-counterclockwise"></i> Reset Trust Score
+            </button>
             <button type="button" class="btn btn-primary btn-sm" onclick="openAddSiswaModal()">
                 <i class="bi bi-plus-circle"></i> Tambah Siswa
             </button>
@@ -821,6 +824,30 @@ function fillGuruForm(guru) {
 
     populateGuruClassDropdown();
     document.getElementById('guruKelas').value = guru.class_id || '';
+}
+
+function resetTrustScore() {
+    if (!confirm('Reset semua trust score, jumlah peminjaman, dan status semester untuk data siswa?')) {
+        return;
+    }
+
+    fetch("<?= base_url("user/reset-trust-score") ?>", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showToast(result.message || 'Reset trust score berhasil');
+            fetchSiswaData();
+        } else {
+            showToast(result.message || 'Gagal melakukan reset', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Terjadi kesalahan saat reset data', 'error');
+    });
 }
 
 // submit handlers

@@ -354,6 +354,7 @@ class ClassTransactionController extends Controller
             // Clear cache
             $this->cache->delete("class_data_" . $classId);
             $this->cache->delete("book_borrowers_" . $bookId);
+            $this->invalidateBooksCache(["order" => "created_at.desc"]);
 
             return $this->response->setJSON([
                 "success" => true,
@@ -502,19 +503,10 @@ class ClassTransactionController extends Controller
                     ]);
                 }
 
-                $users = $this->supabaseRequest("GET", "users", null, [
-                    "id" => "eq." . $userId,
-                    "limit" => 1,
+                $newTrustScore = $this->calculateTrustScore($userId);
+                $this->supabaseRequest("PATCH", "users?id=eq." . $userId, [
+                    "trust_score" => $newTrustScore,
                 ]);
-                $user = $users[0];
-
-                // Recalculate trust score
-                if (strtotime($now) < strtotime($dueDate)) {
-                    $newScore = min(1000, (float) $user["trust_score"] + 2);
-                    $this->supabaseRequest("PATCH", "users?id=eq." . $userId, [
-                        "trust_score" => $newScore,
-                    ]);
-                }
 
                 $this->cache->delete("book_borrowers_" . $bookId);
 
@@ -523,6 +515,7 @@ class ClassTransactionController extends Controller
 
             // Clear cache
             $this->cache->delete("class_data_" . $classId);
+            $this->invalidateBooksCache(["order" => "created_at.desc"]);
 
             $message =
                 "Pengembalian berhasil dicatat untuk " .
@@ -546,292 +539,6 @@ class ClassTransactionController extends Controller
             return $this->response->setJSON([
                 "success" => false,
                 "message" => "Terjadi kesalahan: " . $e->getMessage(),
-            ]);
-        }
-    }
-
-    // Calculate trust score based on all transactions
-    private function calculateTrustScore($userId)
-    {
-        // Get all borrowing transactions
-        $borrowTransactions = $this->fetchAllTransactions([
-            "user_id" => "eq." . $userId,
-            "type" => "eq.borrow",
-            "select" => "*",
-        ]);
-
-        // Get all return transactions to get book_condition
-        $returnTransactions = $this->fetchAllTransactions([
-            "user_id" => "eq." . $userId,
-            "type" => "eq.return",
-            "select" => "*",
-        ]);
-
-        $totalBorrowing = count($borrowTransactions);
-
-        // Default score for new users
-        if ($totalBorrowing <= 0) {
-            return 100;
-        }
-
-        // Create a map of return transactions by book_id for quick lookup
-        $returnMap = [];
-        foreach ($returnTransactions as $ret) {
-            $key = $ret["book_id"] . "_" . $ret["user_id"];
-            $returnMap[$key] = $ret;
-        }
-
-        $totalLate = 0;
-        $totalOnTime = 0;
-        $totalDamaged = 0;
-
-        foreach ($borrowTransactions as $borrow) {
-            $dueDate = $borrow["due_date"] ?? null;
-            $completedAt = $borrow["completed_at"] ?? null;
-
-            // Skip transactions that have not been returned
-            if (!$completedAt || !$dueDate) {
-                continue;
-            }
-
-            // =========================
-            // Late / On-Time Detection
-            // =========================
-
-            if (strtotime($completedAt) > strtotime($dueDate)) {
-                $totalLate++;
-            } else {
-                $totalOnTime++;
-            }
-
-            // =========================
-            // Damaged / Lost Detection
-            // =========================
-
-            // Check corresponding return transaction for book_condition
-            $key = $borrow["book_id"] . "_" . $borrow["user_id"];
-            if (isset($returnMap[$key])) {
-                $returnTrx = $returnMap[$key];
-                if (
-                    isset($returnTrx["book_condition"]) &&
-                    in_array(strtolower($returnTrx["book_condition"]), [
-                        "rusak",
-                        "hilang",
-                    ])
-                ) {
-                    $totalDamaged++;
-                }
-            }
-        }
-
-        // Prevent division by zero
-        $effectiveTransactions = max(1, $totalLate + $totalOnTime);
-
-        // =========================
-        // Feature Calculation
-        // =========================
-
-        // f1 = delay behavior
-        $f1 = 1 - $totalLate / $effectiveTransactions;
-
-        // f2 = on-time return rate
-        $f2 = $totalOnTime / $effectiveTransactions;
-
-        // f3 = damaged/lost behavior
-        $f3 = 1 - $totalDamaged / $effectiveTransactions;
-
-        // Clamp values between 0 and 1
-        $f1 = max(0, min(1, $f1));
-        $f2 = max(0, min(1, $f2));
-        $f3 = max(0, min(1, $f3));
-
-        // =========================
-        // Feature Weights
-        // =========================
-
-        $a1 = 0.45; // delay behavior
-        $a2 = 0.35; // on-time return
-        $a3 = 0.2; // damaged/lost
-
-        // =========================
-        // Cluster Scaling
-        // =========================
-
-        if ($f1 >= 0.9 && $f2 >= 0.9 && $f3 >= 0.95) {
-            $L = 700; // Excellent
-        } elseif ($f1 >= 0.75) {
-            $L = 500; // Good
-        } elseif ($f1 >= 0.5) {
-            $L = 300; // Moderate
-        } else {
-            $L = 100; // Poor
-        }
-
-        // =========================
-        // Final Trust Score
-        // =========================
-
-        $a1_f1 = $a1 * $f1;
-        $a2_f2 = $a2 * $f2;
-        $a3_f3 = $a3 * $f3;
-
-        $trustScore = $L * ($a1_f1 + $a2_f2 + $a3_f3);
-
-        // Normalize score
-        return round(min(1000, max(0, $trustScore)), 2);
-    }
-
-    /**
-     * Apply daily late penalties for overdue book borrowings
-     * Called by Google Cloud Scheduler
-     */
-    public function applyLatePenalties()
-    {
-        try {
-            log_message("info", "=== RECALCULATING TRUST SCORES ===");
-
-            // Get all active borrowings
-            $borrowings = $this->fetchAllTransactions([
-                "select" => "*",
-                "status" => "eq.active",
-                "order" => "created_at.desc",
-            ]);
-
-            if (empty($borrowings)) {
-                log_message("info", "No borrowings found");
-
-                return $this->response->setJSON([
-                    "success" => true,
-                    "message" => "No borrowings to process",
-                    "processed" => 0,
-                ]);
-            }
-
-            $processedCount = 0;
-            $processedUsers = [];
-            $today = date("Y-m-d");
-
-            foreach ($borrowings as $borrowing) {
-                $userId = $borrowing["user_id"];
-                $dueDate = $borrowing["due_date"] ?? null;
-                $lastPenaltyDate = $borrowing["last_penalty_date"] ?? null;
-
-                // Skip duplicate users
-                if (in_array($userId, $processedUsers)) {
-                    continue;
-                }
-
-                // Skip if no due date
-                if (!$dueDate) {
-                    continue;
-                }
-
-                // Skip if due date has not passed
-                if (strtotime($today) <= strtotime($dueDate)) {
-                    continue;
-                }
-
-                // Skip if already recalculated today
-                if ($lastPenaltyDate === $today) {
-                    continue;
-                }
-
-                // Get user
-                $user = $this->supabaseRequest("GET", "users", null, [
-                    "id" => "eq." . $userId,
-                    "select" => "id,nama,trust_score,is_freezed",
-                    "limit" => 1,
-                ]);
-
-                if (empty($user) || isset($user["error"])) {
-                    log_message("error", "User not found for ID: $userId");
-                    continue;
-                }
-
-                // Skip frozen users
-                if (
-                    $user[0]["is_freezed"] == 1 ||
-                    $user[0]["is_freezed"] === true
-                ) {
-                    log_message(
-                        "info",
-                        "Skipping recalculation for user {$user[0]["nama"]} (ID: $userId) - trust score is frozen"
-                    );
-
-                    continue;
-                }
-
-                $currentScore = (float) ($user[0]["trust_score"] ?? 100);
-
-                // =========================
-                // Recalculate Trust Score
-                // =========================
-
-                $newScore = $this->calculateTrustScore($userId);
-
-                // Update trust score
-                $updateResult = $this->supabaseRequest(
-                    "PATCH",
-                    "users?id=eq." . $userId,
-                    [
-                        "trust_score" => $newScore,
-                    ]
-                );
-
-                if (!isset($updateResult["error"])) {
-                    // Mark recalculation date
-                    $this->supabaseRequest(
-                        "PATCH",
-                        "transactions?id=eq." . $borrowing["id"],
-                        [
-                            "last_penalty_date" => $today,
-                        ]
-                    );
-
-                    $processedUsers[] = $userId;
-                    $processedCount++;
-
-                    log_message(
-                        "info",
-                        "Trust score recalculated for user {$user[0]["nama"]} (ID: $userId). Score: $currentScore → $newScore"
-                    );
-                } else {
-                    log_message(
-                        "error",
-                        "Error updating trust score for user $userId: " .
-                            json_encode($updateResult)
-                    );
-                }
-            }
-
-            // Clear cache
-            $this->cache->delete(
-                "all_users_class_" . md5(json_encode(["select" => "*"]))
-            );
-
-            log_message(
-                "info",
-                "=== TRUST SCORES RECALCULATED FOR $processedCount USERS ==="
-            );
-
-            return $this->response->setJSON([
-                "success" => true,
-                "message" => "Trust scores recalculated successfully",
-                "processed" => $processedCount,
-                "timestamp" => date("Y-m-d H:i:s"),
-            ]);
-        } catch (\Exception $e) {
-            log_message(
-                "error",
-                "Exception in applyLatePenalties: " .
-                    $e->getMessage() .
-                    " | " .
-                    $e->getTraceAsString()
-            );
-
-            return $this->response->setStatusCode(500)->setJSON([
-                "success" => false,
-                "message" => "Error: " . $e->getMessage(),
             ]);
         }
     }

@@ -336,6 +336,51 @@ class UserController extends Controller
         ]);
     }
 
+    public function resetTrustScore()
+    {
+        $userResult = $this->supabaseRequest(
+            "PATCH",
+            "users?role=eq.murid",
+            [
+                "num_borrows" => 0,
+                "trust_score" => 0.0,
+            ]
+        );
+
+        $transactionResult = $this->supabaseRequest(
+            "PATCH",
+            "transactions",
+            [
+                "is_finished_semester" => true,
+            ]
+        );
+
+        $userError = isset($userResult["error"]);
+        $transactionError = isset($transactionResult["error"]);
+
+        if ($userError || $transactionError) {
+            return $this->response->setJSON([
+                "success" => false,
+                "message" => "Gagal mereset data. Silakan coba lagi.",
+                "data" => [
+                    "users" => $userResult,
+                    "transactions" => $transactionResult,
+                ],
+            ]);
+        }
+
+        $this->invalidateUserCache(['select' => 'id,nama,class_id']);
+
+        return $this->response->setJSON([
+            "success" => true,
+            "message" => "Berhasil mereset trust score, jumlah peminjaman, dan status semester.",
+            "data" => [
+                "users" => $userResult,
+                "transactions" => $transactionResult,
+            ],
+        ]);
+    }
+
     public function addGuru()
     {
         log_message(

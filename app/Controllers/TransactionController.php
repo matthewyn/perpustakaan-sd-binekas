@@ -20,6 +20,7 @@ class TransactionController extends Controller
     private $supabaseUrl;
     private $supabaseKey;
     private $cache;
+    private $maxCompletedTransactions = 60;
 
     public function __construct()
     {
@@ -396,6 +397,7 @@ class TransactionController extends Controller
             ]);
 
             $this->cache->delete("book_borrowers_" . $bookId);
+            $this->invalidateBooksCache(["order" => "created_at.desc"]);
 
             return $this->response->setJSON([
                 "success" => true,
@@ -542,21 +544,13 @@ class TransactionController extends Controller
                     ]);
                 }
 
-                $users = $this->supabaseRequest("GET", "users", null, [
-                    "id" => "eq." . $userId,
-                    "limit" => 1,
+                $newTrustScore = $this->calculateTrustScore($userId);
+                $this->supabaseRequest("PATCH", "users?id=eq." . $userId, [
+                    "trust_score" => $newTrustScore,
                 ]);
-                $user = $users[0];
-
-                // Recalculate trust score
-                if (strtotime($now) < strtotime($dueDate)) {
-                    $newScore = min(1000, (float) $user["trust_score"] + 2);
-                    $this->supabaseRequest("PATCH", "users?id=eq." . $userId, [
-                        "trust_score" => $newScore,
-                    ]);
-                }
 
                 $this->cache->delete("book_borrowers_" . $bookId);
+                $this->invalidateBooksCache(["order" => "created_at.desc"]);
 
                 $processedCount++;
             }
@@ -580,133 +574,6 @@ class TransactionController extends Controller
                 "message" => "Terjadi kesalahan: " . $e->getMessage(),
             ]);
         }
-    }
-
-    // Calculate trust score based on all transactions
-    private function calculateTrustScore($userId)
-    {
-        // Get all borrowing transactions
-        $borrowTransactions = $this->fetchAllTransactions([
-            "user_id" => "eq." . $userId,
-            "type" => "eq.borrow",
-            "select" => "*",
-        ]);
-
-        // Get all return transactions to get book_condition
-        $returnTransactions = $this->fetchAllTransactions([
-            "user_id" => "eq." . $userId,
-            "type" => "eq.return",
-            "select" => "*",
-        ]);
-
-        $totalBorrowing = count($borrowTransactions);
-
-        // Default score for new users
-        if ($totalBorrowing <= 0) {
-            return 100;
-        }
-
-        // Create a map of return transactions by book_id for quick lookup
-        $returnMap = [];
-        foreach ($returnTransactions as $ret) {
-            $key = $ret["book_id"] . "_" . $ret["user_id"];
-            $returnMap[$key] = $ret;
-        }
-
-        $totalLate = 0;
-        $totalOnTime = 0;
-        $totalDamaged = 0;
-
-        foreach ($borrowTransactions as $borrow) {
-            $dueDate = $borrow["due_date"] ?? null;
-            $completedAt = $borrow["completed_at"] ?? null;
-
-            // Skip transactions that have not been returned
-            if (!$completedAt || !$dueDate) {
-                continue;
-            }
-
-            // =========================
-            // Late / On-Time Detection
-            // =========================
-
-            if (strtotime($completedAt) > strtotime($dueDate)) {
-                $totalLate++;
-            } else {
-                $totalOnTime++;
-            }
-
-            // =========================
-            // Damaged / Lost Detection
-            // =========================
-
-            // Check corresponding return transaction for book_condition
-            $key = $borrow["book_id"] . "_" . $borrow["user_id"];
-            if (isset($returnMap[$key])) {
-                $returnTrx = $returnMap[$key];
-                if (
-                    isset($returnTrx["book_condition"]) &&
-                    in_array(strtolower($returnTrx["book_condition"]), [
-                        "rusak",
-                        "hilang",
-                    ])
-                ) {
-                    $totalDamaged++;
-                }
-            }
-        }
-
-        // Prevent division by zero
-        $effectiveTransactions = max(1, $totalLate + $totalOnTime);
-
-        // =========================
-        // Feature Calculation
-        // =========================
-
-        // f1 = delay behavior
-        $f1 = 1 - $totalLate / $effectiveTransactions;
-
-        // f2 = on-time return rate
-        $f2 = $totalOnTime / $effectiveTransactions;
-
-        // f3 = damaged/lost behavior
-        $f3 = 1 - $totalDamaged / $effectiveTransactions;
-
-        // Clamp values between 0 and 1
-        $f1 = max(0, min(1, $f1));
-        $f2 = max(0, min(1, $f2));
-        $f3 = max(0, min(1, $f3));
-
-        // =========================
-        // Feature Weights
-        // =========================
-
-        $a1 = 0.45; // delay behavior
-        $a2 = 0.35; // on-time return
-        $a3 = 0.2; // damaged/lost
-
-        // =========================
-        // Cluster Scaling
-        // =========================
-
-        if ($f1 >= 0.9 && $f2 >= 0.9 && $f3 >= 0.95) {
-            $L = 700; // Excellent
-        } elseif ($f1 >= 0.75) {
-            $L = 500; // Good
-        } elseif ($f1 >= 0.5) {
-            $L = 300; // Moderate
-        } else {
-            $L = 100; // Poor
-        }
-
-        // =========================
-        // Final Trust Score
-        // =========================
-
-        $trustScore = $L * ($a1 * $f1 + $a2 * $f2 + $a3 * $f3);
-
-        // Normalize score
-        return round(min(1000, max(0, $trustScore)), 2);
     }
 
     public function getBorrowings()

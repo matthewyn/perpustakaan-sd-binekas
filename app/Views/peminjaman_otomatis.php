@@ -1,5 +1,5 @@
-<?= $this->extend('layout') ?>
-<?= $this->section('content') ?>
+<?= $this->extend("layout") ?>
+<?= $this->section("content") ?>
 
 <style>
 .page-item.active .page-link {
@@ -167,7 +167,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-
     let usersByKey            = {};
     let currentBorrowingsPage = 1;
     let currentReturnsPage    = 1;
@@ -206,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function fetchClassesData() {
-        $.get("<?= base_url('classes/list') ?>", function (response) {
+        $.get("<?= base_url("classes/list") ?>", function (response) {
             if (response.success && Array.isArray(response.classes)) {
                 window._classesById = {};
                 response.classes.forEach(c => { window._classesById[c.id] = c; });
@@ -215,12 +214,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function fetchUsersData() {
-        $.get("<?= base_url('user/list/murid') ?>", function (response) {
+        $.get("<?= base_url('user/list/murid') ?>", { projection: 'select=id,nama' }, function(response) {
             if (response.success && Array.isArray(response.users)) {
                 response.users.forEach(u => { usersByKey[u.id] = u; });
             }
         });
-        $.get("<?= base_url('user/list/guru') ?>", function (response) {
+        $.get("<?= base_url('user/list/guru') ?>", { projection: 'select=id,nama' }, function (response) {
             if (response.success && Array.isArray(response.users)) {
                 response.users.forEach(u => { usersByKey[u.id] = u; });
             }
@@ -257,7 +256,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // Mode pencarian: filter & paginasi seluruh data di client
         if (borrowingsSearchQuery) {
             if (allBorrowingsCache === null) {
-                $.get("<?= base_url('transaction/borrowings-all') ?>", { all: 1 }, function (response) {
+                $.get("<?= base_url(
+                    "transaction/borrowings-all"
+                ) ?>", { all: 1 }, function (response) {
                     if (response.success && Array.isArray(response.borrowings)) {
                         allBorrowingsCache = response.borrowings;
                         renderBorrowingsFromCache(page);
@@ -270,7 +271,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Mode normal: server-side pagination (hemat memori)
-        $.get("<?= base_url('transaction/borrowings-all') ?>", { page, limit: ITEMS_PER_PAGE }, function (response) {
+        $.get("<?= base_url(
+            "transaction/borrowings-all"
+        ) ?>", { page, limit: ITEMS_PER_PAGE }, function (response) {
             if (response.success && Array.isArray(response.borrowings)) {
                 let rows = renderBorrowingsRows(response.borrowings, page);
                 if (!rows) rows = `<tr><td colspan="5" class="text-center">Belum ada data peminjaman.</td></tr>`;
@@ -322,7 +325,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (returnsSearchQuery) {
             if (allReturnsCache === null) {
-                $.get("<?= base_url('transaction/returns-all') ?>", { all: 1 }, function (response) {
+                $.get("<?= base_url(
+                    "transaction/returns-all"
+                ) ?>", { all: 1 }, function (response) {
                     if (response.success && Array.isArray(response.returns)) {
                         allReturnsCache = response.returns;
                         renderReturnsFromCache(page);
@@ -334,7 +339,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        $.get("<?= base_url('transaction/returns-all') ?>", { page, limit: ITEMS_PER_PAGE }, function (response) {
+        $.get("<?= base_url(
+            "transaction/returns-all"
+        ) ?>", { page, limit: ITEMS_PER_PAGE }, function (response) {
             if (response.success && Array.isArray(response.returns)) {
                 let rows = renderReturnsRows(response.returns, page);
                 if (!rows) rows = `<tr><td colspan="5" class="text-center">Belum ada data pengembalian.</td></tr>`;
@@ -438,7 +445,6 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('cariPengembalian').addEventListener('click', function () {
         filterReturnsTable(document.getElementById('searchPengembalian').value);
     });
-
 
     refreshBorrowingsTable(1);
     refreshReturnsTable(1);
