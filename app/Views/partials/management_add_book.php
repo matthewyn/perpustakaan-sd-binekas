@@ -1,4 +1,3 @@
-<!-- Tambah Buku: isolated copy of the catalog add-book workflow. -->
 <div class="modal fade" id="managementAddBookModal" tabindex="-1" aria-labelledby="managementAddBookModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
