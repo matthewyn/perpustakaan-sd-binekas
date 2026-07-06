@@ -187,7 +187,7 @@ class ApiController extends Controller
                 "category" => (object) [
                     "type" => "string",
                     "description" =>
-                        "The genre or category of the book (in Indonesian).",
+                        "Exactly one concise and specific category in Indonesian, 1-3 words, without commas, slashes, or a list.",
                 ],
                 "synopsis" => (object) [
                     "type" => "string",
@@ -222,7 +222,7 @@ class ApiController extends Controller
             "quantity" => "1",
             "synopsis" => "",
         ];
-        // Note: is_book is harder to reliably extract with simple regex, assume true for fallback
+
         if (preg_match('/"title"\s*:\s*"([^"]*)"/', $text, $matches)) {
             $data["title"] = $matches[1];
         }
@@ -252,6 +252,97 @@ class ApiController extends Controller
         }
 
         return !empty($data["title"]) ? $data : null;
+    }
+
+    private function normalizeCategory($category): string
+    {
+        if (!is_string($category)) {
+            return "";
+        }
+
+        $category = trim(html_entity_decode($category, ENT_QUOTES, "UTF-8"));
+        if ($category === "" || strtoupper($category) === "NOT FOUND") {
+            return "";
+        }
+
+        $category = preg_replace(
+            "/^(kategori|genre)\s*:\s*/iu",
+            "",
+            $category
+        );
+
+        $translations = [
+            "/\bscience fiction\b/iu" => "fiksi ilmiah",
+            "/\bnon[-\s]?fiction\b/iu" => "nonfiksi",
+            "/\bfiction\b/iu" => "fiksi",
+            "/\badventure\b/iu" => "petualangan",
+            "/\baction\b/iu" => "aksi",
+            "/\bchildren(?:'s)?\b/iu" => "anak",
+            "/\bbiography\b/iu" => "biografi",
+            "/\bhistory\b/iu" => "sejarah",
+            "/\bpsychology\b/iu" => "psikologi",
+            "/\breligion\b/iu" => "agama",
+            "/\bfantasy\b/iu" => "fantasi",
+            "/\bmystery\b/iu" => "misteri",
+            "/\bromance\b/iu" => "romantis",
+        ];
+        $category = preg_replace(
+            array_keys($translations),
+            array_values($translations),
+            $category
+        );
+
+        $parts = preg_split(
+            "/\s*[,;\/|&]\s*/u",
+            $category,
+            -1,
+            PREG_SPLIT_NO_EMPTY
+        );
+
+        if (count($parts) > 1) {
+            $first = trim($parts[0]);
+            $firstLower = mb_strtolower($first, "UTF-8");
+
+            if (in_array($firstLower, ["fiksi", "nonfiksi"], true)) {
+                $specific = trim($parts[count($parts) - 1]);
+                $category = $first . " " . $specific;
+            } else {
+                $category = $first;
+            }
+        }
+
+        $category = preg_replace("/[^\p{L}\p{N}\s-]/u", " ", $category);
+        $words = preg_split(
+            "/\s+/u",
+            trim($category),
+            -1,
+            PREG_SPLIT_NO_EMPTY
+        );
+
+        $ignoredWords = ["buku", "novel", "kategori", "genre", "dan"];
+        $cleanWords = [];
+        $seenWords = [];
+        foreach ($words as $word) {
+            $lower = mb_strtolower($word, "UTF-8");
+            if (
+                in_array($lower, $ignoredWords, true) ||
+                in_array($lower, $seenWords, true)
+            ) {
+                continue;
+            }
+
+            $cleanWords[] = $word;
+            $seenWords[] = $lower;
+            if (count($cleanWords) === 3) {
+                break;
+            }
+        }
+
+        return mb_convert_case(
+            implode(" ", $cleanWords),
+            MB_CASE_TITLE,
+            "UTF-8"
+        );
     }
 
     // --- Gemini Specific Methods ---
@@ -516,7 +607,7 @@ class ApiController extends Controller
                         [
                             "type" => "text",
                             "text" =>
-                                "Analyze this book cover thoroughly. Extract ALL visible text including: - Title - Author - Illustrator - Publisher - Series name - ISBN - Any other text. Also determine: - Book category/genre (in Indonesian) - Appropriate DDC number - Write a brief synopsis (2-3 sentences in Bahasa Indonesia). Return ONLY valid JSON with NO markdown:" .
+                                "Analyze this book cover thoroughly. Extract ALL visible text including: - Title - Author - Illustrator - Publisher - Series name - ISBN - Any other text. Also determine: - Book category/genre (in Indonesian) - Appropriate DDC number - Write a brief synopsis (2-3 sentences in Bahasa Indonesia). Category must be exactly ONE concise, specific Indonesian label of 1-3 words; never return a list, comma, slash, or the word 'dan'. Prefer the subject or genre over the book format. Examples: Fiksi Petualangan, Biografi, Sains Anak, Matematika, Agama Islam. Return ONLY valid JSON with NO markdown:" .
                                 '{"title": "", "author": "", "illustrator": "", "publisher": "", "series": "", "isbn": "", "ddcNumber": "", "category": "", "quantity": "1", "synopsis": ""}',
                         ],
                         $imageContent,
@@ -567,6 +658,9 @@ class ApiController extends Controller
 
         $parsedData["is_book"] = true;
         $parsedData["quantity"] = $parsedData["quantity"] ?? "1";
+        $parsedData["category"] = $this->normalizeCategory(
+            $parsedData["category"] ?? ""
+        );
         $parsedData["annotations"] = [
             [
                 "type" => "Vision Only",
@@ -705,6 +799,7 @@ class ApiController extends Controller
             "1. Full title\n2. Author name\n3. Illustrator (if any)\n4. Publisher name\n5. Series name (if part of a series)\n" .
             "6. ISBN number\n7. DDC (Dewey Decimal Classification) number (GENERATE IF NOT FOUND ACCORDING TO DDC RULES)\n" .
             "8. Genre/Category\n9. Brief synopsis\n\n" .
+            "Category must be exactly ONE concise, specific Indonesian label of 1-3 words; never return a list, comma, slash, or the word 'dan'. Prefer the subject or genre over the book format. Examples: Fiksi Petualangan, Biografi, Sains Anak, Matematika, Agama Islam.\n\n" .
             "Return ONLY a JSON object with these fields (use Indonesian for category and synopsis):\n" .
             "{\n" .
             '  "title": "", "author": "", "illustrator": "", "publisher": "", "series": "",' .
@@ -773,6 +868,9 @@ class ApiController extends Controller
         // Final Data Assembly for OpenAI Search Success
         $parsedData["is_book"] = true;
         $parsedData["quantity"] = $parsedData["quantity"] ?? "1";
+        $parsedData["category"] = $this->normalizeCategory(
+            $parsedData["category"] ?? ""
+        );
         // Convert OpenAI annotations structure to a consistent format if needed, or just use the raw output
         $parsedData["annotations"] = $annotations;
         $parsedData["sources_count"] = count($annotations);
@@ -899,11 +997,12 @@ class ApiController extends Controller
                 " Step 1: Performing combined Vision + Search analysis with Gemini..."
             );
             $prompt =
-                "Analyze this image. If it is NOT a book cover, return ONLY this JSON: {\"is_book\": false, \"synopsis\": \"Gambar bukan sampul buku\", \"title\": \"BUKAN BUKU\"}. 
+                "Analyze this image. If it is NOT a book cover, return ONLY this JSON: {\"is_book\": false, \"synopsis\": \"Gambar bukan sampul buku\", \"title\": \"BUKAN BUKU\"}.
                 If it IS a book cover, extract all visible text. Then, use Google Search to find detailed information about the book. Find:\n" .
                 "1. Full title\n2. Author name\n3. Illustrator (if any)\n4. Publisher name\n5. Series name (if part of a series)\n" .
                 "6. ISBN number\n7. DDC (Dewey Decimal Classification) number (GENERATE IF NOT FOUND ACCORDING TO DDC RULES)\n" .
                 "8. Genre/Category\n9. Brief synopsis\n\n" .
+                "Category must be exactly ONE concise, specific Indonesian label of 1-3 words; never return a list, comma, slash, or the word 'dan'. Prefer the subject or genre over the book format. Examples: Fiksi Petualangan, Biografi, Sains Anak, Matematika, Agama Islam.\n\n" .
                 "Return ONLY a JSON object with the following fields (use Indonesian for category and synopsis, ensure ISBN and DDC are strings):\n" .
                 "{\n" .
                 '  "is_book": true, "title": "", "author": "", "illustrator": "", "publisher": "", "series": "",' .
@@ -1007,6 +1106,9 @@ class ApiController extends Controller
             // Ensure mandatory fields are present for consistency
             $parsedData["is_book"] = $parsedData["is_book"] ?? true;
             $parsedData["quantity"] = $parsedData["quantity"] ?? "1";
+            $parsedData["category"] = $this->normalizeCategory(
+                $parsedData["category"] ?? ""
+            );
 
             // Handle NOT A BOOK scenario
             if (
