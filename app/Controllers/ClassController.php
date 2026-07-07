@@ -150,8 +150,9 @@ class ClassController extends Controller
         ];
 
         $result = $this->supabaseRequest("POST", $this->classTable, $data);
-
+        $this->cache->delete("classes_list");
         log_message("info", "Add Class Response: " . json_encode($result));
+
 
         if (isset($result["error"])) {
             return $this->response->setJSON([
@@ -258,6 +259,7 @@ class ClassController extends Controller
         }
 
         $this->cache->delete("class_data_" . $id);
+        $this->cache->delete("classes_list");
         $this->invalidateUserCache([
             "class_id" => "eq." . $id,
             "role" => "eq.murid",
@@ -318,6 +320,7 @@ class ClassController extends Controller
         }
 
         $this->cache->delete("class_data_" . $id);
+        $this->cache->delete("classes_list");
         $this->invalidateUserCache([
             "class_id" => "eq." . $id,
             "role" => "eq.murid",
