@@ -86,6 +86,9 @@
     </nav>
 
     <div class="d-flex justify-content-end gap-2 mt-4">
+        <button type="button" id="managementTambahBuku" class="btn btn-primary btn-mobile-md" data-bs-toggle="modal" data-bs-target="#managementAddBookModal">
+            <i class="bi bi-plus"></i> Tambah Buku
+        </button>
         <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#importModal">
             <i class="bi bi-file-earmark-arrow-up"></i> Import JSON
         </button>
@@ -164,6 +167,8 @@
         </div>
     </div>
 </div>
+
+<?= $this->include("partials/management_add_book") ?>
 
 <!-- ===== EDIT MODAL ===== -->
 <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">

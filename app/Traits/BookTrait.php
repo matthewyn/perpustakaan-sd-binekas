@@ -84,13 +84,24 @@ trait BookTrait
         $cacheKey = "all_genres_v1";
         $genres = $this->cache->get($cacheKey);
 
-        if ($genres === null) {
+        if (!is_array($genres) || empty($genres)) {
             $raw = $this->supabaseRequest("GET", "distinct_genres");
-            $genres = array_values(array_filter(array_column($raw, "genre")));
-            sort($genres);
-            $this->cache->save($cacheKey, $genres, 24 * 60 * 60);
+
+            if (!is_array($raw) || isset($raw["error"])) {
+                return is_array($genres) ? $genres : [];
+            }
+
+            $freshGenres = array_values(
+                array_unique(array_filter(array_column($raw, "genre")))
+            );
+            sort($freshGenres);
+
+            if (!empty($freshGenres)) {
+                $genres = $freshGenres;
+                $this->cache->save($cacheKey, $genres, 24 * 60 * 60);
+            }
         }
 
-        return $genres;
+        return is_array($genres) ? $genres : [];
     }
 }

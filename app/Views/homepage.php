@@ -160,7 +160,7 @@ if (!is_array($selectedGenres ?? null)) {
             <div class="col">
               <label for="kategori" class="form-label required text-mobile-sm">Kategori</label>
               <select class="form-select form-control-mobile" id="kategori" name="kategori">
-                <option selected disabled>Pilih kategori</option>
+                <option value="" selected disabled>Pilih kategori</option>
                 <?php foreach ($genres as $genre): ?>
                   <option value="<?= esc($genre) ?>"><?= esc($genre) ?></option>
                 <?php endforeach; ?>
@@ -690,6 +690,34 @@ document.addEventListener("DOMContentLoaded", () => {
     reader.readAsDataURL(file);
   });
 
+  function selectOrCreateCategoryOption(select, value) {
+    if (!select || !value) return false;
+
+    const category = String(value).trim();
+    if (!category) return false;
+
+    const normalizedCategory = category.toLocaleLowerCase('id-ID');
+    let matchingOption = null;
+
+    for (const option of select.options) {
+      if (option.value.trim().toLocaleLowerCase('id-ID') === normalizedCategory) {
+        matchingOption = option;
+        break;
+      }
+    }
+
+    if (!matchingOption) {
+      matchingOption = new Option(category, category, true, true);
+      matchingOption.dataset.aiGenerated = 'true';
+      select.add(matchingOption);
+    } else {
+      matchingOption.selected = true;
+    }
+
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  }
+
   async function analyzeImage(imageData, type) {
     const analyzeBtn = document.getElementById('analyzeBtn');
     const analyzeUploadBtn = document.getElementById('analyzeUploadBtn');
@@ -764,44 +792,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const kategoriSelect = document.getElementById('kategori');
       if (kategoriSelect && (data.category || data.genre)) {
-        const genreValue = (data.category || data.genre).toLowerCase().trim();
-        
-        let found = false;
-        
-        for (const option of kategoriSelect.options) {
-          if (option.value.toLowerCase() === genreValue) {
-            option.selected = true;
-            found = true;
-            break;
-          }
-        }
-        
-        if (!found) {
-          for (const option of kategoriSelect.options) {
-            const optionLower = option.value.toLowerCase();
-            
-            if (optionLower.includes(genreValue) || genreValue.includes(optionLower)) {
-              option.selected = true;
-              found = true;
-              break;
-            }
-          }
-        }
-        
-        if (!found) {
-          const keywords = genreValue.split(' ');
-          for (const option of kategoriSelect.options) {
-            const optionLower = option.value.toLowerCase();
-            for (const keyword of keywords) {
-              if (keyword.length > 3 && optionLower.includes(keyword)) {
-                option.selected = true;
-                found = true;
-                break;
-              }
-            }
-            if (found) break;
-          }
-        }
+        selectOrCreateCategoryOption(
+          kategoriSelect,
+          data.category || data.genre
+        );
       }
 
       if (window.formSync && window.formSync.channel) {
@@ -1493,28 +1487,7 @@ class FormSyncManager {
 
   setSelectValue(fieldId, value) {
     const select = document.getElementById(fieldId);
-    if (!select || !value) return;
-    
-    const normalizedValue = value.toLowerCase().trim();
-    
-    for (const option of select.options) {
-      if (option.value.toLowerCase() === normalizedValue) {
-        option.selected = true;
-        const event = new Event('change', { bubbles: true });
-        select.dispatchEvent(event);
-        return;
-      }
-    }
-    
-    for (const option of select.options) {
-      if (option.value.toLowerCase().includes(normalizedValue) || 
-          normalizedValue.includes(option.value.toLowerCase())) {
-        option.selected = true;
-        const event = new Event('change', { bubbles: true });
-        select.dispatchEvent(event);
-        return;
-      }
-    }
+    selectOrCreateCategoryOption(select, value);
   }
 
   flashFormFields(source = 'manual') {
