@@ -97,9 +97,7 @@ class AutomateTransactionController extends Controller
         }
 
         try {
-            $allBooks = $this->supabaseRequest("GET", "books", null, [
-                "select" => "id,title,quantity,is_one_day_book,uid",
-            ]);
+            $allBooks = $this->supabaseRequest("GET", "books", null);
 
             $bookData = null;
             foreach ($allBooks as $book) {
