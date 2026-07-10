@@ -1166,488 +1166,488 @@ document.addEventListener("DOMContentLoaded", () => {
 <script src="<?= base_url("js/supabase-config.js") ?>"></script>
 
 <script>
-class FormSyncManager {
-  constructor() {
-    this.channel = null;
-    this.sessionId = this.generateSessionId();
-    this.isTyping = false;
-    this.typingTimeout = null;
-    this.isSyncing = false;
-    this.lastBroadcastData = null;
-  }
+// class FormSyncManager {
+//   constructor() {
+//     this.channel = null;
+//     this.sessionId = this.generateSessionId();
+//     this.isTyping = false;
+//     this.typingTimeout = null;
+//     this.isSyncing = false;
+//     this.lastBroadcastData = null;
+//   }
 
-  generateSessionId() {
-    return 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-  }
+//   generateSessionId() {
+//     return 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+//   }
 
-  init() {
-    if (!window.supabase_client) {
-      setTimeout(() => this.init(), 100);
-      return;
-    }
+//   init() {
+//     if (!window.supabase_client) {
+//       setTimeout(() => this.init(), 100);
+//       return;
+//     }
     
-    this.channel = window.supabase_client.channel('form-sync', {
-      config: {
-        broadcast: { self: false }
-      }
-    });
+//     this.channel = window.supabase_client.channel('form-sync', {
+//       config: {
+//         broadcast: { self: false }
+//       }
+//     });
 
-    this.channel
-      .on('broadcast', { event: 'form-update' }, (payload) => {
-        this.handleFormUpdate(payload);
-      })
-      .on('broadcast', { event: 'ai-analysis-complete' }, (payload) => {
-        this.handleAIAnalysisUpdate(payload);
-      })
-      .on('broadcast', { event: 'kode-generated' }, (payload) => {
-        this.handleKodeUpdate(payload);
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          this.showSyncStatus('ready');
-          this.attachFormListeners();
-          this.interceptAIAnalysis();
-          this.interceptKodeGeneration();
-        }
-      });
-  }
+//     this.channel
+//       .on('broadcast', { event: 'form-update' }, (payload) => {
+//         this.handleFormUpdate(payload);
+//       })
+//       .on('broadcast', { event: 'ai-analysis-complete' }, (payload) => {
+//         this.handleAIAnalysisUpdate(payload);
+//       })
+//       .on('broadcast', { event: 'kode-generated' }, (payload) => {
+//         this.handleKodeUpdate(payload);
+//       })
+//       .subscribe((status) => {
+//         if (status === 'SUBSCRIBED') {
+//           this.showSyncStatus('ready');
+//           this.attachFormListeners();
+//           this.interceptAIAnalysis();
+//           this.interceptKodeGeneration();
+//         }
+//       });
+//   }
 
-  attachFormListeners() {
-    const formFields = {
-      kode_sekolah: document.getElementById('kode_sekolah'),
-      judul: document.getElementById('judul'),
-      pengarang: document.getElementById('pengarang'),
-      illustrator: document.getElementById('illustrator'),
-      publisher: document.getElementById('publisher'),
-      series: document.getElementById('series'),
-      kategori: document.getElementById('kategori'),
-      isbn: document.getElementById('isbn'),
-      ddcNumber: document.getElementById('ddcNumber'),
-      gambarLink: document.getElementById('gambarLink'),
-      quantity: document.getElementById('quantity'),
-      sinopsis: document.getElementById('sinopsis')
-    };
+//   attachFormListeners() {
+//     const formFields = {
+//       kode_sekolah: document.getElementById('kode_sekolah'),
+//       judul: document.getElementById('judul'),
+//       pengarang: document.getElementById('pengarang'),
+//       illustrator: document.getElementById('illustrator'),
+//       publisher: document.getElementById('publisher'),
+//       series: document.getElementById('series'),
+//       kategori: document.getElementById('kategori'),
+//       isbn: document.getElementById('isbn'),
+//       ddcNumber: document.getElementById('ddcNumber'),
+//       gambarLink: document.getElementById('gambarLink'),
+//       quantity: document.getElementById('quantity'),
+//       sinopsis: document.getElementById('sinopsis')
+//     };
 
-    Object.keys(formFields).forEach(fieldName => {
-      const field = formFields[fieldName];
-      if (!field) return;
+//     Object.keys(formFields).forEach(fieldName => {
+//       const field = formFields[fieldName];
+//       if (!field) return;
 
-      field.addEventListener('input', (e) => {
-        if (this.isSyncing) return;
-        clearTimeout(this.typingTimeout);
-        this.typingTimeout = setTimeout(() => {
-          this.broadcastFormData();
-        }, 300);
-      });
+//       field.addEventListener('input', (e) => {
+//         if (this.isSyncing) return;
+//         clearTimeout(this.typingTimeout);
+//         this.typingTimeout = setTimeout(() => {
+//           this.broadcastFormData();
+//         }, 300);
+//       });
 
-      field.addEventListener('change', (e) => {
-        if (this.isSyncing) return;
-        this.broadcastFormData();
-      });
-    });
-  }
+//       field.addEventListener('change', (e) => {
+//         if (this.isSyncing) return;
+//         this.broadcastFormData();
+//       });
+//     });
+//   }
 
-  interceptAIAnalysis() {
-    const originalAnalyzeImage = window.analyzeImage;
+//   interceptAIAnalysis() {
+//     const originalAnalyzeImage = window.analyzeImage;
     
-    window.analyzeImage = async (imageData, type) => {
-      try {
-        const result = await originalAnalyzeImage.call(window, imageData, type);
+//     window.analyzeImage = async (imageData, type) => {
+//       try {
+//         const result = await originalAnalyzeImage.call(window, imageData, type);
         
-        if (result && !result.error) {
-          this.broadcastAIAnalysis(result);
-        }
+//         if (result && !result.error) {
+//           this.broadcastAIAnalysis(result);
+//         }
         
-        return result;
-      } catch (error) {
-        console.error('❌ AI Analysis error:', error);
-        throw error;
-      }
-    };
+//         return result;
+//       } catch (error) {
+//         console.error('❌ AI Analysis error:', error);
+//         throw error;
+//       }
+//     };
     
-    this.attachAnalyzeButtonListeners();
-  }
+//     this.attachAnalyzeButtonListeners();
+//   }
 
-  attachAnalyzeButtonListeners() {
-    const analyzeBtn = document.getElementById('analyzeBtn');
-    const analyzeUploadBtn = document.getElementById('analyzeUploadBtn');
+//   attachAnalyzeButtonListeners() {
+//     const analyzeBtn = document.getElementById('analyzeBtn');
+//     const analyzeUploadBtn = document.getElementById('analyzeUploadBtn');
     
-    if (analyzeBtn) {
-      const originalClick = analyzeBtn.onclick;
-      analyzeBtn.onclick = async (e) => {
-        if (originalClick) await originalClick.call(analyzeBtn, e);
+//     if (analyzeBtn) {
+//       const originalClick = analyzeBtn.onclick;
+//       analyzeBtn.onclick = async (e) => {
+//         if (originalClick) await originalClick.call(analyzeBtn, e);
         
-        setTimeout(() => {
-          this.broadcastFormData('ai-analysis');
-        }, 1000);
-      };
-    }
+//         setTimeout(() => {
+//           this.broadcastFormData('ai-analysis');
+//         }, 1000);
+//       };
+//     }
     
-    if (analyzeUploadBtn) {
-      const originalClick = analyzeUploadBtn.onclick;
-      analyzeUploadBtn.onclick = async (e) => {
-        if (originalClick) await originalClick.call(analyzeUploadBtn, e);
+//     if (analyzeUploadBtn) {
+//       const originalClick = analyzeUploadBtn.onclick;
+//       analyzeUploadBtn.onclick = async (e) => {
+//         if (originalClick) await originalClick.call(analyzeUploadBtn, e);
         
-        setTimeout(() => {
-          this.broadcastFormData('ai-analysis');
-        }, 1000);
-      };
-    }
-  }
+//         setTimeout(() => {
+//           this.broadcastFormData('ai-analysis');
+//         }, 1000);
+//       };
+//     }
+//   }
 
-  interceptKodeGeneration() {
-    const generateBtn = document.getElementById('generateKodeBtn');
-    if (!generateBtn) return;
+//   interceptKodeGeneration() {
+//     const generateBtn = document.getElementById('generateKodeBtn');
+//     if (!generateBtn) return;
     
-    generateBtn.addEventListener('click', () => {
-      setTimeout(() => {
-        const kodeValue = document.getElementById('kode_sekolah')?.value;
-        if (kodeValue && kodeValue !== 'Loading...' && kodeValue !== 'Error') {
-          this.broadcastKodeGeneration(kodeValue);
-        }
-      }, 1500);
-    });
-  }
+//     generateBtn.addEventListener('click', () => {
+//       setTimeout(() => {
+//         const kodeValue = document.getElementById('kode_sekolah')?.value;
+//         if (kodeValue && kodeValue !== 'Loading...' && kodeValue !== 'Error') {
+//           this.broadcastKodeGeneration(kodeValue);
+//         }
+//       }, 1500);
+//     });
+//   }
 
-  broadcastAIAnalysis(analysisData) {
-    const payload = {
-      type: 'ai-analysis',
-      sessionId: this.sessionId,
-      timestamp: Date.now(),
-      data: analysisData
-    };
+//   broadcastAIAnalysis(analysisData) {
+//     const payload = {
+//       type: 'ai-analysis',
+//       sessionId: this.sessionId,
+//       timestamp: Date.now(),
+//       data: analysisData
+//     };
 
-    this.channel.send({
-      type: 'broadcast',
-      event: 'ai-analysis-complete',
-      payload: payload
-    });
+//     this.channel.send({
+//       type: 'broadcast',
+//       event: 'ai-analysis-complete',
+//       payload: payload
+//     });
 
-    this.showSyncStatus('syncing');
-  }
+//     this.showSyncStatus('syncing');
+//   }
 
-  handleAIAnalysisUpdate(payload) {
-    if (payload.payload.sessionId === this.sessionId) {
-      return;
-    }
+//   handleAIAnalysisUpdate(payload) {
+//     if (payload.payload.sessionId === this.sessionId) {
+//       return;
+//     }
 
-    this.isSyncing = true;
+//     this.isSyncing = true;
     
-    const data = payload.payload.data;
+//     const data = payload.payload.data;
     
-    this.setFieldValue('judul', data.title || '');
-    this.setFieldValue('pengarang', data.author || '');
-    this.setFieldValue('illustrator', data.illustrator || '');
-    this.setFieldValue('publisher', data.publisher || '');
-    this.setFieldValue('series', data.series || '');
-    this.setFieldValue('isbn', data.isbn || '');
-    this.setFieldValue('ddcNumber', data.ddcNumber || data.ddc || '');
-    this.setFieldValue('quantity', data.quantity || '1');
-    this.setFieldValue('sinopsis', data.synopsis || '');
+//     this.setFieldValue('judul', data.title || '');
+//     this.setFieldValue('pengarang', data.author || '');
+//     this.setFieldValue('illustrator', data.illustrator || '');
+//     this.setFieldValue('publisher', data.publisher || '');
+//     this.setFieldValue('series', data.series || '');
+//     this.setFieldValue('isbn', data.isbn || '');
+//     this.setFieldValue('ddcNumber', data.ddcNumber || data.ddc || '');
+//     this.setFieldValue('quantity', data.quantity || '1');
+//     this.setFieldValue('sinopsis', data.synopsis || '');
     
-    if (data.category || data.genre) {
-      this.setSelectValue('kategori', data.category || data.genre);
-    }
+//     if (data.category || data.genre) {
+//       this.setSelectValue('kategori', data.category || data.genre);
+//     }
     
-    if (data.image || data.gambar) {
-      const imageUrl = data.image || data.gambar;
-      this.setFieldValue('gambarLink', imageUrl);
+//     if (data.image || data.gambar) {
+//       const imageUrl = data.image || data.gambar;
+//       this.setFieldValue('gambarLink', imageUrl);
       
-      const previewImg = document.getElementById('previewImage');
-      if (previewImg) {
-        previewImg.src = imageUrl;
-        previewImg.style.display = 'block';
-      }
-    }
+//       const previewImg = document.getElementById('previewImage');
+//       if (previewImg) {
+//         previewImg.src = imageUrl;
+//         previewImg.style.display = 'block';
+//       }
+//     }
     
-    this.flashFormFields('ai-analysis');
-    this.showNotification('🤖 AI Analysis results synced from another device', 'success');
+//     this.flashFormFields('ai-analysis');
+//     this.showNotification('🤖 AI Analysis results synced from another device', 'success');
     
-    setTimeout(() => {
-      this.isSyncing = false;
-    }, 100);
-  }
+//     setTimeout(() => {
+//       this.isSyncing = false;
+//     }, 100);
+//   }
 
-  broadcastKodeGeneration(kode) {
-    const payload = {
-      type: 'kode-generation',
-      sessionId: this.sessionId,
-      timestamp: Date.now(),
-      kode: kode
-    };
+//   broadcastKodeGeneration(kode) {
+//     const payload = {
+//       type: 'kode-generation',
+//       sessionId: this.sessionId,
+//       timestamp: Date.now(),
+//       kode: kode
+//     };
 
-    this.channel.send({
-      type: 'broadcast',
-      event: 'kode-generated',
-      payload: payload
-    });
+//     this.channel.send({
+//       type: 'broadcast',
+//       event: 'kode-generated',
+//       payload: payload
+//     });
 
-    this.showSyncStatus('syncing');
-  }
+//     this.showSyncStatus('syncing');
+//   }
 
-  handleKodeUpdate(payload) {
-    if (payload.payload.sessionId === this.sessionId) {
-      return;
-    }
+//   handleKodeUpdate(payload) {
+//     if (payload.payload.sessionId === this.sessionId) {
+//       return;
+//     }
 
-    this.isSyncing = true;
+//     this.isSyncing = true;
     
-    const kode = payload.payload.kode;
-    this.setFieldValue('kode_sekolah', kode);
+//     const kode = payload.payload.kode;
+//     this.setFieldValue('kode_sekolah', kode);
     
-    this.flashField('kode_sekolah');
-    this.showNotification(`🔢 Kode Sekolah synced: ${kode}`, 'info');
+//     this.flashField('kode_sekolah');
+//     this.showNotification(`🔢 Kode Sekolah synced: ${kode}`, 'info');
     
-    setTimeout(() => {
-      this.isSyncing = false;
-    }, 100);
-  }
+//     setTimeout(() => {
+//       this.isSyncing = false;
+//     }, 100);
+//   }
 
-  broadcastFormData(source = 'manual') {
-    const formData = {
-      kode_sekolah: document.getElementById('kode_sekolah')?.value || '',
-      judul: document.getElementById('judul')?.value || '',
-      pengarang: document.getElementById('pengarang')?.value || '',
-      illustrator: document.getElementById('illustrator')?.value || '',
-      publisher: document.getElementById('publisher')?.value || '',
-      series: document.getElementById('series')?.value || '',
-      kategori: document.getElementById('kategori')?.value || '',
-      isbn: document.getElementById('isbn')?.value || '',
-      ddcNumber: document.getElementById('ddcNumber')?.value || '',
-      gambarLink: document.getElementById('gambarLink')?.value || '',
-      quantity: document.getElementById('quantity')?.value || '1',
-      sinopsis: document.getElementById('sinopsis')?.value || '',
-      sessionId: this.sessionId,
-      timestamp: Date.now(),
-      source: source
-    };
+//   broadcastFormData(source = 'manual') {
+//     const formData = {
+//       kode_sekolah: document.getElementById('kode_sekolah')?.value || '',
+//       judul: document.getElementById('judul')?.value || '',
+//       pengarang: document.getElementById('pengarang')?.value || '',
+//       illustrator: document.getElementById('illustrator')?.value || '',
+//       publisher: document.getElementById('publisher')?.value || '',
+//       series: document.getElementById('series')?.value || '',
+//       kategori: document.getElementById('kategori')?.value || '',
+//       isbn: document.getElementById('isbn')?.value || '',
+//       ddcNumber: document.getElementById('ddcNumber')?.value || '',
+//       gambarLink: document.getElementById('gambarLink')?.value || '',
+//       quantity: document.getElementById('quantity')?.value || '1',
+//       sinopsis: document.getElementById('sinopsis')?.value || '',
+//       sessionId: this.sessionId,
+//       timestamp: Date.now(),
+//       source: source
+//     };
 
-    if (JSON.stringify(formData) === JSON.stringify(this.lastBroadcastData)) {
-      return;
-    }
+//     if (JSON.stringify(formData) === JSON.stringify(this.lastBroadcastData)) {
+//       return;
+//     }
     
-    this.lastBroadcastData = formData;
+//     this.lastBroadcastData = formData;
 
-    this.channel.send({
-      type: 'broadcast',
-      event: 'form-update',
-      payload: formData
-    });
+//     this.channel.send({
+//       type: 'broadcast',
+//       event: 'form-update',
+//       payload: formData
+//     });
 
-    this.showSyncStatus('syncing');
-  }
+//     this.showSyncStatus('syncing');
+//   }
 
-  handleFormUpdate(payload) {
-    if (payload.payload.sessionId === this.sessionId) {
-      return;
-    }
+//   handleFormUpdate(payload) {
+//     if (payload.payload.sessionId === this.sessionId) {
+//       return;
+//     }
 
-    this.isSyncing = true;
+//     this.isSyncing = true;
 
-    const data = payload.payload;
+//     const data = payload.payload;
     
-    this.setFieldValue('kode_sekolah', data.kode_sekolah);
-    this.setFieldValue('judul', data.judul);
-    this.setFieldValue('pengarang', data.pengarang);
-    this.setFieldValue('illustrator', data.illustrator);
-    this.setFieldValue('publisher', data.publisher);
-    this.setFieldValue('series', data.series);
-    this.setSelectValue('kategori', data.kategori);
-    this.setFieldValue('isbn', data.isbn);
-    this.setFieldValue('ddcNumber', data.ddcNumber);
-    this.setFieldValue('gambarLink', data.gambarLink);
-    this.setFieldValue('quantity', data.quantity);
-    this.setFieldValue('sinopsis', data.sinopsis);
+//     this.setFieldValue('kode_sekolah', data.kode_sekolah);
+//     this.setFieldValue('judul', data.judul);
+//     this.setFieldValue('pengarang', data.pengarang);
+//     this.setFieldValue('illustrator', data.illustrator);
+//     this.setFieldValue('publisher', data.publisher);
+//     this.setFieldValue('series', data.series);
+//     this.setSelectValue('kategori', data.kategori);
+//     this.setFieldValue('isbn', data.isbn);
+//     this.setFieldValue('ddcNumber', data.ddcNumber);
+//     this.setFieldValue('gambarLink', data.gambarLink);
+//     this.setFieldValue('quantity', data.quantity);
+//     this.setFieldValue('sinopsis', data.sinopsis);
 
-    if (data.gambarLink) {
-      const previewImg = document.getElementById('previewImage');
-      if (previewImg) {
-        previewImg.src = data.gambarLink;
-        previewImg.style.display = 'block';
-      }
-    }
+//     if (data.gambarLink) {
+//       const previewImg = document.getElementById('previewImage');
+//       if (previewImg) {
+//         previewImg.src = data.gambarLink;
+//         previewImg.style.display = 'block';
+//       }
+//     }
 
-    this.flashFormFields(data.source);
-    this.showSyncStatus('synced');
+//     this.flashFormFields(data.source);
+//     this.showSyncStatus('synced');
 
-    setTimeout(() => {
-      this.isSyncing = false;
-    }, 100);
-  }
+//     setTimeout(() => {
+//       this.isSyncing = false;
+//     }, 100);
+//   }
 
-  setFieldValue(fieldId, value) {
-    const field = document.getElementById(fieldId);
-    if (!field || field.value === value) return;
+//   setFieldValue(fieldId, value) {
+//     const field = document.getElementById(fieldId);
+//     if (!field || field.value === value) return;
 
-    field.value = value;
+//     field.value = value;
 
-    const event = new Event('change', { bubbles: true });
-    field.dispatchEvent(event);
-  }
+//     const event = new Event('change', { bubbles: true });
+//     field.dispatchEvent(event);
+//   }
 
-  setSelectValue(fieldId, value) {
-    const select = document.getElementById(fieldId);
-    selectOrCreateCategoryOption(select, value);
-  }
+//   setSelectValue(fieldId, value) {
+//     const select = document.getElementById(fieldId);
+//     selectOrCreateCategoryOption(select, value);
+//   }
 
-  flashFormFields(source = 'manual') {
-    const modal = document.querySelector('#exampleModal .modal-body');
-    if (!modal) return;
+//   flashFormFields(source = 'manual') {
+//     const modal = document.querySelector('#exampleModal .modal-body');
+//     if (!modal) return;
     
-    const colors = {
-      'ai-analysis': '#e7f1ff',
-      'manual': '#fff3cd',
-      'kode-generation': '#d1e7dd'
-    };
+//     const colors = {
+//       'ai-analysis': '#e7f1ff',
+//       'manual': '#fff3cd',
+//       'kode-generation': '#d1e7dd'
+//     };
     
-    const color = colors[source] || '#f8f9fa';
+//     const color = colors[source] || '#f8f9fa';
     
-    modal.style.transition = 'background-color 0.5s ease';
-    modal.style.backgroundColor = color;
+//     modal.style.transition = 'background-color 0.5s ease';
+//     modal.style.backgroundColor = color;
     
-    setTimeout(() => {
-      modal.style.backgroundColor = '';
-    }, 1000);
-  }
+//     setTimeout(() => {
+//       modal.style.backgroundColor = '';
+//     }, 1000);
+//   }
 
-  flashField(fieldId) {
-    const field = document.getElementById(fieldId);
-    if (!field) return;
+//   flashField(fieldId) {
+//     const field = document.getElementById(fieldId);
+//     if (!field) return;
     
-    field.style.transition = 'all 0.3s ease';
-    field.style.backgroundColor = '#ffd700';
-    field.style.transform = 'scale(1.02)';
+//     field.style.transition = 'all 0.3s ease';
+//     field.style.backgroundColor = '#ffd700';
+//     field.style.transform = 'scale(1.02)';
     
-    setTimeout(() => {
-      field.style.backgroundColor = '';
-      field.style.transform = '';
-    }, 500);
-  }
+//     setTimeout(() => {
+//       field.style.backgroundColor = '';
+//       field.style.transform = '';
+//     }, 500);
+//   }
 
-  showSyncStatus(status) {
-    let indicator = document.getElementById('formSyncStatus');
+//   showSyncStatus(status) {
+//     let indicator = document.getElementById('formSyncStatus');
     
-    if (!indicator) {
-      indicator = document.createElement('div');
-      indicator.id = 'formSyncStatus';
-      indicator.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        padding: 10px 16px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 500;
-        z-index: 9999;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        transition: all 0.3s ease;
-      `;
-      document.body.appendChild(indicator);
-    }
+//     if (!indicator) {
+//       indicator = document.createElement('div');
+//       indicator.id = 'formSyncStatus';
+//       indicator.style.cssText = `
+//         position: fixed;
+//         bottom: 20px;
+//         right: 20px;
+//         padding: 10px 16px;
+//         border-radius: 20px;
+//         font-size: 12px;
+//         font-weight: 500;
+//         z-index: 9999;
+//         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+//         transition: all 0.3s ease;
+//       `;
+//       document.body.appendChild(indicator);
+//     }
 
-    if (status === 'ready') {
-      indicator.style.background = '#d1e7dd';
-      indicator.style.color = '#0f5132';
-      indicator.innerHTML = '🟢 Form sync ready';
+//     if (status === 'ready') {
+//       indicator.style.background = '#d1e7dd';
+//       indicator.style.color = '#0f5132';
+//       indicator.innerHTML = '🟢 Form sync ready';
       
-      setTimeout(() => {
-        indicator.style.opacity = '0.5';
-      }, 2000);
-    } else if (status === 'syncing') {
-      indicator.style.background = '#cfe2ff';
-      indicator.style.color = '#084298';
-      indicator.style.opacity = '1';
-      indicator.innerHTML = '🔄 Syncing...';
-    } else if (status === 'synced') {
-      indicator.style.background = '#d1e7dd';
-      indicator.style.color = '#0f5132';
-      indicator.style.opacity = '1';
-      indicator.innerHTML = '✅ Synced!';
+//       setTimeout(() => {
+//         indicator.style.opacity = '0.5';
+//       }, 2000);
+//     } else if (status === 'syncing') {
+//       indicator.style.background = '#cfe2ff';
+//       indicator.style.color = '#084298';
+//       indicator.style.opacity = '1';
+//       indicator.innerHTML = '🔄 Syncing...';
+//     } else if (status === 'synced') {
+//       indicator.style.background = '#d1e7dd';
+//       indicator.style.color = '#0f5132';
+//       indicator.style.opacity = '1';
+//       indicator.innerHTML = '✅ Synced!';
       
-      setTimeout(() => {
-        indicator.style.opacity = '0.5';
-      }, 1000);
-    }
-  }
+//       setTimeout(() => {
+//         indicator.style.opacity = '0.5';
+//       }, 1000);
+//     }
+//   }
 
-  showNotification(message, type = 'info') {
-    let toastContainer = document.getElementById('toastContainer');
+//   showNotification(message, type = 'info') {
+//     let toastContainer = document.getElementById('toastContainer');
     
-    if (!toastContainer) {
-      toastContainer = document.createElement('div');
-      toastContainer.id = 'toastContainer';
-      toastContainer.style.cssText = `
-        position: fixed;
-        top: 70px;
-        right: 20px;
-        z-index: 9999;
-      `;
-      document.body.appendChild(toastContainer);
-    }
+//     if (!toastContainer) {
+//       toastContainer = document.createElement('div');
+//       toastContainer.id = 'toastContainer';
+//       toastContainer.style.cssText = `
+//         position: fixed;
+//         top: 70px;
+//         right: 20px;
+//         z-index: 9999;
+//       `;
+//       document.body.appendChild(toastContainer);
+//     }
     
-    const toastId = 'toast-' + Date.now();
-    const bgColor = {
-      'success': 'success',
-      'info': 'info',
-      'warning': 'warning',
-      'error': 'danger'
-    }[type] || 'primary';
+//     const toastId = 'toast-' + Date.now();
+//     const bgColor = {
+//       'success': 'success',
+//       'info': 'info',
+//       'warning': 'warning',
+//       'error': 'danger'
+//     }[type] || 'primary';
     
-    const toastHTML = `
-      <div id="${toastId}" class="toast" role="alert" style="min-width: 250px;">
-        <div class="toast-header bg-${bgColor} text-white">
-          <strong class="me-auto">📡 Real-time Sync</strong>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-        </div>
-        <div class="toast-body">
-          ${message}
-        </div>
-      </div>
-    `;
+//     const toastHTML = `
+//       <div id="${toastId}" class="toast" role="alert" style="min-width: 250px;">
+//         <div class="toast-header bg-${bgColor} text-white">
+//           <strong class="me-auto">📡 Real-time Sync</strong>
+//           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+//         </div>
+//         <div class="toast-body">
+//           ${message}
+//         </div>
+//       </div>
+//     `;
     
-    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+//     toastContainer.insertAdjacentHTML('beforeend', toastHTML);
     
-    const toastElement = document.getElementById(toastId);
-    const toast = new bootstrap.Toast(toastElement, { autohide: true, delay: 4000 });
-    toast.show();
+//     const toastElement = document.getElementById(toastId);
+//     const toast = new bootstrap.Toast(toastElement, { autohide: true, delay: 4000 });
+//     toast.show();
     
-    toastElement.addEventListener('hidden.bs.toast', () => {
-      toastElement.remove();
-    });
-  }
+//     toastElement.addEventListener('hidden.bs.toast', () => {
+//       toastElement.remove();
+//     });
+//   }
 
-  disconnect() {
-    if (this.channel) {
-      window.supabase_client.removeChannel(this.channel);
-    }
-  }
-}
+//   disconnect() {
+//     if (this.channel) {
+//       window.supabase_client.removeChannel(this.channel);
+//     }
+//   }
+// }
 
-let formSync = null;
+// let formSync = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => {
-    formSync = new FormSyncManager();
-    formSync.init();
-    window.formSync = formSync;
-  }, 1000);
-});
+// document.addEventListener('DOMContentLoaded', () => {
+//   setTimeout(() => {
+//     formSync = new FormSyncManager();
+//     formSync.init();
+//     window.formSync = formSync;
+//   }, 1000);
+// });
 
-document.getElementById('exampleModal')?.addEventListener('shown.bs.modal', () => {
-  if (formSync && !formSync.channel) {
-    formSync.init();
-  }
-});
+// document.getElementById('exampleModal')?.addEventListener('shown.bs.modal', () => {
+//   if (formSync && !formSync.channel) {
+//     formSync.init();
+//   }
+// });
 
-window.addEventListener('beforeunload', () => {
-  if (formSync) {
-    formSync.disconnect();
-  }
-});
+// window.addEventListener('beforeunload', () => {
+//   if (formSync) {
+//     formSync.disconnect();
+//   }
+// });
 </script>
 
 <style>
-  #formSyncStatus {
+  /* #formSyncStatus {
     position: fixed;
     bottom: 20px;
     right: 20px;
@@ -1680,6 +1680,6 @@ window.addEventListener('beforeunload', () => {
 
   .form-syncing {
     animation: formFlash 0.5s ease-in-out;
-  }
+  } */
 </style>
 <?= $this->endSection() ?>

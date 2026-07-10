@@ -611,7 +611,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 "management-buku/edit/"
             ) ?>" + editId, {
                 method: "POST",
-                headers: { 'Content-Type': 'application/json' },
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(bookData)
             });
 
@@ -646,7 +646,7 @@ document.addEventListener("DOMContentLoaded", function() {
             </button>
         `;
         container.appendChild(inputGroup);
-    });
+    });                           
 
     document.querySelectorAll('.btn-edit-buku').forEach(function(btn) {
         btn.addEventListener('click', function(e) {

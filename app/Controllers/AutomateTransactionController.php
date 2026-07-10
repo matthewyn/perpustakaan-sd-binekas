@@ -97,20 +97,31 @@ class AutomateTransactionController extends Controller
         }
 
         try {
-            $matchedBooks = $this->fetchAllBooks([
-                "uid" => "cs.{\"" . strtoupper($uidScan) . "\"}",
-                "limit" => 1,
-                "select" => "id,title,quantity,is_one_day_book",
-            ]);
+            $allBooks = $this->fetchAllBooks(["select" => "id,title,quantity,is_one_day_book"]);
 
-            if (empty($matchedBooks)) {
-                return $this->response->setJSON([
-                    "success" => false,
-                    "message" => "Buku tidak ditemukan",
-                ]);
+            if (empty($allBooks)) {
+                log_message('error', 'Failed to fetch books');
+                return $this->response->setJSON(['success' => false, 'message' => 'Gagal mengambil data buku']);
             }
 
-            $bookData = $matchedBooks[0];
+            $bookData = null;
+            foreach ($allBooks as $book) {
+                $bookUids = $book['uid'] ?? [];
+                if (!is_array($bookUids)) {
+                    $bookUids = [$bookUids];
+                }
+
+                foreach ($bookUids as $bookUid) {
+                    if (strcasecmp(trim((string)$bookUid), $uidScan) === 0) {
+                        $bookData = $book;
+                        break 2;
+                    }
+                }
+            }
+
+            if (!$bookData) {
+                return $this->response->setJSON(['success' => false, 'message' => 'UID buku tidak ditemukan']);
+            }
 
             // ── 2. Cari user berdasarkan UID RFID user ──────────────────────────
             $userResult = $this->supabaseRequest("GET", "users", null, [
