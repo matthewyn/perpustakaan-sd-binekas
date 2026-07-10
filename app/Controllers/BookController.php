@@ -407,6 +407,7 @@ class BookController extends Controller
             $this->invalidateBooksCache(['select' => 'id,title,quantity,is_one_day_book']);
             $this->invalidateBooksCache(['select' => 'id,title']);
             $this->invalidateBooksCache(['select' => 'code']);
+            $this->invalidateBooksCache([]);
             $this->invalidateBooksCache(["order" => "created_at.desc"]);
 
             return $this->response->setJSON([
