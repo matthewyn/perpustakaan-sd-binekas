@@ -88,6 +88,13 @@ class AutomateTransactionController extends Controller
     {
         $uidScan = trim($this->request->getPost("uid") ?? "");
         $userUid = trim($this->request->getPost("user_uid") ?? "");
+        log_message(
+            "info",
+            "Automate Transaction Request: UID=" .
+                $uidScan .
+                ", User UID=" .
+                $userUid
+        );
 
         if (empty($uidScan) || empty($userUid)) {
             return $this->response->setJSON([
@@ -97,7 +104,12 @@ class AutomateTransactionController extends Controller
         }
 
         try {
-            $allBooks = $this->supabaseRequest("GET", "books", null);
+            $allBooks = $this->fetchAllBooks();
+
+            if (empty($allBooks)) {
+                log_message('error', 'Failed to fetch books');
+                return $this->response->setJSON(['success' => false, 'message' => 'Gagal mengambil data buku']);
+            }
 
             $bookData = null;
             foreach ($allBooks as $book) {
