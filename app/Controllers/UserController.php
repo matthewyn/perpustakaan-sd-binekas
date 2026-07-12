@@ -349,10 +349,8 @@ class UserController extends Controller
 
         $transactionResult = $this->supabaseRequest(
             "PATCH",
-            "transactions",
-            [
-                "is_finished_semester" => true,
-            ]
+            "transactions?is_finished_semester=eq.false",
+            ["is_finished_semester" => true]
         );
 
         $userError = isset($userResult["error"]);

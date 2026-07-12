@@ -381,7 +381,7 @@ class AutomateTransactionController extends Controller
                     "Return success: User=" .
                         $userData["nama"] .
                         ", Book=" .
-                        $bookData["title"]
+                        $bookData["title"]  
                 );
 
                 return $this->response->setJSON([

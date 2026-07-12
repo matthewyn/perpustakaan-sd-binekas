@@ -529,7 +529,7 @@ function renderSiswaTable(data) {
     let html = '';
     paginatedData.forEach((siswa, index) => {
         const actualIndex = startIndex + index + 1;
-        const trustScore  = parseInt(siswa.trust_score ?? 0);
+        const trustScore  = parseFloat(siswa.trust_score ?? 0);
         const maxBorrow   = siswa.maxborrow || siswa.maxBorrow || siswa.max_borrow || 1;
         const className   = getClassNameById(siswa.class_id);
         const totalBorrow = typeof siswa.num_borrows !== 'undefined' ? siswa.num_borrows : '-';
