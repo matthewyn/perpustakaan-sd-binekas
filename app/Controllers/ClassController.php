@@ -111,9 +111,15 @@ class ClassController extends Controller
                 ? 0
                 : count($students);
         }
+        unset($class);
+
+        $gradeSixClasses = array_values(array_filter($classes, function ($class) {
+            return preg_match('/^\s*(kelas\s*)?6\b/i', $class["nama_kelas"] ?? "") === 1;
+        }));
 
         return view("management_class", [
             "classes" => $classes,
+            "gradeSixClasses" => $gradeSixClasses,
         ]);
     }
 
@@ -338,6 +344,134 @@ class ClassController extends Controller
         return $this->response->setJSON([
             "success" => true,
             "message" => "Kelas berhasil dihapus",
+        ]);
+    }
+
+    public function resetStudents()
+    {
+        $result = $this->supabaseRequest("PATCH", "students?class_id=not.is.null", [
+            "class_id" => null,
+        ]);
+
+        if (isset($result["error"])) {
+            log_message("error", "Reset Class Students Response: " . json_encode($result));
+            return $this->response->setJSON([
+                "success" => false,
+                "message" => "Gagal mereset kelas siswa",
+                "data" => $result,
+            ]);
+        }
+
+        $this->cache->delete("classes_list");
+        $this->invalidateUserCache([]);
+
+        return $this->response->setJSON([
+            "success" => true,
+            "message" => "Semua siswa berhasil dilepas dari kelas",
+            "data" => $result,
+        ]);
+    }
+
+    public function deleteStudentsByClass()
+    {
+        $classId = $this->request->getPost("class_id");
+
+        if (empty($classId) || !ctype_digit((string) $classId)) {
+            return $this->response->setJSON([
+                "success" => false,
+                "message" => "Kelas harus dipilih",
+            ]);
+        }
+
+        $class = $this->supabaseRequest("GET", $this->classTable, null, [
+            "id" => "eq." . $classId,
+            "select" => "id,nama_kelas",
+            "limit" => 1,
+        ]);
+
+        if (isset($class["error"]) || empty($class)) {
+            return $this->response->setJSON([
+                "success" => false,
+                "message" => "Kelas tidak ditemukan",
+            ]);
+        }
+
+        $namaKelas = $class[0]["nama_kelas"] ?? "";
+        if (preg_match('/^\s*(kelas\s*)?6\b/i', $namaKelas) !== 1) {
+            return $this->response->setJSON([
+                "success" => false,
+                "message" => "Hapus siswa per kelas hanya tersedia untuk kelas 6",
+            ]);
+        }
+
+        $students = $this->fetchAllUsers([
+            "class_id" => "eq." . $classId,
+            "role" => "eq.murid",
+            "select" => "id,nama,nisn,class_id",
+        ]);
+
+        if (isset($students["error"])) {
+            return $this->response->setJSON([
+                "success" => false,
+                "message" => "Gagal mengambil data siswa",
+                "data" => $students,
+            ]);
+        }
+
+        if (empty($students)) {
+            return $this->response->setJSON([
+                "success" => false,
+                "message" => "Tidak ada siswa aktif di kelas ini",
+            ]);
+        }
+
+        $studentIds = array_map(fn($student) => (int) $student["id"], $students);
+        $activeTransactions = $this->supabaseRequest("GET", "transactions", null, [
+            "user_id" => "in.(" . implode(",", $studentIds) . ")",
+            "status" => "eq.active",
+            "select" => "id,user_id",
+            "limit" => 1,
+        ]);
+
+        if (isset($activeTransactions["error"])) {
+            return $this->response->setJSON([
+                "success" => false,
+                "message" => "Gagal mengecek transaksi aktif siswa",
+                "data" => $activeTransactions,
+            ]);
+        }
+
+        if (!empty($activeTransactions)) {
+            return $this->response->setJSON([
+                "success" => false,
+                "message" => "Masih ada siswa yang memiliki peminjaman aktif. Selesaikan pengembalian dulu.",
+                "data" => $activeTransactions,
+            ]);
+        }
+
+        $deletedCount = 0;
+        foreach ($studentIds as $studentId) {
+            $result = $this->deleteNormalizedUser($studentId);
+            if (isset($result["error"])) {
+                log_message("error", "Delete Class Student Response: " . json_encode($result));
+                return $this->response->setJSON([
+                    "success" => false,
+                    "message" => $result["message"] ?? "Gagal menghapus salah satu siswa",
+                    "data" => $result,
+                ]);
+            }
+
+            $deletedCount++;
+        }
+
+        $this->cache->delete("class_data_" . $classId);
+        $this->cache->delete("classes_list");
+        $this->invalidateUserCache([]);
+
+        return $this->response->setJSON([
+            "success" => true,
+            "message" => $deletedCount . " siswa dari " . $namaKelas . " berhasil dihapus",
+            "deleted_count" => $deletedCount,
         ]);
     }
 

@@ -66,14 +66,18 @@ $routes->get("user/list/(:segment)", 'UserController::list/$1');
 $routes->post("user/add", "UserController::addUser");
 $routes->post("user/reset-trust-score", "UserController::resetTrustScore");
 $routes->post("user/update/(:any)", 'UserController::updateUser/$1');
+$routes->post("user/delete/(:any)", 'UserController::deleteUser/$1');
 $routes->post("user/add-guru", "UserController::addGuru");
 $routes->post("user/update-guru/(:any)", 'UserController::updateGuru/$1');
+$routes->post("user/delete-guru/(:any)", 'UserController::deleteUser/$1');
 
 $routes->get("classes", "ClassController::index");
 $routes->get("classes/list", "ClassController::list");
 $routes->post("classes/add", "ClassController::add");
 $routes->post("classes/update/(:any)", 'ClassController::update/$1');
 $routes->post("classes/delete/(:any)", 'ClassController::delete/$1');
+$routes->post("classes/reset-students", "ClassController::resetStudents");
+$routes->post("classes/delete-students", "ClassController::deleteStudentsByClass");
 $routes->get(
     "classes/getUnassignedStudents",
     "ClassController::getUnassignedStudents"

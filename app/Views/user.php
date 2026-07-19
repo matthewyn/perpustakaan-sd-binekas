@@ -78,11 +78,12 @@
                                 <th>Total Peminjaman</th>
                                 <th>Maks Pinjam</th>
                                 <th>UID Kartu</th>
+                                <th>Aksi</th>
                             </tr>
                         </thead>
                         <tbody id="tbodySiswa">
                             <tr>
-                                <td colspan="8" class="text-center">
+                                <td colspan="9" class="text-center">
                                     <div class="spinner-border spinner-border-sm" role="status">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
@@ -142,11 +143,12 @@
                                 <th>Nama</th>
                                 <th>Jabatan</th>
                                 <th>UID Kartu</th>
+                                <th>Aksi</th>
                             </tr>
                         </thead>
                         <tbody id="tbodyGuru">
                             <tr>
-                                <td colspan="5" class="text-center">
+                                <td colspan="6" class="text-center">
                                     <div class="spinner-border spinner-border-sm" role="status">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
@@ -480,7 +482,7 @@ function fetchSiswaData() {
             } else {
                 showToast('Gagal memuat data siswa', 'error');
                 document.getElementById('tbodySiswa').innerHTML = 
-                    '<tr><td colspan="8" class="text-center text-danger">Gagal memuat data</td></tr>';
+                    '<tr><td colspan="9" class="text-center text-danger">Gagal memuat data</td></tr>';
             }
         })
         .catch(error => {
@@ -501,7 +503,7 @@ function fetchGuruData() {
             } else {
                 showToast('Gagal memuat data guru', 'error');
                 document.getElementById('tbodyGuru').innerHTML = 
-                    '<tr><td colspan="5" class="text-center text-danger">Gagal memuat data</td></tr>';
+                    '<tr><td colspan="6" class="text-center text-danger">Gagal memuat data</td></tr>';
             }
         })
         .catch(error => {
@@ -514,7 +516,7 @@ function renderSiswaTable(data) {
     const tbody = document.getElementById('tbodySiswa');
     
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Belum ada data siswa</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Belum ada data siswa</td></tr>';
         document.getElementById('totalSiswa').textContent = '0';
         document.getElementById('paginationSiswa').innerHTML = '';
         return;
@@ -555,6 +557,9 @@ function renderSiswaTable(data) {
                 </td>
                 <td>${maxBorrow} buku</td>
                 <td>${uidBadge}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" type="button" onclick="deleteSiswa(${siswa.id})">Hapus</button>
+                </td>
             </tr>
         `;
     });
@@ -606,7 +611,7 @@ function renderGuruTable(data) {
     const tbody = document.getElementById('tbodyGuru');
     
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Belum ada data guru</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Belum ada data guru</td></tr>';
         document.getElementById('totalGuru').textContent = '0';
         document.getElementById('paginationGuru').innerHTML = '';
         return;
@@ -632,6 +637,9 @@ function renderGuruTable(data) {
                 <td>${guru.nama || '-'}</td>
                 <td>${guru.jabatan || '-'}</td>
                 <td>${uidBadge}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" type="button" onclick="deleteGuru(${guru.id})">Hapus</button>
+                </td>
             </tr>
         `;
     });
@@ -847,6 +855,54 @@ function resetTrustScore() {
     .catch(error => {
         console.error('Error:', error);
         showToast('Terjadi kesalahan saat reset data', 'error');
+    });
+}
+
+function deleteSiswa(id) {
+    if (!confirm('Yakin ingin menghapus?')) {
+        return;
+    }
+
+    fetch(`<?= base_url("user/delete") ?>/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showToast(result.message || 'Siswa berhasil dihapus');
+            fetchSiswaData();
+        } else {
+            showToast(result.message || 'Gagal menghapus siswa', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Terjadi kesalahan: ' + error.message, 'error');
+    });
+}
+
+function deleteGuru(id) {
+    if (!confirm('Yakin ingin menghapus?')) {
+        return;
+    }
+
+    fetch(`<?= base_url("user/delete-guru") ?>/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showToast(result.message || 'Guru berhasil dihapus');
+            fetchGuruData();
+        } else {
+            showToast(result.message || 'Gagal menghapus guru', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Terjadi kesalahan: ' + error.message, 'error');
     });
 }
 

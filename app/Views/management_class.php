@@ -46,7 +46,13 @@
     </nav>
 
     <div class="d-flex justify-content-end gap-2 mt-4">
-        <button type="button" class="btn btn-primary" id="btnTambahKelas">
+        <button type="button" class="btn btn-outline-danger btn-sm" id="btnHapusSiswaKelas6">
+            <i class="bi bi-trash"></i> Hapus Siswa Kelas 6
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnResetKelas">
+            <i class="bi bi-arrow-counterclockwise"></i> Reset Kelas
+        </button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnTambahKelas">
             <i class="bi bi-plus"></i> Tambah Kelas
         </button>
     </div>
@@ -106,6 +112,34 @@
             </div>
         </div>
     </div>
+</div>
+
+<div class="modal fade" id="deleteStudentsClassModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form id="deleteStudentsClassForm" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Hapus Siswa Kelas 6</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+            <label for="deleteStudentsClassId" class="form-label required">Pilih Kelas</label>
+            <select id="deleteStudentsClassId" name="class_id" class="form-select" required>
+                <option value="">Pilih kelas 6</option>
+                <?php foreach (($gradeSixClasses ?? []) as $class): ?>
+                    <option value="<?= $class["id"] ?>">
+                        <?= esc($class["nama_kelas"] ?? "-") ?> (<?= $class["student_count"] ?? 0 ?> siswa)
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-danger">Hapus Siswa</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <div class="modal fade" id="addKelasModal" tabindex="-1">
@@ -193,11 +227,60 @@ document.addEventListener('DOMContentLoaded', function() {
     const addModal = new bootstrap.Modal(document.getElementById('addKelasModal'));
     const editModal = new bootstrap.Modal(document.getElementById('editKelasModal'));
     const detailModal = new bootstrap.Modal(document.getElementById('detailKelasModal'));
+    const deleteStudentsClassModal = new bootstrap.Modal(document.getElementById('deleteStudentsClassModal'));
     let currentClassId = null;
 
     document.getElementById('btnTambahKelas').addEventListener('click', () => {
         document.getElementById('kelasForm').reset();
         addModal.show();
+    });
+
+    document.getElementById('btnHapusSiswaKelas6').addEventListener('click', () => {
+        document.getElementById('deleteStudentsClassForm').reset();
+        deleteStudentsClassModal.show();
+    });
+
+    document.getElementById('deleteStudentsClassForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const select = document.getElementById('deleteStudentsClassId');
+        const className = select.options[select.selectedIndex]?.textContent.trim() || 'kelas ini';
+        if (!select.value) return;
+        if (!confirm(`Yakin ingin menghapus seluruh data siswa dari ${className}?`)) return;
+
+        fetch("<?= base_url("classes/delete-students") ?>", {
+            method: 'POST',
+            body: new FormData(this)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                deleteStudentsClassModal.hide();
+                showToast(data.message || 'Siswa kelas berhasil dihapus', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast(data.message || 'Gagal menghapus siswa kelas', 'error');
+            }
+        })
+        .catch(() => showToast('Terjadi kesalahan', 'error'));
+    });
+
+    document.getElementById('btnResetKelas').addEventListener('click', () => {
+        if (!confirm('Yakin ingin melepas seluruh siswa dari kelasnya?')) return;
+
+        fetch("<?= base_url("classes/reset-students") ?>", {
+            method: 'POST'
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message || 'Reset kelas berhasil', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast(data.message || 'Gagal mereset kelas', 'error');
+            }
+        })
+        .catch(() => showToast('Terjadi kesalahan', 'error'));
     });
 
     document.getElementById('kelasForm').addEventListener('submit', function(e) {

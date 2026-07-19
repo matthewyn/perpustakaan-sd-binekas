@@ -175,4 +175,78 @@ trait UserTrait
         $teacherData["user_id"] = $userId;
         return $this->supabaseRequest("POST", "teachers", $teacherData);
     }
+
+    private function deleteNormalizedUser(int $userId)
+    {
+        $activeTransactions = $this->supabaseRequest("GET", "transactions", null, [
+            "user_id" => "eq." . $userId,
+            "status" => "eq.active",
+            "select" => "id",
+            "limit" => 1,
+        ]);
+
+        if (isset($activeTransactions["error"])) {
+            return $activeTransactions;
+        }
+
+        if (!empty($activeTransactions)) {
+            return [
+                "error" => "User has active transactions",
+                "message" => "User masih memiliki transaksi peminjaman aktif",
+            ];
+        }
+
+        $user = $this->supabaseRequest("GET", "users_view", null, [
+            "id" => "eq." . $userId,
+            "select" => "id,role,class_id",
+            "limit" => 1,
+        ]);
+
+        if (isset($user["error"])) {
+            return $user;
+        }
+
+        if (empty($user)) {
+            return [
+                "error" => "User not found",
+                "message" => "User tidak ditemukan",
+            ];
+        }
+
+        $archiveValue = "999" . time() . str_pad((string) $userId, 6, "0", STR_PAD_LEFT);
+        $role = $user[0]["role"] ?? null;
+        $classId = $user[0]["class_id"] ?? null;
+
+        if ($role === "murid") {
+            $studentResult = $this->supabaseRequest("PATCH", "students?user_id=eq." . $userId, [
+                "nisn" => $archiveValue,
+                "class_id" => null,
+            ]);
+
+            if (isset($studentResult["error"])) {
+                return $studentResult;
+            }
+        } elseif (in_array($role, ["guru", "admin"], true)) {
+            $teacherResult = $this->supabaseRequest("PATCH", "teachers?user_id=eq." . $userId, [
+                "nip" => $archiveValue,
+                "class_id" => null,
+            ]);
+
+            if (isset($teacherResult["error"])) {
+                return $teacherResult;
+            }
+        }
+
+        $result = $this->supabaseRequest("PATCH", "users?id=eq." . $userId, [
+            "uid" => null,
+            "is_active" => false,
+            "updated_at" => date("Y-m-d H:i:s"),
+        ]);
+
+        if (!isset($result["error"]) && is_array($result)) {
+            $result["archived_class_id"] = $classId;
+        }
+
+        return $result;
+    }
 }

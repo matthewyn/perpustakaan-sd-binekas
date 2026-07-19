@@ -306,6 +306,38 @@ class UserController extends Controller
         ]);
     }
 
+    public function deleteUser($id = null)
+    {
+        if (empty($id)) {
+            return $this->response->setJSON([
+                "success" => false,
+                "message" => "ID user tidak valid",
+            ]);
+        }
+
+        $result = $this->deleteNormalizedUser((int) $id);
+
+        if (isset($result["error"])) {
+            log_message("error", "Delete User Response: " . json_encode($result));
+            return $this->response->setJSON([
+                "success" => false,
+                "message" => $result["message"] ?? "Gagal menghapus user",
+                "data" => $result,
+            ]);
+        }
+
+        if (!empty($result["archived_class_id"])) {
+            $this->cache->delete("class_data_" . $result["archived_class_id"]);
+        }
+        $this->invalidateUserCache([]);
+
+        return $this->response->setJSON([
+            "success" => true,
+            "message" => "User berhasil dihapus",
+            "data" => $result,
+        ]);
+    }
+
     public function resetTrustScore()
     {
         $userResult = $this->supabaseRequest(
