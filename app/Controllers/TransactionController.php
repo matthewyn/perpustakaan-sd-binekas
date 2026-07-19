@@ -298,6 +298,7 @@ class TransactionController extends Controller
             // Get book data
             $book = $this->supabaseRequest("GET", "books", null, [
                 "id" => "eq." . $bookId,
+                "is_test_data" => "eq.false",
                 "select" => "id,quantity,available,is_one_day_book",
                 "limit" => 1,
             ]);

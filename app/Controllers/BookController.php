@@ -209,7 +209,11 @@ class BookController extends Controller
         int $page = 1,
         array $extraParams = []
     ): array {
-        $params = ["select" => "*", "order" => "created_at.desc"];
+        $params = [
+            "select" => "*",
+            "order" => "created_at.desc",
+            "is_test_data" => "eq.false",
+        ];
 
         if ($withPagination) {
             $params["limit"] = $this->perPage;
@@ -298,6 +302,7 @@ class BookController extends Controller
                 "select" => "title,synopsis,image",
                 "order" => "created_at.desc",
                 "limit" => 5,
+                "is_test_data" => "eq.false",
             ],
             "latest_books_5"
         );
@@ -417,6 +422,7 @@ class BookController extends Controller
 
         $books = $this->supabaseRequest("GET", "books_view", null, [
             "title" => "eq." . $originalTitle,
+            "is_test_data" => "eq.false",
             "limit" => 1,
         ]);
 
@@ -470,6 +476,7 @@ class BookController extends Controller
 
         $books = $this->supabaseRequest("GET", "books_view", null, [
             "title" => "eq." . $title,
+            "is_test_data" => "eq.false",
             "limit" => 1,
         ]);
 
@@ -527,6 +534,7 @@ class BookController extends Controller
         $queryParams = [
             "select" => "id,title",
             "title" => "ilike.*{$search}*",
+            "is_test_data" => "eq.false",
             "order" => "title.asc",
             "limit" => $limit,
         ];

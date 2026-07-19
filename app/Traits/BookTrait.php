@@ -4,6 +4,15 @@ namespace App\Traits;
 
 trait BookTrait
 {
+    private function normalizeBookQueryParams(array $queryParams): array
+    {
+        if (!isset($queryParams["is_test_data"])) {
+            $queryParams["is_test_data"] = "eq.false";
+        }
+
+        return $queryParams;
+    }
+
     private function normalizeBookRow(array $book): array
     {
         foreach (["authors" => "author", "illustrators" => "illustrator", "genres" => "genre"] as $source => $target) {
@@ -48,7 +57,7 @@ trait BookTrait
         log_message("info", "Starting fetchAllBooks with pagination");
 
         while (true) {
-            $params = array_merge($queryParams, [
+            $params = array_merge($this->normalizeBookQueryParams($queryParams), [
                 "limit" => $limit,
                 "offset" => $offset,
             ]);
@@ -301,6 +310,77 @@ trait BookTrait
         }
 
         return null;
+    }
+
+    private function deleteNormalizedBook(int $bookId)
+    {
+        $activeTransactions = $this->supabaseRequest("GET", "transactions", null, [
+            "book_id" => "eq." . $bookId,
+            "status" => "eq.active",
+            "select" => "id",
+            "limit" => 1,
+        ]);
+
+        if (isset($activeTransactions["error"])) {
+            return $activeTransactions;
+        }
+
+        if (!empty($activeTransactions)) {
+            return [
+                "error" => "Book has active transactions",
+                "message" => "Buku masih memiliki transaksi peminjaman aktif",
+            ];
+        }
+
+        $transactions = $this->supabaseRequest("GET", "transactions", null, [
+            "book_id" => "eq." . $bookId,
+            "select" => "id",
+            "limit" => 1,
+        ]);
+
+        if (isset($transactions["error"])) {
+            return $transactions;
+        }
+
+        if (!empty($transactions)) {
+            $book = $this->supabaseRequest("GET", "books", null, [
+                "id" => "eq." . $bookId,
+                "select" => "code",
+                "limit" => 1,
+            ]);
+
+            if (isset($book["error"])) {
+                return $book;
+            }
+
+            $copyResult = $this->supabaseRequest("PATCH", "book_copies?book_id=eq." . $bookId, [
+                "is_active" => false,
+                "updated_at" => date("Y-m-d H:i:s"),
+            ]);
+
+            if (isset($copyResult["error"])) {
+                return $copyResult;
+            }
+
+            return $this->supabaseRequest("PATCH", "books?id=eq." . $bookId, [
+                "code" => "__deleted_" . $bookId . "_" . time(),
+                "is_test_data" => true,
+                "updated_at" => date("Y-m-d H:i:s"),
+            ]);
+        }
+
+        foreach ([
+            "book_copies?book_id=eq." . $bookId,
+            "book_authors?book_id=eq." . $bookId,
+            "book_genres?book_id=eq." . $bookId,
+        ] as $endpoint) {
+            $result = $this->supabaseRequest("DELETE", $endpoint);
+            if (isset($result["error"])) {
+                return $result;
+            }
+        }
+
+        return $this->supabaseRequest("DELETE", "books?id=eq." . $bookId);
     }
 
     private function createNormalizedBook(array $source)

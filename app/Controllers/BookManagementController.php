@@ -304,6 +304,7 @@ class BookManagementController extends Controller
 
             $books = $this->supabaseRequest("GET", "books_view", null, [
                 "id" => "eq." . $id,
+                "is_test_data" => "eq.false",
                 "limit" => 1,
             ]);
 
@@ -431,11 +432,7 @@ class BookManagementController extends Controller
 
             $bookId = $books[0]["id"];
 
-            // Delete book
-            $result = $this->supabaseRequest(
-                "DELETE",
-                "books?id=eq." . $bookId
-            );
+            $result = $this->deleteNormalizedBook((int) $bookId);
 
             if (isset($result["error"])) {
                 log_message(
@@ -444,13 +441,15 @@ class BookManagementController extends Controller
                 );
                 return redirect()
                     ->to("/management-buku")
-                    ->with("error", "Gagal menghapus buku");
+                    ->with("error", $result["message"] ?? "Gagal menghapus buku");
             }
 
+            $this->cache->delete("book_borrowers_" . $bookId);
             $this->invalidateBooksCache(["select" => "id,title,quantity,is_one_day_book"]);
             $this->invalidateBooksCache(["select" => "id,title"]);
             $this->invalidateBooksCache(["select" => "code"]);
             $this->invalidateBooksCache(["order" => "created_at.desc"]);
+            $this->invalidateBooksCache([]);
 
             return redirect()
                 ->to("/management-buku")
@@ -639,6 +638,7 @@ class BookManagementController extends Controller
             // Fetch book data
             $book = $this->supabaseRequest("GET", "books_view", null, [
                 "id" => "eq." . $bookId,
+                "is_test_data" => "eq.false",
                 "limit" => 1,
             ]);
 

@@ -146,6 +146,7 @@ class AutomateTransactionController extends Controller
             $copyData = $copies[0];
             $bookResult = $this->supabaseRequest("GET", "books", null, [
                 "id" => "eq." . $copyData["book_id"],
+                "is_test_data" => "eq.false",
                 "select" => "id,title,available,quantity,is_one_day_book",
                 "limit" => 1,
             ]);
