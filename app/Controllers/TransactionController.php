@@ -25,7 +25,7 @@ class TransactionController extends Controller
     public function __construct()
     {
         $this->supabaseUrl = getenv("SUPABASE_URL");
-        $this->supabaseKey = getenv("SUPABASE_API_KEY");
+        $this->supabaseKey = getenv("SUPABASE_SERVICE_ROLE_KEY") ?: getenv("SUPABASE_API_KEY");
         $this->cache = \Config\Services::cache();
     }
 
@@ -84,8 +84,8 @@ class TransactionController extends Controller
 
     public function peminjaman()
     {
-        $currentPicName = session()->get("name");
         $currentRole = session()->get("role");
+        $currentPicId = session()->get("user_id");
 
         // Get all transactions with pagination
         $transactions = $this->fetchAllTransactions([
@@ -120,7 +120,7 @@ class TransactionController extends Controller
         foreach ($transactions as $t) {
             if (
                 $currentRole !== "admin" &&
-                ($t["pic_name"] ?? null) !== $currentPicName
+                (string) ($t["pic_id"] ?? "") !== (string) $currentPicId
             ) {
                 continue;
             }
@@ -298,7 +298,7 @@ class TransactionController extends Controller
             // Get book data
             $book = $this->supabaseRequest("GET", "books", null, [
                 "id" => "eq." . $bookId,
-                "select" => "id,quantity,is_one_day_book",
+                "select" => "id,quantity,available,is_one_day_book",
                 "limit" => 1,
             ]);
 
@@ -310,10 +310,9 @@ class TransactionController extends Controller
             }
 
             $bookData = $book[0];
-            $currentQty = (int) $bookData["quantity"];
-            $currentAvailable = $bookData["available"] ?? false;
+            $currentAvailable = (int) ($bookData["available"] ?? 0);
 
-            if ($currentQty < 1) {
+            if ($currentAvailable < 1) {
                 return $this->response->setJSON([
                     "success" => false,
                     "message" => "Stok buku di perpustakaan habis",
@@ -323,7 +322,7 @@ class TransactionController extends Controller
             // Get user data for trust score validation
             $user = $this->supabaseRequest("GET", "users", null, [
                 "id" => "eq." . $userId,
-                "select" => "id,maxBorrow,num_borrows",
+                "select" => "id,max_borrow,num_borrows",
                 "limit" => 1,
             ]);
 
@@ -335,7 +334,7 @@ class TransactionController extends Controller
             }
 
             $userData = $user[0];
-            $maxBorrow = (int) $userData["maxBorrow"];
+            $maxBorrow = (int) ($userData["max_borrow"] ?? $userData["maxBorrow"] ?? 0);
             $userActiveBorrows = $this->fetchAllTransactions([
                 "user_id" => "eq." . $userId,
                 "type" => "eq.borrow",
@@ -364,8 +363,6 @@ class TransactionController extends Controller
                 "tanggal" => $tanggal,
                 "due_date" => $dueDate,
                 "status" => "active",
-                "pic_name" => $picName,
-                "pic_username" => $picUsername,
                 "pic_id" => $picId,
                 "transaction_location" => "perpustakaan",
                 "created_at" => date("Y-m-d H:i:s"),
@@ -383,18 +380,6 @@ class TransactionController extends Controller
                     "message" => "Gagal menyimpan transaksi peminjaman",
                 ]);
             }
-
-            // Update num_borrows for user
-            $numBorrows = (int) $userData["num_borrows"];
-            $this->supabaseRequest("PATCH", "users?id=eq." . $userId, [
-                "num_borrows" => $numBorrows + 1,
-            ]);
-
-            $newQuantity = $currentQty - 1;
-            $this->supabaseRequest("PATCH", "books?id=eq." . $bookId, [
-                "quantity" => $newQuantity,
-                "available" => $newQuantity > 0,
-            ]);
 
             $this->cache->delete("book_borrowers_" . $bookId);
             $this->invalidateBooksCache(["order" => "created_at.desc"]);
@@ -493,14 +478,11 @@ class TransactionController extends Controller
                     "tanggal" => $now,
                     "status" => "completed",
                     "book_condition" => $bookCondition,
-                    "pic_name" => session()->get("name"),
-                    "pic_username" => session()->get("username"),
                     "pic_id" => session()->get("user_id"),
                     "transaction_location" => "perpustakaan",
                     "created_at" => $now,
                     "completed_at" => $now,
-                    "completed_by_name" => session()->get("name"),
-                    "completed_by_username" => session()->get("username"),
+                    "completed_by_id" => session()->get("user_id"),
                     "due_date" => $dueDate,
                 ];
 
@@ -524,25 +506,9 @@ class TransactionController extends Controller
                     [
                         "status" => "completed",
                         "completed_at" => $now,
-                        "completed_by_name" => session()->get("name"),
-                        "completed_by_username" => session()->get("username"),
+                        "completed_by_id" => session()->get("user_id"),
                     ]
                 );
-
-                // Update book quantity
-                $book = $this->supabaseRequest("GET", "books", null, [
-                    "id" => "eq." . $bookId,
-                    "limit" => 1,
-                ]);
-
-                if (!isset($book["error"]) && !empty($book)) {
-                    $currentQty = (int) $book[0]["quantity"];
-                    $newQty = $currentQty + 1;
-                    $this->supabaseRequest("PATCH", "books?id=eq." . $bookId, [
-                        "quantity" => $newQty,
-                        "available" => true,
-                    ]);
-                }
 
                 $newTrustScore = $this->calculateTrustScore($userId);
                 $this->supabaseRequest("PATCH", "users?id=eq." . $userId, [
@@ -580,7 +546,7 @@ class TransactionController extends Controller
     {
         try {
             $currentRole = session()->get("role");
-            $currentPicName = session()->get("name");
+            $currentPicId = session()->get("user_id");
             $classIdFilter = $this->request->getVar("class_id");
 
             log_message(
@@ -598,7 +564,7 @@ class TransactionController extends Controller
 
             // Apply PIC filter for non-admin
             if ($currentRole !== "admin") {
-                $params["pic_name"] = "eq." . $currentPicName;
+                $params["pic_id"] = "eq." . $currentPicId;
             }
 
             // Fetch all transactions with pagination
@@ -682,7 +648,7 @@ class TransactionController extends Controller
     {
         try {
             $currentRole = session()->get("role");
-            $currentPicName = session()->get("name");
+            $currentPicId = session()->get("user_id");
             $classIdFilter = $this->request->getVar("class_id");
             $page = (int) ($this->request->getVar("page") ?? 1);
             $limit = (int) ($this->request->getVar("limit") ?? 10);
@@ -701,7 +667,7 @@ class TransactionController extends Controller
             ];
 
             if ($currentRole !== "admin") {
-                $allParams["pic_name"] = "eq." . $currentPicName;
+                $allParams["pic_id"] = "eq." . $currentPicId;
             }
 
             $allTransactions = $this->fetchAllTransactions($allParams);
@@ -757,7 +723,7 @@ class TransactionController extends Controller
     {
         try {
             $currentRole = session()->get("role");
-            $currentPicName = session()->get("name");
+            $currentPicId = session()->get("user_id");
             $classIdFilter = $this->request->getVar("class_id");
 
             $params = [
@@ -767,7 +733,7 @@ class TransactionController extends Controller
             ];
 
             if ($currentRole !== "admin") {
-                $params["pic_name"] = "eq." . $currentPicName;
+                $params["pic_id"] = "eq." . $currentPicId;
             }
 
             $transactions = $this->fetchAllTransactions($params);
@@ -820,7 +786,7 @@ class TransactionController extends Controller
     {
         try {
             $currentRole = session()->get("role");
-            $currentPicName = session()->get("name");
+            $currentPicId = session()->get("user_id");
             $classIdFilter = $this->request->getVar("class_id");
             $page = (int) ($this->request->getVar("page") ?? 1);
             $limit = (int) ($this->request->getVar("limit") ?? 10);
@@ -833,7 +799,7 @@ class TransactionController extends Controller
             ];
 
             if ($currentRole !== "admin") {
-                $allParams["pic_name"] = "eq." . $currentPicName;
+                $allParams["pic_id"] = "eq." . $currentPicId;
             }
 
             $allTransactions = $this->fetchAllTransactions($allParams);

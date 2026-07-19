@@ -21,7 +21,7 @@ class BookController extends Controller
     public function __construct()
     {
         $this->supabaseUrl = getenv("SUPABASE_URL");
-        $this->supabaseKey = getenv("SUPABASE_API_KEY");
+        $this->supabaseKey = getenv("SUPABASE_SERVICE_ROLE_KEY") ?: getenv("SUPABASE_API_KEY");
         $this->cache = \Config\Services::cache();
         $this->genreCache = new GenreCache();
 
@@ -219,17 +219,11 @@ class BookController extends Controller
         if (!empty($search)) {
             $params[
                 "or"
-            ] = "(title.ilike.*{$search}*,author.ilike.*{$search}*,code.ilike.*{$search}*,isbn.ilike.*{$search}*,series.ilike.*{$search}*)";
+            ] = "(title.ilike.*{$search}*,code.ilike.*{$search}*,isbn.ilike.*{$search}*,publisher.ilike.*{$search}*,series.ilike.*{$search}*)";
         }
 
         if (!empty($selectedGenres)) {
-            $genreFilter = "genre.in.(" . implode(",", $selectedGenres) . ")";
-            if (isset($params["or"])) {
-                $params["and"] = "({$params["or"]}),{$genreFilter}";
-                unset($params["or"]);
-            } else {
-                $params["genre"] = $genreFilter;
-            }
+            $params["genres"] = "cs.{" . implode(",", array_map("trim", $selectedGenres)) . "}";
         }
 
         // Extra params (e.g. select override) are merged last so they can override defaults
@@ -254,7 +248,7 @@ class BookController extends Controller
             $page,
             $selectParams
         );
-        $books = $this->supabaseRequest("GET", "books", null, $queryParams);
+        $books = $this->supabaseRequest("GET", "books_view", null, $queryParams);
 
         if (isset($books["error"])) {
             log_message(
@@ -263,6 +257,7 @@ class BookController extends Controller
             );
             $books = [];
         }
+        $books = $this->normalizeBookRows($books);
 
         $countParams = $queryParams;
         unset(
@@ -271,7 +266,7 @@ class BookController extends Controller
             $countParams["select"]
         );
 
-        $totalBooks = $this->getCountFromSupabase("books", $countParams);
+        $totalBooks = $this->getCountFromSupabase("books_view", $countParams);
         $totalPages = max(1, (int) ceil($totalBooks / $this->perPage));
 
         return compact("books", "totalBooks", "totalPages");
@@ -292,12 +287,12 @@ class BookController extends Controller
             "totalBooks" => $totalBooks,
             "totalPages" => $totalPages,
         ] = $this->fetchBooksPage($search, $selectedGenres, $page, [
-            "select" => "id,title,author,genre,image,year",
+            "select" => "id,title,authors,genres,image,year",
         ]);
 
         $latestBooks = $this->supabaseRequest(
             "GET",
-            "books",
+            "books_view",
             null,
             [
                 "select" => "title,synopsis,image",
@@ -330,7 +325,7 @@ class BookController extends Controller
             "totalBooks" => $totalBooks,
             "totalPages" => $totalPages,
         ] = $this->fetchBooksPage($search, $selectedGenres, $page, [
-            "select" => "id,title,author,genre,image,year",
+            "select" => "id,title,authors,genres,image,year",
         ]);
 
         return $this->response->setJSON([
@@ -369,15 +364,8 @@ class BookController extends Controller
                 ]);
             }
 
-            $rfid = $json["rfid_uid"] ?? "";
-            if (is_string($rfid) && strpos($rfid, ",") !== false) {
-                $uidArray = array_map("trim", explode(",", $rfid));
-            } else {
-                $uidArray = $rfid !== "" ? [trim($rfid)] : [];
-            }
-
             $bookData = [
-                "uid" => $uidArray,
+                "uid" => $json["rfid_uid"] ?? "",
                 "code" => $json["kode_sekolah"] ?? "",
                 "title" => $json["judul"] ?? "",
                 "author" => $json["pengarang"] ?? "",
@@ -391,10 +379,9 @@ class BookController extends Controller
                 "quantity" => (int) ($json["quantity"] ?? 1),
                 "synopsis" => $json["sinopsis"] ?? "",
                 "year" => (int) date("Y"),
-                "available" => true,
             ];
 
-            $result = $this->supabaseRequest("POST", "books", $bookData);
+            $result = $this->createNormalizedBook($bookData);
 
             if (isset($result["error"])) {
                 return $this->response->setJSON([
@@ -428,7 +415,7 @@ class BookController extends Controller
     {
         $originalTitle = $this->request->getPost("originalTitle");
 
-        $books = $this->supabaseRequest("GET", "books", null, [
+        $books = $this->supabaseRequest("GET", "books_view", null, [
             "title" => "eq." . $originalTitle,
             "limit" => 1,
         ]);
@@ -462,11 +449,7 @@ class BookController extends Controller
             "image" => $imageName,
         ];
 
-        $result = $this->supabaseRequest(
-            "PATCH",
-            "books?id=eq." . $bookId,
-            $updateData
-        );
+        $result = $this->updateNormalizedBook((int) $bookId, $updateData);
 
         if (isset($result["error"])) {
             return $this->response->setJSON([
@@ -485,7 +468,7 @@ class BookController extends Controller
     {
         $title = $this->request->getGet("title");
 
-        $books = $this->supabaseRequest("GET", "books", null, [
+        $books = $this->supabaseRequest("GET", "books_view", null, [
             "title" => "eq." . $title,
             "limit" => 1,
         ]);
@@ -496,7 +479,7 @@ class BookController extends Controller
             );
         }
 
-        $book = $books[0];
+        $book = $this->normalizeBookRow($books[0]);
         $bookId = $book["id"];
 
         $activeBorrowers = $this->supabaseRequest("GET", "transactions", null, [
@@ -509,7 +492,7 @@ class BookController extends Controller
         $borrowersWithDetails = [];
         if (!isset($activeBorrowers["error"]) && !empty($activeBorrowers)) {
             foreach ($activeBorrowers as $tx) {
-                $userResult = $this->supabaseRequest("GET", "users", null, [
+                $userResult = $this->supabaseRequest("GET", "users_view", null, [
                     "id" => "eq." . $tx["user_id"],
                     "limit" => 1,
                 ]);
@@ -548,7 +531,7 @@ class BookController extends Controller
             "limit" => $limit,
         ];
 
-        $books = $this->supabaseRequest("GET", "books", null, $queryParams);
+        $books = $this->supabaseRequest("GET", "books_view", null, $queryParams);
 
         if (is_array($books) && !isset($books["error"])) {
             return $this->response->setJSON([

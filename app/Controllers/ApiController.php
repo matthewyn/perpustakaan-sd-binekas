@@ -20,7 +20,7 @@ class ApiController extends Controller
     {
         // === SUPABASE CONFIG ===
         $this->supabaseUrl = getenv("SUPABASE_URL");
-        $this->supabaseKey = getenv("SUPABASE_API_KEY");
+        $this->supabaseKey = getenv("SUPABASE_SERVICE_ROLE_KEY") ?: getenv("SUPABASE_API_KEY");
         $this->cache = \Config\Services::cache();
 
         // =======================================================

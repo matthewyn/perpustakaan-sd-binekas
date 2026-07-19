@@ -23,7 +23,7 @@ class ClassTransactionController extends Controller
     public function __construct()
     {
         $this->supabaseUrl = getenv("SUPABASE_URL");
-        $this->supabaseKey = getenv("SUPABASE_API_KEY");
+        $this->supabaseKey = getenv("SUPABASE_SERVICE_ROLE_KEY") ?: getenv("SUPABASE_API_KEY");
         $this->cache = \Config\Services::cache();
     }
 
@@ -253,7 +253,7 @@ class ClassTransactionController extends Controller
             // Get book data
             $book = $this->supabaseRequest("GET", "books", null, [
                 "id" => "eq." . $bookId,
-                'select' => 'id,quantity,is_one_day_book',
+                'select' => 'id,quantity,available,is_one_day_book',
                 "limit" => 1,
             ]);
 
@@ -265,9 +265,9 @@ class ClassTransactionController extends Controller
             }
 
             $bookData = $book[0];
-            $bookQuantity = (int) $bookData["quantity"];
+            $availableQuantity = (int) ($bookData["available"] ?? 0);
 
-            if ($bookQuantity < 1) {
+            if ($availableQuantity < 1) {
                 return $this->response->setJSON([
                     "success" => false,
                     "message" => "Stok buku di perpustakaan habis",
@@ -277,7 +277,7 @@ class ClassTransactionController extends Controller
             // Get user data
             $user = $this->supabaseRequest("GET", "users", null, [
                 "id" => "eq." . $userId,
-                'select' => 'id,maxBorrow,num_borrows',
+                'select' => 'id,max_borrow,num_borrows',
                 "limit" => 1,
             ]);
 
@@ -289,7 +289,7 @@ class ClassTransactionController extends Controller
             }
 
             $userData = $user[0];
-            $maxBorrow = (int) $userData["maxBorrow"];
+            $maxBorrow = (int) ($userData["max_borrow"] ?? $userData["maxBorrow"] ?? 0);
             $userActiveBorrows = $this->fetchAllTransactions([
                 "user_id" => "eq." . $userId,
                 "type" => "eq.borrow",
@@ -318,10 +318,8 @@ class ClassTransactionController extends Controller
                 "tanggal" => $tanggal,
                 "due_date" => $dueDate,
                 "status" => "active",
-                "pic_name" => session()->get("name"),
-                "pic_username" => session()->get("username"),
                 "pic_id" => session()->get("user_id"),
-                "transaction_location" => $className, // This is correct
+                "transaction_location" => "kelas",
                 "created_at" => date("Y-m-d H:i:s"),
             ];
 
@@ -337,19 +335,6 @@ class ClassTransactionController extends Controller
                     "message" => "Gagal menyimpan transaksi peminjaman",
                 ]);
             }
-
-            // Update num_borrows for user
-            $numBorrows = (int) $userData["num_borrows"];
-            $this->supabaseRequest("PATCH", "users?id=eq." . $userId, [
-                "num_borrows" => $numBorrows + 1,
-            ]);
-
-            // Update main books quantity (REQUIRED)
-            $newBookQty = $bookQuantity - 1;
-            $this->supabaseRequest("PATCH", "books?id=eq." . $bookId, [
-                "quantity" => $newBookQty,
-                "available" => $newBookQty > 0,
-            ]);
 
             // Clear cache
             $this->cache->delete("class_data_" . $classId);
@@ -451,14 +436,11 @@ class ClassTransactionController extends Controller
                     "tanggal" => $now,
                     "status" => "completed",
                     "book_condition" => $bookCondition,
-                    "pic_name" => session()->get("name"),
-                    "pic_username" => session()->get("username"),
                     "pic_id" => session()->get("user_id"),
-                    "transaction_location" => $className,
+                    "transaction_location" => "kelas",
                     "created_at" => $now,
                     "completed_at" => $now,
-                    "completed_by_name" => session()->get("name"),
-                    "completed_by_username" => session()->get("username"),
+                    "completed_by_id" => session()->get("user_id"),
                     "due_date" => $dueDate,
                 ];
 
@@ -480,28 +462,9 @@ class ClassTransactionController extends Controller
                     [
                         "status" => "completed",
                         "completed_at" => $now,
-                        "completed_by_name" => session()->get("name"),
-                        "completed_by_username" => session()->get("username"),
+                        "completed_by_id" => session()->get("user_id"),
                     ]
                 );
-
-                // Get book data
-                $books = $this->supabaseRequest("GET", "books", null, [
-                    "id" => "eq." . $bookId,
-                    "limit" => 1,
-                ]);
-
-                if (!isset($books["error"]) && !empty($books)) {
-                    $book = $books[0];
-
-                    // Update main books quantity (REQUIRED)
-                    $bookQuantity = $book["quantity"];
-                    $newBookQty = $bookQuantity + 1;
-                    $this->supabaseRequest("PATCH", "books?id=eq." . $bookId, [
-                        "quantity" => $newBookQty,
-                        "available" => true,
-                    ]);
-                }
 
                 $newTrustScore = $this->calculateTrustScore($userId);
                 $this->supabaseRequest("PATCH", "users?id=eq." . $userId, [

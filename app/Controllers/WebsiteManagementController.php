@@ -14,7 +14,7 @@ class WebsiteManagementController extends Controller
     public function __construct()
     {
         $this->supabaseUrl = getenv('SUPABASE_URL');
-        $this->supabaseKey = getenv('SUPABASE_API_KEY');
+        $this->supabaseKey = getenv('SUPABASE_SERVICE_ROLE_KEY') ?: getenv('SUPABASE_API_KEY');
         
         log_message('info', '=== WebsiteManagementController Initialized ===');
     }

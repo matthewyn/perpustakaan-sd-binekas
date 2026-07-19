@@ -21,7 +21,7 @@ class BookManagementController extends Controller
     public function __construct()
     {
         $this->supabaseUrl = getenv("SUPABASE_URL");
-        $this->supabaseKey = getenv("SUPABASE_API_KEY");
+        $this->supabaseKey = getenv("SUPABASE_SERVICE_ROLE_KEY") ?: getenv("SUPABASE_API_KEY");
         $this->cache = \Config\Services::cache();
     }
 
@@ -226,7 +226,6 @@ class BookManagementController extends Controller
             "notes",
             "image",
             "synopsis",
-            "uid",
             "available",
             "is_one_day_book",
             "shelf_position",
@@ -253,7 +252,7 @@ class BookManagementController extends Controller
             foreach ($fields as $field) {
                 $value = $book[$field] ?? "";
 
-                // Handle array fields (uid)
+                // Handle array fields from compatibility views.
                 if (is_array($value)) {
                     $value = json_encode($value);
                 }
@@ -287,13 +286,12 @@ class BookManagementController extends Controller
                 empty($json["code"]) ||
                 empty($json["title"]) ||
                 empty($json["author"]) ||
-                empty($json["genre"]) ||
-                empty($json["uid"])
+                empty($json["genre"])
             ) {
                 return $this->response->setStatusCode(400)->setJSON([
                     "success" => false,
                     "message" =>
-                        "Kode buku, judul, penulis, genre, dan UID harus diisi",
+                        "Kode buku, judul, penulis, dan genre harus diisi",
                 ]);
             }
 
@@ -304,7 +302,7 @@ class BookManagementController extends Controller
                 ]);
             }
 
-            $books = $this->supabaseRequest("GET", "books", null, [
+            $books = $this->supabaseRequest("GET", "books_view", null, [
                 "id" => "eq." . $id,
                 "limit" => 1,
             ]);
@@ -350,17 +348,8 @@ class BookManagementController extends Controller
                 }
             }
 
-            $uidArray = $json["uid"];
-            if (is_string($uidArray) && strpos($uidArray, ",") !== false) {
-                $uidArray = array_map("trim", explode(",", $uidArray));
-            } elseif (is_string($uidArray)) {
-                $uidArray = [trim($uidArray)];
-            }
-            $uidArray = array_filter($uidArray, fn($u) => !empty(trim($u)));
-            $uidArray = array_values($uidArray);
-
             $updateData = [
-                "uid" => $uidArray,
+                "uid" => $json["uid"] ?? [],
                 "quantity" => max(1, (int) $json["quantity"]),
                 "code" => $json["code"],
                 "title" => $json["title"],
@@ -373,16 +362,11 @@ class BookManagementController extends Controller
                 "notes" => $json["notes"] ?? "",
                 "synopsis" => $json["synopsis"],
                 "is_one_day_book" => (bool) $json["is_one_day_book"],
-                "available" => (bool) $json["available"],
                 "image" => $imageName,
                 "isbn" => $json["isbn"],
             ];
 
-            $result = $this->supabaseRequest(
-                "PATCH",
-                "books?id=eq." . $id,
-                $updateData
-            );
+            $result = $this->updateNormalizedBook((int) $id, $updateData);
 
             if (isset($result["error"])) {
                 log_message(
@@ -527,18 +511,8 @@ class BookManagementController extends Controller
                             continue;
                         }
 
-                        $uidArray = $book["uid"] ?? [];
-                        $uidArray = is_array($uidArray)
-                            ? $uidArray
-                            : [$uidArray];
-                        $uidArray = array_filter(
-                            $uidArray,
-                            fn($u) => !empty(trim($u))
-                        );
-                        $uidArray = array_values($uidArray);
-
                         $data = [
-                            "uid" => $uidArray,
+                            "uid" => $book["uid"] ?? [],
                             "quantity" => max(
                                 1,
                                 (int) ($book["quantity"] ?? 1)
@@ -571,16 +545,9 @@ class BookManagementController extends Controller
                                 : (isset($book["is_one_day_book"])
                                     ? (bool) $book["is_one_day_book"]
                                     : false),
-                            "available" => isset($book["available"])
-                                ? (bool) $book["available"]
-                                : true,
                         ];
 
-                        $result = $this->supabaseRequest(
-                            "POST",
-                            "books",
-                            $data
-                        );
+                        $result = $this->createNormalizedBook($data);
 
                         if (isset($result["error"])) {
                             $errorCount++;
@@ -670,7 +637,7 @@ class BookManagementController extends Controller
             }
 
             // Fetch book data
-            $book = $this->supabaseRequest("GET", "books", null, [
+            $book = $this->supabaseRequest("GET", "books_view", null, [
                 "id" => "eq." . $bookId,
                 "limit" => 1,
             ]);
@@ -681,8 +648,8 @@ class BookManagementController extends Controller
                     ->setStatusCode(404);
             }
 
-            $bookData = $book[0];
-            $availableQuantity = $bookData["quantity"];
+            $bookData = $this->normalizeBookRow($book[0]);
+            $availableQuantity = (int) ($bookData["available"] ?? 0);
 
             // Fetch active borrowers untuk buku ini
             $activeBorrowers = $this->supabaseRequest(
@@ -701,29 +668,16 @@ class BookManagementController extends Controller
             $borrowersWithDetails = [];
             if (!isset($activeBorrowers["error"]) && !empty($activeBorrowers)) {
                 foreach ($activeBorrowers as $tx) {
-                    $userResult = $this->supabaseRequest("GET", "users", null, [
+                    $userResult = $this->supabaseRequest("GET", "users_view", null, [
                         "id" => "eq." . $tx["user_id"],
                         "limit" => 1,
                     ]);
-                    $classResult = $this->supabaseRequest(
-                        "GET",
-                        "classes",
-                        null,
-                        [
-                            "id" => "eq." . ($userResult[0]["class_id"] ?? ""),
-                            "limit" => 1,
-                        ]
-                    );
 
                     if (
                         !isset($userResult["error"]) &&
-                        !empty($userResult) &&
-                        !isset($classResult["error"]) &&
-                        !empty($classResult)
+                        !empty($userResult)
                     ) {
                         $user = $userResult[0];
-                        $user["class_id"] =
-                            $classResult[0]["nama_kelas"] ?? "-";
                         // Calculate status (late or active)
                         $status = "AKTIF";
                         if (!empty($tx["due_date"])) {
@@ -736,17 +690,17 @@ class BookManagementController extends Controller
 
                         $borrowersWithDetails[] = [
                             "pic_name" => $user["nama"] ?? "-",
-                            "pic_class" => $user["class_id"] ?? "-",
+                            "pic_class" => $user["nama_kelas"] ?? "-",
                             "borrow_date" => $tx["tanggal"] ?? "-",
                             "due_date" => $tx["due_date"] ?? "-",
                             "status" => $status,
-                            "recorded_by" => $tx["pic_name"] ?? "-",
+                            "recorded_by" => $tx["pic_id"] ?? "-",
                         ];
                     }
                 }
             }
 
-            $totalQuantity = $availableQuantity + count($borrowersWithDetails);
+            $totalQuantity = (int) ($bookData["quantity"] ?? 0);
             $isOutOfStock = $availableQuantity <= 0;
             $result = [
                 "success" => true,

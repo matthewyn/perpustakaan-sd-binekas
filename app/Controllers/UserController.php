@@ -18,7 +18,7 @@ class UserController extends Controller
     public function __construct()
     {
         $this->supabaseUrl = getenv("SUPABASE_URL");
-        $this->supabaseKey = getenv("SUPABASE_API_KEY");
+        $this->supabaseKey = getenv("SUPABASE_SERVICE_ROLE_KEY") ?: getenv("SUPABASE_API_KEY");
         $this->table = "users";
         $this->cache = \Config\Services::cache();
 
@@ -29,11 +29,11 @@ class UserController extends Controller
         );
         log_message(
             "info",
-            "SUPABASE_API_KEY length: " . strlen($this->supabaseKey ?: "")
+            "Supabase server key length: " . strlen($this->supabaseKey ?: "")
         );
     }
 
-    private function supabaseRequest($method, $endpoint, $data = null)
+    private function supabaseRequest($method, $endpoint, $data = null, $queryParams = [])
     {
         if (empty($this->supabaseUrl) || empty($this->supabaseKey)) {
             log_message("error", "Supabase credentials not configured");
@@ -41,6 +41,9 @@ class UserController extends Controller
         }
 
         $url = rtrim($this->supabaseUrl, "/") . "/rest/v1/" . $endpoint;
+        if (!empty($queryParams)) {
+            $url .= "?" . http_build_query($queryParams);
+        }
 
         $headers = [
             "apikey: " . $this->supabaseKey,
@@ -131,7 +134,7 @@ class UserController extends Controller
             if (!empty($queryProjection)) {
                 $params = $queryProjection;
             } else {
-                $params = 'select=id,nama,nisn,uid,num_borrows,class_id,maxBorrow,trust_score';
+            $params = 'select=id,nama,nisn,uid,num_borrows,class_id,max_borrow,trust_score';
             }
         } else {
             if (!empty($queryProjection)) {
@@ -145,8 +148,11 @@ class UserController extends Controller
             $params .= '&role=eq.' . urlencode($role);
         }
         
-        $endpoint = $this->table . '?' . $params . '&order=id.desc';
+        $endpoint = 'users_view?' . $params . '&is_active=eq.true&order=id.desc';
         $data = $this->supabaseRequest('GET', $endpoint);
+        if (is_array($data) && !isset($data["error"])) {
+            $data = array_map(fn($user) => $this->normalizeUserRow($user), $data);
+        }
 
         return $this->response->setJSON([
             'success' => !isset($data['error']),
@@ -190,38 +196,22 @@ class UserController extends Controller
             ]);
         }
 
-        if (!empty($uid)) {
-            $existing = $this->supabaseRequest(
-                "GET",
-                $this->table . "?uid=eq." . urlencode($uid) . "&limit=1"
-            );
-            if (!isset($existing["error"]) && !empty($existing)) {
-                return $this->response->setJSON([
-                    "success" => false,
-                    "message" => "UID sudah digunakan oleh user lain.",
-                    "data" => null,
-                ]);
-            }
-        }
-
-        $nextId = $this->getNextUserId();
-
         $data = [
-            "id" => $nextId,
             "nama" => $nama,
-            "nisn" => $nisn,
-            "uid" => !empty($uid) ? $uid : null,
-            "class_id" => (int) $classId,
-            "maxBorrow" => (int) $maxBorrow,
+            "max_borrow" => (int) $maxBorrow,
             "role" => "murid",
-            "trust_score" => 100.0,
+            "uid" => $uid !== "" ? $uid : null,
+            "trust_score" => 0.0,
             "is_freezed" => (int) $isFreezed,
             "password" => PasswordHelper::hashPassword($nisn),
         ];
 
         log_message("info", "Add User - Data to insert: " . json_encode($data));
 
-        $result = $this->supabaseRequest("POST", $this->table, $data);
+        $result = $this->createNormalizedUser($data, [
+            "nisn" => $nisn,
+            "class_id" => (int) $classId,
+        ]);
 
         log_message(
             "info",
@@ -262,26 +252,6 @@ class UserController extends Controller
         $nisn = $this->request->getPost("nisn");
         $maxBorrow = $this->request->getPost("maxBorrow");
         $uid = trim($this->request->getPost("uid") ?? "");
-
-        if (!empty($uid)) {
-            $existing = $this->supabaseRequest(
-                "GET",
-                $this->table .
-                    "?uid=eq." .
-                    urlencode($uid) .
-                    "&id=neq." .
-                    $id .
-                    "&limit=1"
-            );
-            if (!isset($existing["error"]) && !empty($existing)) {
-                return $this->response->setJSON([
-                    "success" => false,
-                    "message" => "UID sudah digunakan oleh user lain.",
-                    "data" => null,
-                ]);
-            }
-        }
-
         if (!ctype_digit((string) $nisn) || !ctype_digit((string) $maxBorrow)) {
             return $this->response->setJSON([
                 "success" => false,
@@ -303,10 +273,8 @@ class UserController extends Controller
 
         $data = [
             "nama" => $this->request->getPost("nama"),
-            "nisn" => $this->request->getPost("nisn"),
-            "uid" => !empty($uid) ? $uid : null,
-            "class_id" => (int) $classId,
-            "maxBorrow" => (int) $this->request->getPost("maxBorrow"),
+            "uid" => $uid !== "" ? $uid : null,
+            "max_borrow" => (int) $this->request->getPost("maxBorrow"),
             "trust_score" => (float) $trustScore,
             "is_freezed" => (int) $isFreezed,
             "password" => PasswordHelper::hashPassword(
@@ -315,8 +283,10 @@ class UserController extends Controller
             "updated_at" => date("Y-m-d H:i:s"),
         ];
 
-        $endpoint = $this->table . "?id=eq." . $id;
-        $result = $this->supabaseRequest("PATCH", $endpoint, $data);
+        $result = $this->updateNormalizedStudent((int) $id, $data, [
+            "nisn" => $this->request->getPost("nisn"),
+            "class_id" => (int) $classId,
+        ]);
 
         $this->cache->delete('class_data_' . $classId);
         $this->invalidateUserCache([
@@ -342,7 +312,6 @@ class UserController extends Controller
             "PATCH",
             "users?role=eq.murid",
             [
-                "num_borrows" => 0,
                 "trust_score" => 0.0,
             ]
         );
@@ -409,34 +378,18 @@ class UserController extends Controller
             ]);
         }
 
-        if (!empty($uid)) {
-            $existing = $this->supabaseRequest(
-                "GET",
-                $this->table . "?uid=eq." . urlencode($uid) . "&limit=1"
-            );
-            if (!isset($existing["error"]) && !empty($existing)) {
-                return $this->response->setJSON([
-                    "success" => false,
-                    "message" => "UID sudah digunakan oleh user lain.",
-                    "data" => null,
-                ]);
-            }
-        }
-
-        $nextId = $this->getNextUserId();
-
         $data = [
-            "id" => $nextId,
             "nama" => $nama,
-            "nip" => $nip,
-            "jabatan" => $jabatan,
-            "uid" => !empty($uid) ? $uid : null,
-            "class_id" => (int) $classId,
             "role" => "guru",
+            "uid" => $uid !== "" ? $uid : null,
             "password" => PasswordHelper::hashPassword($nip),
         ];
 
-        $result = $this->supabaseRequest("POST", $this->table, $data);
+        $result = $this->createNormalizedUser($data, null, [
+            "nip" => $nip,
+            "jabatan" => $jabatan,
+            "class_id" => (int) $classId,
+        ]);
 
         log_message("info", "Add Guru Response: " . json_encode($result));
 
@@ -485,37 +438,18 @@ class UserController extends Controller
             ]);
         }
 
-        if (!empty($uid)) {
-            $existing = $this->supabaseRequest(
-                "GET",
-                $this->table .
-                    "?uid=eq." .
-                    urlencode($uid) .
-                    "&id=neq." .
-                    $id .
-                    "&limit=1"
-            );
-            if (!isset($existing["error"]) && !empty($existing)) {
-                return $this->response->setJSON([
-                    "success" => false,
-                    "message" => "UID sudah digunakan oleh user lain.",
-                    "data" => null,
-                ]);
-            }
-        }
-
         $data = [
             "nama" => $namaUbah,
-            "nip" => $nipUbah,
-            "jabatan" => $jabatanUbah,
-            "uid" => !empty($uid) ? $uid : null,
-            "class_id" => (int) $classIdUbah,
+            "uid" => $uid !== "" ? $uid : null,
             "password" => PasswordHelper::hashPassword($nipUbah),
             "updated_at" => date("Y-m-d H:i:s"),
         ];
 
-        $endpoint = $this->table . "?id=eq." . $id;
-        $result = $this->supabaseRequest("PATCH", $endpoint, $data);
+        $result = $this->updateNormalizedTeacher((int) $id, $data, [
+            "nip" => $nipUbah,
+            "jabatan" => $jabatanUbah,
+            "class_id" => (int) $classIdUbah,
+        ]);
 
         log_message("info", "Update Guru Response: " . json_encode($result));
 

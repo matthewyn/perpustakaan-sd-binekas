@@ -10,7 +10,7 @@ class SupabaseDB
     public function __construct()
     {
         $this->url = getenv('SUPABASE_URL');
-        $this->key = getenv('SUPABASE_ANON_KEY');
+        $this->key = getenv('SUPABASE_SERVICE_ROLE_KEY') ?: getenv('SUPABASE_ANON_KEY') ?: getenv('SUPABASE_API_KEY');
     }
 
     public function get($table, $params = [])

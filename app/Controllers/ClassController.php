@@ -16,7 +16,7 @@ class ClassController extends Controller
     public function __construct()
     {
         $this->supabaseUrl = getenv("SUPABASE_URL");
-        $this->supabaseKey = getenv("SUPABASE_API_KEY");
+        $this->supabaseKey = getenv("SUPABASE_SERVICE_ROLE_KEY") ?: getenv("SUPABASE_API_KEY");
         $this->cache = \Config\Services::cache();
 
         log_message("info", "=== ClassController Initialized ===");
@@ -101,9 +101,10 @@ class ClassController extends Controller
         // Enrich classes with counts
         foreach ($classes as &$class) {
             // Count students in this class
-            $students = $this->supabaseRequest("GET", "users", null, [
+            $students = $this->supabaseRequest("GET", "users_view", null, [
                 "class_id" => "eq." . $class["id"],
                 "role" => "eq.murid",
+                "is_active" => "eq.true",
                 "select" => "id",
             ]);
             $class["student_count"] = isset($students["error"])
@@ -232,9 +233,10 @@ class ClassController extends Controller
             $studentIds = is_array($studentIds) ? $studentIds : [];
 
             // Get current students in this class
-            $currentStudents = $this->supabaseRequest("GET", "users", null, [
+            $currentStudents = $this->supabaseRequest("GET", "users_view", null, [
                 "class_id" => "eq." . $id,
                 "role" => "eq.murid",
+                "is_active" => "eq.true",
                 "select" => "id",
             ]);
             $currentStudentIds = isset($currentStudents["error"])
@@ -244,7 +246,7 @@ class ClassController extends Controller
             // Students to remove (set class_id to null)
             $toRemove = array_diff($currentStudentIds, $studentIds);
             foreach ($toRemove as $userId) {
-                $this->supabaseRequest("PATCH", "users?id=eq." . $userId, [
+                $this->supabaseRequest("PATCH", "students?user_id=eq." . $userId, [
                     "class_id" => null,
                 ]);
             }
@@ -252,7 +254,7 @@ class ClassController extends Controller
             // Students to add (set class_id to this class)
             $toAdd = array_diff($studentIds, $currentStudentIds);
             foreach ($toAdd as $userId) {
-                $this->supabaseRequest("PATCH", "users?id=eq." . $userId, [
+                $this->supabaseRequest("PATCH", "students?user_id=eq." . $userId, [
                     "class_id" => (int) $id,
                 ]);
             }
@@ -302,7 +304,7 @@ class ClassController extends Controller
         }
 
         // Remove class_id from all students in this class
-        $this->supabaseRequest("PATCH", "users?class_id=eq." . $id, [
+        $this->supabaseRequest("PATCH", "students?class_id=eq." . $id, [
             "class_id" => null,
         ]);
 
@@ -342,15 +344,24 @@ class ClassController extends Controller
     public function getUnassignedStudents()
     {
         // Get students where class_id is null
-        $students = $this->supabaseRequest("GET", "users", null, [
+        $students = $this->supabaseRequest("GET", "users_view", null, [
             "role" => "eq.murid",
             "class_id" => "is.null",
+            "is_active" => "eq.true",
             "order" => "nama.asc",
         ]);
 
         return $this->response->setJSON([
             "success" => true,
             "students" => isset($students["error"]) ? [] : $students,
+        ]);
+    }
+
+    public function getUnassignedBooks()
+    {
+        return $this->response->setJSON([
+            "success" => true,
+            "books" => [],
         ]);
     }
 

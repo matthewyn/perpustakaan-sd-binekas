@@ -8,13 +8,18 @@ class AuthController extends Controller
 {
     private $supabaseUrl;
     private $supabaseKey;
-    private $table;
+
+    // Tabel dasar (dipakai untuk WRITE: password ada di sini)
+    private $table = 'users';
+
+    // View kompatibilitas (dipakai untuk READ: sudah include nisn/nip/class_id
+    // hasil JOIN ke students/teachers, persis seperti struktur tabel users lama)
+    private $viewTable = 'users_view';
 
     public function __construct()
     {
         $this->supabaseUrl = getenv('SUPABASE_URL');
-        $this->supabaseKey = getenv('SUPABASE_API_KEY');
-        $this->table = 'users';
+        $this->supabaseKey = getenv('SUPABASE_SERVICE_ROLE_KEY') ?: getenv('SUPABASE_API_KEY');
     }
 
     // db Supabase
@@ -98,26 +103,25 @@ class AuthController extends Controller
             return redirect()->back()->with('error', 'Username dan password harus diisi');
         }
 
-        // CEK USER - include admin role
-        $roles = ['admin', 'murid', 'guru', 'pustakawan', 'kepala sekolah', 'umum'];
-        $allUsers = [];
+        // CEK USER — ambil semua user aktif sekaligus lewat users_view.
+        // (Dulu di-loop per-role dengan 6x request; sekarang cukup 1x
+        // request dan filter is_active, sekaligus dapat nisn/nip/class_id
+        // dari hasil JOIN di view, tanpa perlu tahu daftar role di kode.)
+        $endpoint = $this->viewTable . '?is_active=eq.true&order=id.desc';
+        $allUsers = $this->supabaseRequest('GET', $endpoint);
 
-        foreach ($roles as $role) {
-            $endpoint = $this->table . '?role=eq.' . urlencode($role);
-            $users = $this->supabaseRequest('GET', $endpoint);
-            
-            if (!isset($users['error']) && is_array($users)) {
-                $allUsers = array_merge($allUsers, $users);
-            }
+        if (isset($allUsers['error']) || !is_array($allUsers)) {
+            log_message('error', 'Login failed - Gagal mengambil data user: ' . json_encode($allUsers));
+            return redirect()->back()->with('error', 'Terjadi kesalahan, silakan coba lagi');
         }
 
-        log_message('info', 'Total users found: ' . count($allUsers));
+        log_message('info', 'Total active users found: ' . count($allUsers));
 
         // CARI USER
         foreach ($allUsers as $user) {
             // Ambil nama depan saja (sebelum spasi pertama)
             $firstName = strtolower(explode(' ', $user['nama'])[0]);
-            
+
             // Cek apakah username cocok dengan nama depan DAN password cocok
             if ($firstName === $username && PasswordHelper::verifyPassword($password, $user['password'])) {
                 session()->set([
@@ -127,9 +131,9 @@ class AuthController extends Controller
                     'nisn' => $user['nisn'] ?? null,
                     'nip' => $user['nip'] ?? null,
                     'class_id' => $user['class_id'] ?? null,
-                    'trust_score' => $user['trust_score'] ?? $user['trust_score'] ?? 100
+                    'trust_score' => $user['trust_score'] ?? 0
                 ]);
-                
+
                 log_message('info', 'Login success - User: ' . $user['nama'] . ' (Role: ' . $user['role'] . ')');
                 return redirect()->to('/');
             }
@@ -145,10 +149,10 @@ class AuthController extends Controller
     {
         $name = session()->get('name');
         log_message('info', 'Logout - User: ' . ($name ?? 'Unknown'));
-        
-        session()->remove(['role', 'name', 'user_id', 'nisn', 'nip', 'trust_score']);
+
+        session()->remove(['role', 'name', 'user_id', 'nisn', 'nip', 'class_id', 'trust_score']);
         session()->destroy();
-        
+
         return redirect()->to('login')->with('success', 'Berhasil logout');
     }
 
@@ -168,11 +172,12 @@ class AuthController extends Controller
             ]);
         }
 
-        // Ambil semua user
-        $endpoint = $this->table . '?order=id.desc';
+        // Ambil semua user aktif dari users_view (butuh kolom nisn/nip
+        // hasil JOIN, tidak ada lagi di tabel dasar users)
+        $endpoint = $this->viewTable . '?is_active=eq.true&order=id.desc';
         $allUsers = $this->supabaseRequest('GET', $endpoint);
 
-        if (isset($allUsers['error'])) {
+        if (isset($allUsers['error']) || !is_array($allUsers)) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Gagal mengambil data user'
@@ -183,7 +188,7 @@ class AuthController extends Controller
         foreach ($allUsers as $user) {
             $matchNisn = !empty($user['nisn']) && $user['nisn'] === $id_number;
             $matchNip = !empty($user['nip']) && $user['nip'] === $id_number;
-            
+
             if ($user['nama'] === $nama && ($matchNisn || $matchNip)) {
                 log_message('info', 'User verified - ID: ' . $user['id']);
                 return $this->response->setJSON([
@@ -219,7 +224,7 @@ class AuthController extends Controller
             ]);
         }
 
-        //password minimal 4 karakter
+        // password minimal 4 karakter
         if (strlen($new_password) < 4) {
             return $this->response->setJSON([
                 'success' => false,
@@ -227,10 +232,11 @@ class AuthController extends Controller
             ]);
         }
 
-        $endpoint = $this->table . '?order=id.desc';
+        // Pencarian tetap lewat users_view (butuh nisn/nip untuk matching)
+        $endpoint = $this->viewTable . '?is_active=eq.true&order=id.desc';
         $allUsers = $this->supabaseRequest('GET', $endpoint);
 
-        if (isset($allUsers['error'])) {
+        if (isset($allUsers['error']) || !is_array($allUsers)) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Gagal mengambil data user'
@@ -241,17 +247,21 @@ class AuthController extends Controller
         foreach ($allUsers as $user) {
             $matchNisn = !empty($user['nisn']) && $user['nisn'] === $id_number;
             $matchNip = !empty($user['nip']) && $user['nip'] === $id_number;
-            
+
             if ($user['nama'] === $nama && ($matchNisn || $matchNip)) {
-                // Update password
+                // Update password — WAJIB ke tabel dasar `users` (bukan
+                // view), karena views di skema baru read-only. Password
+                // memang cuma ada di tabel users, jadi ini tetap aman
+                // meski user role-nya siswa/guru (data nisn/nip tidak
+                // ikut ter-update, tidak perlu).
                 $updateEndpoint = $this->table . '?id=eq.' . $user['id'];
                 $updateData = [
                     'password' => PasswordHelper::hashPassword($new_password),
                     'updated_at' => date('Y-m-d H:i:s')
                 ];
-                
+
                 $result = $this->supabaseRequest('PATCH', $updateEndpoint, $updateData);
-                
+
                 if (isset($result['error'])) {
                     log_message('error', 'Reset password failed - Error: ' . json_encode($result));
                     return $this->response->setJSON([
@@ -259,7 +269,7 @@ class AuthController extends Controller
                         'message' => 'Gagal mengubah password'
                     ]);
                 }
-                
+
                 log_message('info', 'Password reset success - User ID: ' . $user['id']);
                 return $this->response->setJSON([
                     'success' => true,
