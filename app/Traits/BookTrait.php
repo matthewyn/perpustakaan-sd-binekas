@@ -6,7 +6,11 @@ trait BookTrait
 {
     private function normalizeBookQueryParams(array $queryParams): array
     {
-        if (!isset($queryParams["is_test_data"])) {
+        if (array_key_exists("is_test_data", $queryParams)) {
+            if ($queryParams["is_test_data"] === null || $queryParams["is_test_data"] === "") {
+                unset($queryParams["is_test_data"]);
+            }
+        } else {
             $queryParams["is_test_data"] = "eq.false";
         }
 

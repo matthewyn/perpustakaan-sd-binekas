@@ -82,6 +82,62 @@ class TransactionController extends Controller
         return json_decode($response, true);
     }
 
+    private function fetchStudentClassMap(): array
+    {
+        $classMap = [];
+        $students = $this->supabaseRequest("GET", "students", null, [
+            "select" => "user_id,class_id",
+        ]);
+
+        if (is_array($students)) {
+            foreach ($students as $student) {
+                if (!empty($student["user_id"])) {
+                    $classMap[(string) $student["user_id"]] = $student["class_id"] ?? null;
+                }
+            }
+        }
+
+        return $classMap;
+    }
+
+    private function fetchBookTitleMap(array $queryParams = []): array
+    {
+        $params = array_merge([
+            "select" => "id,title",
+            "is_test_data" => null,
+        ], $queryParams);
+
+        $allBooks = $this->fetchAllBooks($params);
+        $bookMap = [];
+
+        foreach ($allBooks as $book) {
+            if (isset($book["id"])) {
+                $bookMap[(string) $book["id"]] = $book["title"] ?? "";
+            }
+        }
+
+        return $bookMap;
+    }
+
+    private function lookupBookTitleById($bookId): string
+    {
+        if (empty($bookId)) {
+            return "";
+        }
+
+        $book = $this->supabaseRequest("GET", "books_view", null, [
+            "id" => "eq." . $bookId,
+            "select" => "title",
+            "limit" => 1,
+        ]);
+
+        if (is_array($book) && !empty($book[0]["title"])) {
+            return $book[0]["title"];
+        }
+
+        return "";
+    }
+
     public function peminjaman()
     {
         $currentRole = session()->get("role");
@@ -97,6 +153,7 @@ class TransactionController extends Controller
         $users = $this->fetchAllUsers(["select" => "id,nama,class_id"]);
         $classes = $this->fetchAllClasses(["select" => "id,nama_kelas"]);
         $books = $this->fetchAllBooks(["select" => "id,title"]);
+        $studentClassMap = $this->fetchStudentClassMap();
 
         $usersById = [];
         foreach ($users as $user) {
@@ -134,8 +191,8 @@ class TransactionController extends Controller
                     : null;
             $nama = $user ? $user["nama"] ?? "-" : "-";
 
-            // Get class name from user's class_id
-            $classId = $user["class_id"];
+            // Get class name from user class_id or student class record
+            $classId = $user["class_id"] ?? $studentClassMap[(string) $userId] ?? null;
             $className =
                 $classId && isset($classesById[$classId])
                     ? $classesById[$classId]["nama_kelas"] ?? "-"
@@ -575,33 +632,26 @@ class TransactionController extends Controller
                 $allUsers = $this->fetchAllUsers([
                     "select" => "id,nama,class_id",
                 ]);
+                $studentClassMap = $this->fetchStudentClassMap();
 
                 // Create user lookup map
                 $userMap = [];
                 foreach ($allUsers as $user) {
                     $userMap[$user["id"]] = [
                         "nama" => $user["nama"] ?? "-",
-                        "class_id" => $user["class_id"] ?? null,
+                        "class_id" => $user["class_id"] ?? $studentClassMap[(string) $user["id"]] ?? null,
                     ];
                 }
 
-                $allBooks = $this->fetchAllBooks(["select" => "id,title"]);
-                $bookMap = [];
-                foreach ($allBooks as $book) {
-                    if (isset($book["id"]) && isset($book["title"])) {
-                        $bookId = (string) $book["id"];
-                        $bookMap[$bookId] = $book["title"];
-                    }
-                }
+                $bookMap = $this->fetchBookTitleMap();
 
                 $activeTransactions = [];
                 foreach ($transactions as $t) {
                     // Add book title
                     if (!empty($t["book_id"])) {
                         $bookId = (string) $t["book_id"];
-                        $t["book_title"] = isset($bookMap[$bookId])
-                            ? $bookMap[$bookId]
-                            : "-";
+                        $t["book_title"] = $bookMap[$bookId] ?? $this->lookupBookTitleById($t["book_id"]);
+                        $t["book_title"] = $t["book_title"] ?: "-";
                     } else {
                         $t["book_title"] = "-";
                     }
@@ -683,19 +733,16 @@ class TransactionController extends Controller
             }
 
             if (!empty($transactions)) {
-                $allBooks = $this->fetchAllBooks(["select" => "id,title"]);
-                $bookMap = [];
-                foreach ($allBooks as $book) {
-                    if (isset($book["id"]) && isset($book["title"])) {
-                        $bookId = (string) $book["id"];
-                        $bookMap[$bookId] = $book["title"];
-                    }
-                }
+                $bookMap = $this->fetchBookTitleMap();
 
                 foreach ($transactions as &$t) {
-                    $t["book_title"] = isset($bookMap[$t["book_id"]])
-                        ? $bookMap[$t["book_id"]]
-                        : "-";
+                    if (!empty($t["book_id"])) {
+                        $bookId = (string) $t["book_id"];
+                        $t["book_title"] = $bookMap[$bookId] ?? $this->lookupBookTitleById($t["book_id"]);
+                        $t["book_title"] = $t["book_title"] ?: "-";
+                    } else {
+                        $t["book_title"] = "-";
+                    }
                 }
                 unset($t);
             }
@@ -743,12 +790,13 @@ class TransactionController extends Controller
                 $allUsers = $this->fetchAllUsers([
                     "select" => "id,nama,class_id",
                 ]);
+                $studentClassMap = $this->fetchStudentClassMap();
 
                 $userMap = [];
                 foreach ($allUsers as $user) {
                     $userMap[$user["id"]] = [
                         "nama" => $user["nama"] ?? "-",
-                        "class_id" => $user["class_id"] ?? null,
+                        "class_id" => $user["class_id"] ?? $studentClassMap[(string) $user["id"]] ?? null,
                     ];
                 }
 
@@ -815,19 +863,16 @@ class TransactionController extends Controller
             }
 
             if (!empty($transactions)) {
-                $allBooks = $this->fetchAllBooks(["select" => "id,title"]);
-                $bookMap = [];
-                foreach ($allBooks as $book) {
-                    if (isset($book["id"]) && isset($book["title"])) {
-                        $bookId = (string) $book["id"];
-                        $bookMap[$bookId] = $book["title"];
-                    }
-                }
+                $bookMap = $this->fetchBookTitleMap();
 
                 foreach ($transactions as &$t) {
-                    $t["book_title"] = isset($bookMap[$t["book_id"]])
-                        ? $bookMap[$t["book_id"]]
-                        : "-";
+                    if (!empty($t["book_id"])) {
+                        $bookId = (string) $t["book_id"];
+                        $t["book_title"] = $bookMap[$bookId] ?? $this->lookupBookTitleById($t["book_id"]);
+                        $t["book_title"] = $t["book_title"] ?: "-";
+                    } else {
+                        $t["book_title"] = "-";
+                    }
                 }
 
                 unset($t);

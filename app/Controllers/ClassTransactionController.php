@@ -202,14 +202,33 @@ class ClassTransactionController extends Controller
         }
 
         $transactions = $this->fetchAllTransactions($queryParams);
-        $allBooks = $this->fetchAllBooks(["select" => "id,title"]);
+        $allBooks = $this->fetchAllBooks([
+            "select" => "id,title",
+            "is_test_data" => null,
+        ]);
         $bookMap = array_column($allBooks, "title", "id");
 
         foreach ($transactions as &$transaction) {
             $transaction["user_name"] =
                 $studentMap[$transaction["user_id"]] ?? "-";
-            $transaction["book_title"] =
-                $bookMap[$transaction["book_id"]] ?? "-";
+
+            $bookTitle = isset($bookMap[$transaction["book_id"]])
+                ? $bookMap[$transaction["book_id"]]
+                : "";
+
+            if ($bookTitle === "" && !empty($transaction["book_id"])) {
+                $fallbackBook = $this->supabaseRequest("GET", "books_view", null, [
+                    "id" => "eq." . $transaction["book_id"],
+                    "select" => "title",
+                    "limit" => 1,
+                ]);
+
+                if (is_array($fallbackBook) && !empty($fallbackBook[0]["title"])) {
+                    $bookTitle = $fallbackBook[0]["title"];
+                }
+            }
+
+            $transaction["book_title"] = $bookTitle !== "" ? $bookTitle : "-";
             $transaction["borrowed_from"] =
                 $transaction["transaction_location"] ?? "perpustakaan";
         }
