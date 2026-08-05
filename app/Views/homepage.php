@@ -430,6 +430,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const cloudinaryResult = document.getElementById('cloudinaryResult');
   const cloudinaryUrl = document.getElementById('cloudinaryUrl');
   let pendingBookData = null;
+  let saveCompleted = false;
+  let awaitingRfid = false;
 
   rfidInput.addEventListener('input', function() {
     const hasValue = this.value.trim().length > 0;
@@ -447,9 +449,10 @@ document.addEventListener("DOMContentLoaded", () => {
     cloudinaryResult.style.display = 'none';
     resetSteps();
     pendingBookData = null;
+    awaitingRfid = false;
     
     const mainModal = bootstrap.Modal.getInstance(modal);
-    if (mainModal) {
+    if (mainModal && !saveCompleted) {
       mainModal.show();
     }
   });
@@ -548,6 +551,8 @@ document.addEventListener("DOMContentLoaded", () => {
         
         await new Promise(resolve => setTimeout(resolve, 500));
         
+        saveCompleted = true;
+        awaitingRfid = false;
         rfidModal.hide();
         $('#exampleModal').modal('hide');
         
@@ -566,9 +571,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     } catch (error) {
       console.error('❌ Process error:', error);
+      alert('Gagal menambahkan buku: ' + error.message);
     } finally {
       rfidInput.disabled = false;
-      confirmRfidBtn.disabled = false;
+      confirmRfidBtn.disabled = rfidInput.value.trim().length === 0;
       document.getElementById('rfidCancelBtn').disabled = false;
       document.getElementById('rfidModalClose').disabled = false;
     }
@@ -843,6 +849,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   $('#tambah').on('click', function() {
+    saveCompleted = false;
+    awaitingRfid = false;
     modalTitle.textContent = 'Tambah Buku';
     tambahSection.style.display = 'block';
     clearForm();
@@ -896,7 +904,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    if (!bookData.kode_sekolah) {
+    if (!bookData.kode_sekolah || bookData.kode_sekolah === 'Error') {
       alert('⚠️ Kode Sekolah harus di-generate terlebih dahulu!');
       $('#generateKodeBtn').focus();
       return;
@@ -921,6 +929,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('bookSummaryKode').textContent = bookData.kode_sekolah;
 
     const mainModal = bootstrap.Modal.getInstance(modal);
+    awaitingRfid = true;
     if (mainModal) {
       mainModal.hide();
     }
@@ -1156,7 +1165,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   $('#exampleModal').on('hidden.bs.modal', function() {
     stopCamera();
-    clearForm();
+    if (!awaitingRfid) {
+      clearForm();
+    }
   });
 });
 </script>
